@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
 const navSections = [
     {
@@ -68,7 +69,13 @@ export default function AdminSidebar({ isOpen, setIsOpen }: { isOpen: boolean, s
                     <div key={section.title} className="admin-sidebar-section">
                         <div className="admin-sidebar-section-title">{section.title}</div>
                         {section.items.map((item) => {
-                            const isActive = pathname.startsWith(item.href);
+                            // Split locale prefix handling dynamically for multilanguage backoffices 
+                            const itemPathWithoutLocale = item.href.replace(/^\/[a-z]{2}\//, '/');
+                            const currentPathWithoutLocale = pathname.replace(/^\/[a-z]{2}\//, '/');
+
+                            // Check exact match or sub-paths exactly. e.g /admin/products y /admin/products/new
+                            const isActive = currentPathWithoutLocale === itemPathWithoutLocale || currentPathWithoutLocale.startsWith(itemPathWithoutLocale + '/');
+
                             return (
                                 <Link
                                     key={item.href}
@@ -87,14 +94,25 @@ export default function AdminSidebar({ isOpen, setIsOpen }: { isOpen: boolean, s
                 ))}
             </nav>
 
-            <div className="admin-sidebar-footer">
-                <div className="admin-user-info">
+            <div className="admin-sidebar-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem' }}>
+                <div className="admin-user-info" style={{ padding: 0, borderTop: 'none', background: 'transparent' }}>
                     <div className="admin-user-avatar">A</div>
                     <div className="admin-user-details">
                         <div className="admin-user-name">Admin</div>
                         <div className="admin-user-role">Administrador</div>
                     </div>
                 </div>
+                <button
+                    onClick={() => signOut({ callbackUrl: '/es/auth/login' })}
+                    style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'all 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
+                    onMouseOut={e => e.currentTarget.style.color = 'rgba(255,255,255,0.5)'}
+                    title="Cerrar sesión"
+                >
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
             </div>
         </aside>
     );

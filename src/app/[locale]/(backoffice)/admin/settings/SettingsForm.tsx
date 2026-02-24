@@ -130,7 +130,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             <div className="mt-8 pt-6 border-t flex justify-end">
                 <button
                     type="submit"
-                    className="admin-button-primary px-8 py-3 text-lg"
+                    className="admin-btn admin-btn-primary px-8 py-3 text-lg"
                     disabled={isLoading}
                 >
                     {isLoading ? 'Guardando Ajustes...' : 'Guardar Ajustes'}
