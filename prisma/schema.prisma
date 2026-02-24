@@ -144,6 +144,8 @@ model Product {
   product_variants     ProductVariant[]
   reviews              Review[]
   wishlist_items       WishlistItem[]
+  related_to           RelatedProduct[]     @relation("RelatedToProduct")
+  related_from         RelatedProduct[]     @relation("RelatedFromProduct")
 
   @@index([is_active], map: "idx_products_is_active")
   @@index([is_featured], map: "idx_products_is_featured")
@@ -533,4 +535,25 @@ enum orders_payment_status {
   PAID
   FAILED
   REFUNDED
+}
+
+enum RelationType {
+  CROSS_SELL
+  UP_SELL
+}
+
+model RelatedProduct {
+  id                 String       @id @default(uuid()) @db.VarChar(36)
+  product_id         String       @db.VarChar(36)
+  related_product_id String       @db.VarChar(36)
+  relation_type      RelationType
+  created_at         DateTime     @default(now())
+
+  product         Product @relation("RelatedToProduct", fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "related_products_ibfk_1")
+  related_product Product @relation("RelatedFromProduct", fields: [related_product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "related_products_ibfk_2")
+
+  @@unique([product_id, related_product_id], map: "uq_product_related")
+  @@index([product_id], map: "idx_related_product")
+  @@index([related_product_id], map: "idx_related_from_product")
+  @@map("related_products")
 }

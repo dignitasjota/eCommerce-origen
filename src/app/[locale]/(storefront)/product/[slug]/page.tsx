@@ -23,6 +23,16 @@ export default async function ProductPage({ params }: Props) {
         include: {
             product_translations: { where: { locale } },
             product_images: { orderBy: { sort_order: 'asc' } },
+            related_to: {
+                include: {
+                    related_product: {
+                        include: {
+                            product_translations: { where: { locale } },
+                            product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+                        }
+                    }
+                }
+            },
             reviews: {
                 where: { is_approved: true },
                 include: { users: { select: { name: true } } },
@@ -311,6 +321,54 @@ export default async function ProductPage({ params }: Props) {
                         )}
                     </div>
                 </div>
+                {/* CROSS-SELLING / UP-SELLING */}
+                {(product.related_to.length > 0) && (
+                    <div style={{ marginTop: '5rem', paddingTop: '3rem', borderTop: '1px solid var(--color-border)' }}>
+                        <h2 style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '2rem' }}>También te puede interesar</h2>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
+                            {product.related_to.map(relation => {
+                                const relProd = relation.related_product;
+                                const tTranslation = relProd.product_translations[0];
+                                const img = relProd.product_images[0]?.url;
+                                return (
+                                    <Link
+                                        href={`/product/${relProd.slug}`}
+                                        key={relation.id}
+                                        style={{ display: 'block', textDecoration: 'none', color: 'inherit', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--color-border)', transition: 'transform 0.2s, box-shadow 0.2s' }}
+                                        className="hover-scale"
+                                    >
+                                        <div style={{ aspectRatio: '1/1', backgroundColor: 'var(--color-background-soft)', position: 'relative' }}>
+                                            {img ? (
+                                                <img src={img} alt={tTranslation?.name || relProd.slug} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>📷</div>
+                                            )}
+                                            {relation.relation_type === 'UP_SELL' && (
+                                                <span style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'var(--color-primary)', color: 'white', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px' }}>
+                                                    Premium
+                                                </span>
+                                            )}
+                                            {relation.relation_type === 'CROSS_SELL' && (
+                                                <span style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'var(--color-text-secondary)', color: 'white', padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px' }}>
+                                                    Sugerencia
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ padding: '1.25rem' }}>
+                                            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {tTranslation?.name || relProd.slug}
+                                            </h3>
+                                            <div style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
+                                                {Number(relProd.price).toFixed(2)} €
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
