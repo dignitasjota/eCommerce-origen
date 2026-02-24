@@ -13,6 +13,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     setRequestLocale(locale);
     const resolvedSearchParams = await searchParams;
     const t = await getTranslations('product');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     // Find the category
     const category = await prisma.category.findUnique({
@@ -164,24 +165,88 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                     })}
                 </div>
             )}
+
+            {/* JSON-LD Schema de Migas de Pan */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {
+                                "@type": "ListItem",
+                                "position": 1,
+                                "name": "Inicio",
+                                "item": `${appUrl}/${locale}`
+                            },
+                            {
+                                "@type": "ListItem",
+                                "position": 2,
+                                "name": "Productos",
+                                "item": `${appUrl}/${locale}/products`
+                            },
+                            {
+                                "@type": "ListItem",
+                                "position": 3,
+                                "name": categoryName,
+                                "item": `${appUrl}/${locale}/category/${category.slug}`
+                            }
+                        ]
+                    })
+                }}
+            />
         </div>
     );
 }
 
 export async function generateMetadata({ params }: Props) {
     const { locale, slug } = await params;
-    const category = await prisma.category.findUnique({
-        where: { slug },
-        include: { category_translations: { where: { locale } } }
-    });
 
-    if (!category) return { title: 'Categoría no encontrada | eShop' };
+    // Obtenemos la categoría local y opciones SEO globales en paralelo
+    const [category, settingsList] = await Promise.all([
+        prisma.category.findUnique({
+            where: { slug },
+            include: { category_translations: { where: { locale } } }
+        }),
+        prisma.siteSetting.findMany({
+            where: { key: { in: ['site_name', 'seo_twitter_handle'] } }
+        })
+    ]);
+
+    const settings = settingsList.reduce((acc, curr) => {
+        acc[curr.key] = curr.value;
+        return acc;
+    }, {} as Record<string, string>);
+
+    const siteName = settings['site_name'] || 'eShop';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    if (!category) return { title: `Categoría no encontrada | ${siteName}` };
 
     const name = category.category_translations[0]?.name || category.slug;
-    const desc = category.category_translations[0]?.meta_description || category.category_translations[0]?.description || `Explora productos en ${name}`;
+    const desc = category.category_translations[0]?.meta_description || category.category_translations[0]?.description || `Explora todos los productos de la categoría ${name} en ${siteName}`;
 
     return {
-        title: `${name} | eShop`,
-        description: desc
+        title: `${name} | ${siteName}`,
+        description: desc,
+        openGraph: {
+            title: `${name} | ${siteName}`,
+            description: desc,
+            url: `${appUrl}/${locale}/category/${category.slug}`,
+            siteName: siteName,
+            type: 'website',
+            locale: locale,
+        },
+        twitter: {
+            card: 'summary',
+            title: `${name} | ${siteName}`,
+            description: desc,
+            siteId: settings['seo_twitter_handle'],
+            creator: settings['seo_twitter_handle'],
+        },
+        alternates: {
+            canonical: `${appUrl}/${locale}/category/${category.slug}`,
+        }
     };
 }

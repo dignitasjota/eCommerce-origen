@@ -30,7 +30,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                 {mainImage ? (
                     <img
                         src={mainImage}
-                        alt={productName}
+                        alt={`${productName} - Vista ampliada`}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                 ) : (
@@ -61,7 +61,7 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                                 backgroundColor: 'var(--color-background-soft)'
                             }}
                         >
-                            <img src={img} alt={`Thumbnail ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={img} alt={`${productName} - Vista alternativa ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </button>
                     ))}
                 </div>

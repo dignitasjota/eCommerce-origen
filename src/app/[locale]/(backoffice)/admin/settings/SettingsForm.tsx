@@ -148,6 +148,30 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             </div>
 
+            {/* SEO Config */}
+            <div className="mt-8 space-y-4">
+                <h3 className="text-lg font-medium border-b pb-2 mb-4 text-[var(--color-primary)]">Optimización SEO Global</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="admin-form-group">
+                        <label className="admin-form-label">Title (Título por defecto)</label>
+                        <input name="seo_default_title" className="admin-form-input" defaultValue={settingsMap['seo_default_title'] || 'eShop - La mejor tienda de ropa online'} placeholder="eShop - La mejor tienda" />
+                        <p className="text-xs text-gray-500 mt-1">Este título aparecerá en las páginas que no tengan un título específico.</p>
+                    </div>
+
+                    <div className="admin-form-group">
+                        <label className="admin-form-label">Twitter Handle (@usuario)</label>
+                        <input name="seo_twitter_handle" className="admin-form-input" defaultValue={settingsMap['seo_twitter_handle'] || '@eshop'} placeholder="@tutienda" />
+                        <p className="text-xs text-gray-500 mt-1">Tu cuenta para enlazarse en las Twitter Cards al compartir productos.</p>
+                    </div>
+
+                    <div className="admin-form-group md:col-span-2">
+                        <label className="admin-form-label">Meta Description Global</label>
+                        <textarea name="seo_default_description" className="admin-form-input" rows={3} defaultValue={settingsMap['seo_default_description'] || 'Descubre nuestra increíble colección de productos al mejor precio.'} placeholder="Escribe aquí un resumen atractivo para Google (máximo 160 caracteres)." />
+                        <p className="text-xs text-gray-500 mt-1">Aparece bajo el título en los resultados de búsqueda de Google.</p>
+                    </div>
+                </div>
+            </div>
+
             <div className="mt-8 pt-6 border-t flex justify-end">
                 <button
                     type="submit"

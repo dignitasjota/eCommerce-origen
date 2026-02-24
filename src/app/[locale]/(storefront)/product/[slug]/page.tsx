@@ -17,6 +17,8 @@ export default async function ProductPage({ params }: Props) {
     setRequestLocale(locale);
     const t = await getTranslations('product');
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
     // Fetch the product with all its details including approved reviews
     const product = await prisma.product.findUnique({
         where: { slug },
@@ -370,24 +372,111 @@ export default async function ProductPage({ params }: Props) {
                     </div>
                 )}
             </div>
+
+            {/* JSON-LD Schema de Producto */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org/",
+                        "@type": "Product",
+                        "name": name,
+                        "image": product.product_images.map(img => `${appUrl}${img.url}`),
+                        "description": description,
+                        "sku": product.sku,
+                        "offers": {
+                            "@type": "AggregateOffer",
+                            "url": `${appUrl}/${locale}/product/${product.slug}`,
+                            "priceCurrency": "EUR",
+                            "lowPrice": product.price,
+                            "highPrice": product.price,
+                            "offerCount": product.product_variants.length > 0 ? product.product_variants.length : 1,
+                            "availability": product.product_variants.some(v => v.stock > 0) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+                        },
+                        ...(totalReviews > 0 && {
+                            "aggregateRating": {
+                                "@type": "AggregateRating",
+                                "ratingValue": averageRating.toFixed(1),
+                                "reviewCount": totalReviews
+                            }
+                        })
+                    })
+                }}
+            />
         </div>
     );
 }
 
 export async function generateMetadata({ params }: Props) {
     const { locale, slug } = await params;
-    const product = await prisma.product.findUnique({
-        where: { slug },
-        include: { product_translations: { where: { locale } } }
-    });
 
-    if (!product) return { title: 'Producto no encontrado | eShop' };
+    // Traemos el producto y la configuración global de SEO
+    const [product, settingsList] = await Promise.all([
+        prisma.product.findUnique({
+            where: { slug },
+            include: {
+                product_translations: { where: { locale } },
+                product_categories: {
+                    include: {
+                        categories: {
+                            include: { category_translations: { where: { locale } } }
+                        }
+                    }
+                },
+                product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+            }
+        }),
+        prisma.siteSetting.findMany({
+            where: { key: { in: ['site_name', 'seo_twitter_handle'] } }
+        })
+    ]);
 
-    const name = product.product_translations[0]?.name || product.slug;
-    const desc = product.product_translations[0]?.meta_description || product.product_translations[0]?.short_description || `Comprar ${name}`;
+    const settings = settingsList.reduce((acc, curr) => {
+        acc[curr.key] = curr.value;
+        return acc;
+    }, {} as Record<string, string>);
+
+    const siteName = settings['site_name'] || 'eShop';
+
+    if (!product) return { title: `Producto no encontrado | ${siteName}` };
+
+    const tData = product.product_translations[0];
+    const name = tData?.name || product.slug;
+    const desc = tData?.meta_description || tData?.short_description || `Comprar ${name} en ${siteName}`;
+    const imgUrl = product.product_images[0]?.url || '/placeholder.png';
+    const primaryCat = product.product_categories[0]?.categories?.category_translations[0]?.name || '';
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
     return {
-        title: `${name} | eShop`,
-        description: desc
+        title: `${name} | ${siteName}`,
+        description: desc,
+        openGraph: {
+            title: `${name} | ${siteName}`,
+            description: desc,
+            url: `${appUrl}/${locale}/product/${slug}`,
+            siteName: siteName,
+            images: [
+                {
+                    url: `${appUrl}${imgUrl}`,
+                    width: 800,
+                    height: 800,
+                    alt: name,
+                },
+            ],
+            type: 'product',
+            locale: locale,
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `${name} | ${siteName}`,
+            description: desc,
+            siteId: settings['seo_twitter_handle'],
+            creator: settings['seo_twitter_handle'],
+            images: [`${appUrl}${imgUrl}`],
+        },
+        alternates: {
+            canonical: `${appUrl}/${locale}/product/${slug}`,
+        }
     };
 }
