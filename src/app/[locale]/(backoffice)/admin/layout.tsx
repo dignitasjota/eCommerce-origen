@@ -1,5 +1,4 @@
-import AdminSidebar from '@/components/backoffice/AdminSidebar';
-import '@/styles/backoffice.css';
+import AdminLayoutClient from '@/components/backoffice/AdminLayoutClient';
 
 export default function AdminLayout({
     children,
@@ -7,11 +6,8 @@ export default function AdminLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="admin-layout">
-            <AdminSidebar />
-            <main className="admin-content">
-                {children}
-            </main>
-        </div>
+        <AdminLayoutClient>
+            {children}
+        </AdminLayoutClient>
     );
 }

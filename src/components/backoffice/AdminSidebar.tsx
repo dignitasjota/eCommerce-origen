@@ -42,15 +42,26 @@ const navSections = [
     },
 ];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
     const pathname = usePathname();
 
     return (
-        <aside className="admin-sidebar">
-            <Link href="/es/admin/dashboard" className="admin-sidebar-logo">
-                <div className="admin-sidebar-logo-icon">e</div>
-                <span className="admin-sidebar-logo-text">eShop Admin</span>
-            </Link>
+        <aside className={`admin-sidebar ${isOpen ? 'open' : ''}`}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Link href="/es/admin/dashboard" className="admin-sidebar-logo" onClick={() => setIsOpen(false)}>
+                    <div className="admin-sidebar-logo-icon">e</div>
+                    <span className="admin-sidebar-logo-text">eShop Admin</span>
+                </Link>
+                {/* Close Button Mobile only inside sidebar */}
+                <button
+                    className="admin-mobile-close"
+                    onClick={() => setIsOpen(false)}
+                >
+                    <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
 
             <nav className="admin-sidebar-nav">
                 {navSections.map((section) => (
@@ -63,6 +74,7 @@ export default function AdminSidebar() {
                                     key={item.href}
                                     href={item.href}
                                     className={`admin-nav-link ${isActive ? 'active' : ''}`}
+                                    onClick={() => setIsOpen(false)}
                                 >
                                     <svg className="admin-nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                         <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />

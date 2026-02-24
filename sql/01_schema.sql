@@ -413,6 +413,22 @@ CREATE TABLE site_settings (
   type VARCHAR(50) NOT NULL DEFAULT 'string'
 ) ENGINE=InnoDB;
 
+-- Creamos la tabla de relaciones de productos (Cross y Up Selling)
+CREATE TABLE `related_products` (
+  `id` varchar(36) NOT NULL,
+  `product_id` varchar(36) NOT NULL,
+  `related_product_id` varchar(36) NOT NULL,
+  `relation_type` enum('CROSS_SELL','UP_SELL') NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_product_related` (`product_id`,`related_product_id`),
+  KEY `idx_related_product` (`product_id`),
+  KEY `idx_related_from_product` (`related_product_id`),
+  CONSTRAINT `related_products_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT,
+  CONSTRAINT `related_products_ibfk_2` FOREIGN KEY (`related_product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci;
+
+
 -- ─── INDEXES FOR PERFORMANCE ────────────────────────────
 
 CREATE INDEX idx_products_is_active ON products(is_active);

@@ -42,13 +42,17 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             }
         });
 
-        const result = await updateSettings(formData);
-
-        setIsLoading(false);
-        if (result.success) {
-            setMessage({ text: result.message || 'Saved', isError: false });
-        } else {
-            setMessage({ text: result.error || 'Error', isError: true });
+        try {
+            const result = await updateSettings(formData);
+            if (result.success) {
+                setMessage({ text: result.message || 'Saved', isError: false });
+            } else {
+                setMessage({ text: result.error || 'Error', isError: true });
+            }
+        } catch (error: any) {
+            setMessage({ text: error.message || 'Error de conexión o configuración del servidor.', isError: true });
+        } finally {
+            setIsLoading(false);
         }
     };
 
