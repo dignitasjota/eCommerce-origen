@@ -43,15 +43,15 @@ const navSections = [
     },
 ];
 
-export default function AdminSidebar({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (val: boolean) => void }) {
+export default function AdminSidebar({ isOpen, setIsOpen, siteName = 'eShop' }: { isOpen: boolean; setIsOpen: (isOpen: boolean) => void; siteName?: string }) {
     const pathname = usePathname();
 
     return (
         <aside className={`admin-sidebar ${isOpen ? 'open' : ''}`}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Link href="/es/admin/dashboard" className="admin-sidebar-logo" onClick={() => setIsOpen(false)}>
-                    <div className="admin-sidebar-logo-icon">e</div>
-                    <span className="admin-sidebar-logo-text">eShop Admin</span>
+            <div className="admin-sidebar-header">
+                <Link href="/es/admin/dashboard" className="admin-brand" onClick={() => setIsOpen(false)}>
+                    <span className="admin-brand-logo">{siteName.charAt(0).toUpperCase()}</span>
+                    <span className="admin-brand-text">{siteName} Admin</span>
                 </Link>
                 {/* Close Button Mobile only inside sidebar */}
                 <button

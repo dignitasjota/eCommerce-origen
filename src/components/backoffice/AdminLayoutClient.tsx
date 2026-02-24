@@ -6,14 +6,16 @@ import '@/styles/backoffice.css';
 
 export default function AdminLayoutClient({
     children,
+    siteName = 'eShop',
 }: {
     children: React.ReactNode;
+    siteName?: string;
 }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
         <div className="admin-layout">
-            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} siteName={siteName} />
 
             {/* Overlay for mobile when sidebar is open */}
             {isSidebarOpen && (
@@ -34,7 +36,7 @@ export default function AdminLayoutClient({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--color-text-primary)' }}>eShop Admin</span>
+                    <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--color-text-primary)' }}>{siteName} Admin</span>
                 </div>
                 {children}
             </main>
