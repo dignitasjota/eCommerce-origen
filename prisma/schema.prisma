@@ -1,0 +1,536 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id             String         @id @default(uuid()) @db.VarChar(36)
+  email          String         @unique(map: "email") @db.VarChar(255)
+  email_verified DateTime?
+  password_hash  String?        @db.VarChar(255)
+  name           String?        @db.VarChar(255)
+  phone          String?        @db.VarChar(50)
+  role           Role           @default(CUSTOMER)
+  image          String?        @db.VarChar(500)
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @default(now())
+  accounts       Account[]
+  addresses      Address[]
+  cart_items     CartItem[]
+  orders         Order[]
+  reviews        Review[]
+  sessions       Session[]
+  wishlist_items WishlistItem[]
+
+  @@map("users")
+}
+
+model Account {
+  id                  String  @id @default(uuid()) @db.VarChar(36)
+  user_id             String  @db.VarChar(36)
+  type                String  @db.VarChar(255)
+  provider            String  @db.VarChar(255)
+  provider_account_id String  @db.VarChar(255)
+  refresh_token       String? @db.Text
+  access_token        String? @db.Text
+  expires_at          Int?
+  token_type          String? @db.VarChar(255)
+  scope               String? @db.VarChar(255)
+  id_token            String? @db.Text
+  session_state       String? @db.VarChar(255)
+  users               User    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "accounts_ibfk_1")
+
+  @@unique([provider, provider_account_id], map: "uq_provider_account")
+  @@index([user_id], map: "user_id")
+  @@map("accounts")
+}
+
+model Session {
+  id            String   @id @default(uuid()) @db.VarChar(36)
+  session_token String   @unique(map: "session_token") @db.VarChar(255)
+  user_id       String   @db.VarChar(36)
+  expires       DateTime
+  users         User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "sessions_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String   @db.VarChar(255)
+  token      String   @unique(map: "token") @db.VarChar(255)
+  expires    DateTime
+
+  @@unique([identifier, token], map: "uq_identifier_token")
+  @@map("verification_tokens")
+}
+
+model Address {
+  id                                           String   @id @default(uuid()) @db.VarChar(36)
+  user_id                                      String?  @db.VarChar(36)
+  first_name                                   String   @db.VarChar(255)
+  last_name                                    String   @db.VarChar(255)
+  company                                      String?  @db.VarChar(255)
+  address1                                     String   @db.VarChar(255)
+  address2                                     String?  @db.VarChar(255)
+  city                                         String   @db.VarChar(255)
+  state                                        String?  @db.VarChar(255)
+  postal_code                                  String   @db.VarChar(20)
+  country                                      String   @db.VarChar(100)
+  phone                                        String?  @db.VarChar(50)
+  is_default                                   Boolean  @default(false)
+  created_at                                   DateTime @default(now())
+  updated_at                                   DateTime @default(now())
+  users                                        User?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "addresses_ibfk_1")
+  orders_orders_shipping_address_idToaddresses Order[]  @relation("orders_shipping_address_idToaddresses")
+  orders_orders_billing_address_idToaddresses  Order[]  @relation("orders_billing_address_idToaddresses")
+
+  @@index([user_id], map: "user_id")
+  @@map("addresses")
+}
+
+model Category {
+  id                    String                @id @default(uuid()) @db.VarChar(36)
+  slug                  String                @unique(map: "slug") @db.VarChar(255)
+  parent_id             String?               @db.VarChar(36)
+  image                 String?               @db.VarChar(500)
+  sort_order            Int                   @default(0)
+  is_active             Boolean               @default(true)
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @default(now())
+  categories            Category?             @relation("categoriesTocategories", fields: [parent_id], references: [id], onUpdate: Restrict, map: "categories_ibfk_1")
+  other_categories      Category[]            @relation("categoriesTocategories")
+  category_translations CategoryTranslation[]
+  product_categories    ProductCategory[]
+
+  @@index([parent_id], map: "idx_categories_parent")
+  @@index([slug], map: "idx_categories_slug")
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id               String   @id @default(uuid()) @db.VarChar(36)
+  category_id      String   @db.VarChar(36)
+  locale           String   @db.VarChar(5)
+  name             String   @db.VarChar(255)
+  description      String?  @db.Text
+  meta_title       String?  @db.VarChar(255)
+  meta_description String?  @db.Text
+  categories       Category @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "category_translations_ibfk_1")
+
+  @@unique([category_id, locale], map: "uq_category_locale")
+  @@map("category_translations")
+}
+
+model Product {
+  id                   String               @id @default(uuid()) @db.VarChar(36)
+  slug                 String               @unique(map: "slug") @db.VarChar(255)
+  sku                  String               @unique(map: "sku") @db.VarChar(100)
+  price                Decimal              @db.Decimal(10, 2)
+  compare_at_price     Decimal?             @db.Decimal(10, 2)
+  is_active            Boolean              @default(true)
+  is_featured          Boolean              @default(false)
+  sort_order           Int                  @default(0)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @default(now())
+  cart_items           CartItem[]
+  order_items          OrderItem[]
+  product_categories   ProductCategory[]
+  product_images       ProductImage[]
+  product_translations ProductTranslation[]
+  product_variants     ProductVariant[]
+  reviews              Review[]
+  wishlist_items       WishlistItem[]
+
+  @@index([is_active], map: "idx_products_is_active")
+  @@index([is_featured], map: "idx_products_is_featured")
+  @@index([slug], map: "idx_products_slug")
+  @@map("products")
+}
+
+model ProductTranslation {
+  id                String  @id @default(uuid()) @db.VarChar(36)
+  product_id        String  @db.VarChar(36)
+  locale            String  @db.VarChar(5)
+  name              String  @db.VarChar(255)
+  short_description String? @db.Text
+  description       String? @db.LongText
+  meta_title        String? @db.VarChar(255)
+  meta_description  String? @db.Text
+  products          Product @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_translations_ibfk_1")
+
+  @@unique([product_id, locale], map: "uq_product_locale")
+  @@map("product_translations")
+}
+
+model ProductCategory {
+  product_id  String   @db.VarChar(36)
+  category_id String   @db.VarChar(36)
+  products    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_categories_ibfk_1")
+  categories  Category @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_categories_ibfk_2")
+
+  @@id([product_id, category_id])
+  @@index([category_id], map: "category_id")
+  @@map("product_categories")
+}
+
+model ProductImage {
+  id         String  @id @default(uuid()) @db.VarChar(36)
+  product_id String  @db.VarChar(36)
+  url        String  @db.VarChar(500)
+  alt        String? @db.VarChar(255)
+  sort_order Int     @default(0)
+  products   Product @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_images_ibfk_1")
+
+  @@index([product_id], map: "product_id")
+  @@map("product_images")
+}
+
+model VariantType {
+  id                        String                   @id @default(uuid()) @db.VarChar(36)
+  slug                      String                   @unique(map: "slug") @db.VarChar(100)
+  variant_options           VariantOption[]
+  variant_type_translations VariantTypeTranslation[]
+
+  @@map("variant_types")
+}
+
+model VariantTypeTranslation {
+  id              String      @id @default(uuid()) @db.VarChar(36)
+  variant_type_id String      @db.VarChar(36)
+  locale          String      @db.VarChar(5)
+  name            String      @db.VarChar(255)
+  variant_types   VariantType @relation(fields: [variant_type_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "variant_type_translations_ibfk_1")
+
+  @@unique([variant_type_id, locale], map: "uq_variant_type_locale")
+  @@map("variant_type_translations")
+}
+
+model VariantOption {
+  id                          String                     @id @default(uuid()) @db.VarChar(36)
+  variant_type_id             String                     @db.VarChar(36)
+  slug                        String                     @db.VarChar(100)
+  sort_order                  Int                        @default(0)
+  product_variant_options     ProductVariantOption[]
+  variant_option_translations VariantOptionTranslation[]
+  variant_types               VariantType                @relation(fields: [variant_type_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "variant_options_ibfk_1")
+
+  @@unique([variant_type_id, slug], map: "uq_variant_type_slug")
+  @@map("variant_options")
+}
+
+model VariantOptionTranslation {
+  id                String        @id @default(uuid()) @db.VarChar(36)
+  variant_option_id String        @db.VarChar(36)
+  locale            String        @db.VarChar(5)
+  value             String        @db.VarChar(255)
+  variant_options   VariantOption @relation(fields: [variant_option_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "variant_option_translations_ibfk_1")
+
+  @@unique([variant_option_id, locale], map: "uq_variant_option_locale")
+  @@map("variant_option_translations")
+}
+
+model ProductVariant {
+  id                      String                 @id @default(uuid()) @db.VarChar(36)
+  product_id              String                 @db.VarChar(36)
+  sku                     String                 @unique(map: "sku") @db.VarChar(100)
+  price                   Decimal?               @db.Decimal(10, 2)
+  stock                   Int                    @default(0)
+  weight                  Decimal?               @db.Decimal(8, 2)
+  is_active               Boolean                @default(true)
+  cart_items              CartItem[]
+  order_items             OrderItem[]
+  product_variant_options ProductVariantOption[]
+  products                Product                @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variants_ibfk_1")
+
+  @@index([product_id], map: "product_id")
+  @@map("product_variants")
+}
+
+model ProductVariantOption {
+  variant_id        String         @db.VarChar(36)
+  variant_option_id String         @db.VarChar(36)
+  product_variants  ProductVariant @relation(fields: [variant_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variant_options_ibfk_1")
+  variant_options   VariantOption  @relation(fields: [variant_option_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variant_options_ibfk_2")
+
+  @@id([variant_id, variant_option_id])
+  @@index([variant_option_id], map: "variant_option_id")
+  @@map("product_variant_options")
+}
+
+model CartItem {
+  id               String          @id @default(uuid()) @db.VarChar(36)
+  user_id          String?         @db.VarChar(36)
+  session_id       String?         @db.VarChar(255)
+  product_id       String          @db.VarChar(36)
+  variant_id       String?         @db.VarChar(36)
+  quantity         Int             @default(1)
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @default(now())
+  users            User?           @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "cart_items_ibfk_1")
+  products         Product         @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "cart_items_ibfk_2")
+  product_variants ProductVariant? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "cart_items_ibfk_3")
+
+  @@index([session_id], map: "idx_cart_session")
+  @@index([user_id], map: "idx_cart_user")
+  @@index([product_id], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+  @@map("cart_items")
+}
+
+model Order {
+  id                                              String                @id @default(uuid()) @db.VarChar(36)
+  order_number                                    String                @unique(map: "order_number") @db.VarChar(50)
+  user_id                                         String?               @db.VarChar(36)
+  guest_email                                     String?               @db.VarChar(255)
+  guest_name                                      String?               @db.VarChar(255)
+  status                                          OrderStatus           @default(PENDING)
+  payment_status                                  orders_payment_status @default(PENDING)
+  payment_method                                  String?               @db.VarChar(50)
+  payment_id                                      String?               @db.VarChar(255)
+  subtotal                                        Decimal               @db.Decimal(10, 2)
+  shipping_cost                                   Decimal               @default(0.00) @db.Decimal(10, 2)
+  discount                                        Decimal               @default(0.00) @db.Decimal(10, 2)
+  tax                                             Decimal               @default(0.00) @db.Decimal(10, 2)
+  total                                           Decimal               @db.Decimal(10, 2)
+  coupon_id                                       String?               @db.VarChar(36)
+  shipping_address_id                             String?               @db.VarChar(36)
+  billing_address_id                              String?               @db.VarChar(36)
+  shipping_method_id                              String?               @db.VarChar(36)
+  notes                                           String?               @db.Text
+  tracking_number                                 String?               @db.VarChar(255)
+  locale                                          String                @default("es") @db.VarChar(5)
+  created_at                                      DateTime              @default(now())
+  updated_at                                      DateTime              @default(now())
+  order_items                                     OrderItem[]
+  users                                           User?                 @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_1")
+  coupons                                         Coupon?               @relation(fields: [coupon_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_2")
+  addresses_orders_shipping_address_idToaddresses Address?              @relation("orders_shipping_address_idToaddresses", fields: [shipping_address_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_3")
+  addresses_orders_billing_address_idToaddresses  Address?              @relation("orders_billing_address_idToaddresses", fields: [billing_address_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_4")
+  shipping_methods                                ShippingMethod?       @relation(fields: [shipping_method_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_5")
+
+  @@index([billing_address_id], map: "billing_address_id")
+  @@index([coupon_id], map: "coupon_id")
+  @@index([order_number], map: "idx_orders_number")
+  @@index([status], map: "idx_orders_status")
+  @@index([user_id], map: "idx_orders_user")
+  @@index([shipping_address_id], map: "shipping_address_id")
+  @@index([shipping_method_id], map: "shipping_method_id")
+  @@map("orders")
+}
+
+model OrderItem {
+  id               String          @id @default(uuid()) @db.VarChar(36)
+  order_id         String          @db.VarChar(36)
+  product_id       String?         @db.VarChar(36)
+  variant_id       String?         @db.VarChar(36)
+  name             String          @db.VarChar(255)
+  sku              String          @db.VarChar(100)
+  price            Decimal         @db.Decimal(10, 2)
+  quantity         Int
+  variant_info     String?         @db.Text
+  orders           Order           @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
+  products         Product?        @relation(fields: [product_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_2")
+  product_variants ProductVariant? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
+
+  @@index([order_id], map: "order_id")
+  @@index([product_id], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+  @@map("order_items")
+}
+
+model Coupon {
+  id             String                @id @default(uuid()) @db.VarChar(36)
+  code           String                @unique(map: "code") @db.VarChar(50)
+  discount_type  coupons_discount_type
+  discount_value Decimal               @db.Decimal(10, 2)
+  min_purchase   Decimal?              @db.Decimal(10, 2)
+  max_uses       Int?
+  used_count     Int                   @default(0)
+  is_active      Boolean               @default(true)
+  starts_at      DateTime?
+  expires_at     DateTime?
+  created_at     DateTime              @default(now())
+  updated_at     DateTime              @default(now())
+  orders         Order[]
+
+  @@map("coupons")
+}
+
+model ShippingMethod {
+  id                           String                      @id @default(uuid()) @db.VarChar(36)
+  is_active                    Boolean                     @default(true)
+  price                        Decimal                     @db.Decimal(10, 2)
+  free_above                   Decimal?                    @db.Decimal(10, 2)
+  min_weight                   Decimal?                    @db.Decimal(8, 2)
+  max_weight                   Decimal?                    @db.Decimal(8, 2)
+  estimated_days               String?                     @db.VarChar(50)
+  sort_order                   Int                         @default(0)
+  created_at                   DateTime                    @default(now())
+  updated_at                   DateTime                    @default(now())
+  orders                       Order[]
+  shipping_method_translations ShippingMethodTranslation[]
+
+  @@map("shipping_methods")
+}
+
+model ShippingMethodTranslation {
+  id                 String         @id @default(uuid()) @db.VarChar(36)
+  shipping_method_id String         @db.VarChar(36)
+  locale             String         @db.VarChar(5)
+  name               String         @db.VarChar(255)
+  description        String?        @db.Text
+  shipping_methods   ShippingMethod @relation(fields: [shipping_method_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "shipping_method_translations_ibfk_1")
+
+  @@unique([shipping_method_id, locale], map: "uq_shipping_method_locale")
+  @@map("shipping_method_translations")
+}
+
+model PaymentMethod {
+  id                          String                     @id @default(uuid()) @db.VarChar(36)
+  type                        String                     @unique(map: "type") @db.VarChar(50)
+  is_active                   Boolean                    @default(false)
+  config                      String?                    @db.Text
+  sort_order                  Int                        @default(0)
+  created_at                  DateTime                   @default(now())
+  updated_at                  DateTime                   @default(now())
+  payment_method_translations PaymentMethodTranslation[]
+
+  @@map("payment_methods")
+}
+
+model PaymentMethodTranslation {
+  id                String        @id @default(uuid()) @db.VarChar(36)
+  payment_method_id String        @db.VarChar(36)
+  locale            String        @db.VarChar(5)
+  name              String        @db.VarChar(255)
+  description       String?       @db.Text
+  payment_methods   PaymentMethod @relation(fields: [payment_method_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "payment_method_translations_ibfk_1")
+
+  @@unique([payment_method_id, locale], map: "uq_payment_method_locale")
+  @@map("payment_method_translations")
+}
+
+model Review {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  user_id     String   @db.VarChar(36)
+  product_id  String   @db.VarChar(36)
+  rating      Int
+  title       String?  @db.VarChar(255)
+  comment     String?  @db.Text
+  is_approved Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
+  users       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_1")
+  products    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_2")
+
+  @@unique([user_id, product_id], map: "uq_user_product_review")
+  @@index([product_id], map: "idx_reviews_product")
+  @@map("reviews")
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  user_id    String   @db.VarChar(36)
+  product_id String   @db.VarChar(36)
+  created_at DateTime @default(now())
+  users      User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "wishlist_items_ibfk_1")
+  products   Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "wishlist_items_ibfk_2")
+
+  @@unique([user_id, product_id], map: "uq_user_product_wishlist")
+  @@index([product_id], map: "product_id")
+  @@map("wishlist_items")
+}
+
+model BlogPost {
+  id                     String                @id @default(uuid()) @db.VarChar(36)
+  slug                   String                @unique(map: "slug") @db.VarChar(255)
+  image                  String?               @db.VarChar(500)
+  is_published           Boolean               @default(false)
+  published_at           DateTime?
+  author_id              String?               @db.VarChar(36)
+  created_at             DateTime              @default(now())
+  updated_at             DateTime              @default(now())
+  blog_post_translations BlogPostTranslation[]
+
+  @@index([is_published], map: "idx_blog_published")
+  @@index([slug], map: "idx_blog_slug")
+  @@map("blog_posts")
+}
+
+model BlogPostTranslation {
+  id               String   @id @default(uuid()) @db.VarChar(36)
+  blog_post_id     String   @db.VarChar(36)
+  locale           String   @db.VarChar(5)
+  title            String   @db.VarChar(255)
+  excerpt          String?  @db.Text
+  content          String   @db.LongText
+  meta_title       String?  @db.VarChar(255)
+  meta_description String?  @db.Text
+  blog_posts       BlogPost @relation(fields: [blog_post_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "blog_post_translations_ibfk_1")
+
+  @@unique([blog_post_id, locale], map: "uq_blog_post_locale")
+  @@map("blog_post_translations")
+}
+
+model LegalPage {
+  id                      String                 @id @default(uuid()) @db.VarChar(36)
+  slug                    String                 @unique(map: "slug") @db.VarChar(255)
+  created_at              DateTime               @default(now())
+  updated_at              DateTime               @default(now())
+  legal_page_translations LegalPageTranslation[]
+
+  @@map("legal_pages")
+}
+
+model LegalPageTranslation {
+  id            String    @id @default(uuid()) @db.VarChar(36)
+  legal_page_id String    @db.VarChar(36)
+  locale        String    @db.VarChar(5)
+  title         String    @db.VarChar(255)
+  content       String    @db.LongText
+  legal_pages   LegalPage @relation(fields: [legal_page_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "legal_page_translations_ibfk_1")
+
+  @@unique([legal_page_id, locale], map: "uq_legal_page_locale")
+  @@map("legal_page_translations")
+}
+
+model SiteSetting {
+  id    String @id @default(uuid()) @db.VarChar(36)
+  key   String @unique(map: "key") @db.VarChar(255)
+  value String @db.LongText
+  type  String @default("string") @db.VarChar(50)
+
+  @@map("site_settings")
+}
+
+enum Role {
+  ADMIN
+  ORDER_MANAGER
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum coupons_discount_type {
+  PERCENTAGE
+  FIXED
+}
+
+enum orders_payment_status {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}

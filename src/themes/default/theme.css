@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════
+   Default Theme — Modern Minimalist
+   This file overrides CSS custom properties from globals.css
+   to create a unique visual identity.
+   ═══════════════════════════════════════════════════════ */
+
+[data-theme="default"] {
+    /* The default theme uses the base variables from globals.css.
+     This file exists as a template for creating custom themes.
+     Override any variable here to create a completely different look.
+  */
+
+    /* Example of what a theme override looks like:
+  --color-primary: #1a1a2e;
+  --color-secondary: #e94560;
+  --color-background: #0f0f23;
+  --color-surface: #16213e;
+  */
+}
+
+/* ─── Default Theme specific component styles ─────────── */
+
+/* Hero section for default theme */
+[data-theme="default"] .hero-section {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-light) 100%);
+}
+
+/* Product cards for default theme */
+[data-theme="default"] .product-card {
+    border: 1px solid var(--color-border-light);
+}
+
+[data-theme="default"] .product-card:hover {
+    border-color: var(--color-secondary-light);
+}
