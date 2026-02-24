@@ -83,6 +83,27 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                         <label className="admin-form-label">Moneda (ISO)</label>
                         <input name="currency" className="admin-form-input" defaultValue={settingsMap['currency'] || 'EUR'} />
                     </div>
+
+                    <div className="admin-form-group">
+                        <label className="admin-form-label">Logotipo del Backoffice / Sitio</label>
+                        {settingsMap['site_logo'] && (
+                            <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                <img src={settingsMap['site_logo']} alt="Logo" style={{ maxHeight: '40px', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <input type="file" name="site_logo" accept="image/*" className="admin-form-input p-2" />
+                    </div>
+
+                    <div className="admin-form-group">
+                        <label className="admin-form-label">Favicon (Icono de pestaña)</label>
+                        {settingsMap['site_favicon'] && (
+                            <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                <img src={settingsMap['site_favicon']} alt="Favicon" style={{ maxHeight: '32px', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        <input type="file" name="site_favicon" accept="image/x-icon,image/png,image/jpeg,image/svg+xml" className="admin-form-input p-2" />
+                        <p className="text-xs text-gray-500 mt-1">Se recomienda formato cuadrado (.png, .ico, .svg).</p>
+                    </div>
                 </div>
 
                 {/* Feature Toggles */}

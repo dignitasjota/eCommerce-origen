@@ -6,11 +6,20 @@ export default async function AdminLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const siteNameSetting = await prisma.siteSetting.findUnique({ where: { key: 'site_name' } });
-    const siteName = siteNameSetting?.value || 'eShop';
+    const settings = await prisma.siteSetting.findMany({
+        where: { key: { in: ['site_name', 'site_logo'] } }
+    });
+
+    const settingsMap = settings.reduce((acc, current) => {
+        acc[current.key] = current.value;
+        return acc;
+    }, {} as Record<string, string>);
+
+    const siteName = settingsMap['site_name'] || 'eShop';
+    const siteLogo = settingsMap['site_logo'] || '';
 
     return (
-        <AdminLayoutClient siteName={siteName}>
+        <AdminLayoutClient siteName={siteName} siteLogo={siteLogo}>
             {children}
         </AdminLayoutClient>
     );

@@ -7,15 +7,17 @@ import '@/styles/backoffice.css';
 export default function AdminLayoutClient({
     children,
     siteName = 'eShop',
+    siteLogo = '',
 }: {
     children: React.ReactNode;
     siteName?: string;
+    siteLogo?: string;
 }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
         <div className="admin-layout">
-            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} siteName={siteName} />
+            <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} siteName={siteName} siteLogo={siteLogo} />
 
             {/* Overlay for mobile when sidebar is open */}
             {isSidebarOpen && (
