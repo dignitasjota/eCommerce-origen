@@ -396,14 +396,24 @@
     font-size: 0.875rem;
     color: var(--color-text-primary);
     border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.2s ease;
 }
 
 .admin-table tr:last-child td {
     border-bottom: none;
 }
 
-.admin-table tr:hover td {
-    background: rgba(0, 0, 0, 0.015);
+/* Zebra striping para hacer legibles muchas filas */
+.admin-table tbody tr:nth-child(even) td {
+    background-color: rgba(128, 128, 128, 0.04);
+}
+
+.admin-table tbody tr:nth-child(odd) td {
+    background-color: transparent;
+}
+
+.admin-table tbody tr:hover td {
+    background-color: rgba(128, 128, 128, 0.08) !important;
 }
 
 /* ─── Badges ─────────────────────────────────────── */
