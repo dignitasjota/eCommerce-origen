@@ -149,87 +149,89 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
 
     return (
         <>
-            <div className="admin-topbar">
-                <h1 className="admin-topbar-title">Usuarios y Clientes</h1>
-                <div className="admin-topbar-actions">
-                    <button onClick={() => openModal()} className="admin-btn admin-btn-primary">
+            <div className="flex justify-between items-center mb-8 px-8 pt-8">
+                <h1 className="text-3xl font-bold">Usuarios y Clientes</h1>
+                <div className="flex gap-4">
+                    <button onClick={() => openModal()} className="btn btn-primary">
                         + Registrar Usuario Interno
                     </button>
                 </div>
             </div>
 
-            {/* Navegación por Pestañas (Estilo Archivador) */}
-            <div style={{ padding: '0 2rem' }}>
-                <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto">
+            {/* Navegación por Pestañas (Estilo Archivador DaisyUI) */}
+            <div className="px-8 mt-4">
+                <div role="tablist" className="tabs tabs-lifted tabs-lg">
                     <button
-                        type="button"
+                        role="tab"
+                        className={`tab ${activeTab === 'customers' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
                         onClick={() => setActiveTab('customers')}
-                        className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ${activeTab === 'customers' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                     >
                         🛍️ Clientes
                     </button>
                     <button
-                        type="button"
+                        role="tab"
+                        className={`tab ${activeTab === 'system' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
                         onClick={() => setActiveTab('system')}
-                        className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'system' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                     >
                         🛡️ Usuarios del Sistema
                     </button>
                 </div>
             </div>
 
-            <div className="admin-page" style={{ paddingTop: 0 }}>
-                <div className="admin-table-container">
-                    <div className="admin-table-header">
-                        <h2 className="admin-table-title">
-                            {filteredUsers.length} {activeTab === 'customers' ? 'clientes registrados' : 'cuentas del sistema'}
-                        </h2>
-                    </div>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Nombre Completo</th>
-                                <th>Correo Electrónico</th>
-                                <th>Teléfono</th>
-                                <th>Permisos/Rol</th>
-                                <th>Pedidos</th>
-                                <th>Registro</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredUsers.map((u) => (
-                                <tr key={u.id}>
-                                    <td style={{ fontWeight: 600 }}>{u.name || '—'}</td>
-                                    <td>{u.email}</td>
-                                    <td style={{ fontSize: '0.85rem' }}>{u.phone || '—'}</td>
-                                    <td>
-                                        <span className={`admin-badge ${roleColors[u.role] || 'active'}`} style={u.role === 'ADMIN' ? { background: 'rgba(168,85,247,0.1)', color: '#a855f7' } : u.role === 'ORDER_MANAGER' ? { background: 'rgba(59,130,246,0.1)', color: '#3b82f6' } : {}}>
-                                            {roleLabels[u.role] || 'Cliente'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>
-                                            {u._count.orders > 0 ? `${u._count.orders} uds.` : '—'}
-                                        </span>
-                                    </td>
-                                    <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                                        {new Date(u.created_at).toLocaleDateString('es-ES')}
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button onClick={() => openModal(u)} className="admin-btn admin-btn-secondary admin-btn-sm">
-                                                Editar
-                                            </button>
-                                            <button onClick={() => handleDelete(u.id, u.name || u.email)} className="admin-btn admin-btn-danger admin-btn-sm" title="Borrar Cuenta">
-                                                Borrar
-                                            </button>
-                                        </div>
-                                    </td>
+            <div className="px-8 pb-8">
+                <div className="card bg-base-100 shadow-xl overflow-x-auto rounded-none rounded-b-xl border-t-0">
+                    <div className="card-body p-0">
+                        <div className="flex justify-between items-center p-6 border-b border-base-200">
+                            <h2 className="card-title text-xl">
+                                {filteredUsers.length} {activeTab === 'customers' ? 'clientes registrados' : 'cuentas del sistema'}
+                            </h2>
+                        </div>
+                        <table className="table table-zebra table-md w-full">
+                            <thead>
+                                <tr className="bg-base-200">
+                                    <th>Nombre Completo</th>
+                                    <th>Correo Electrónico</th>
+                                    <th>Teléfono</th>
+                                    <th>Permisos/Rol</th>
+                                    <th>Pedidos</th>
+                                    <th>Registro</th>
+                                    <th>Acciones</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filteredUsers.map((u) => (
+                                    <tr key={u.id} className="hover">
+                                        <td className="font-bold">{u.name || '—'}</td>
+                                        <td>{u.email}</td>
+                                        <td className="text-sm">{u.phone || '—'}</td>
+                                        <td>
+                                            <div className={`badge ${u.role === 'ADMIN' ? 'badge-primary badge-outline' : u.role === 'ORDER_MANAGER' ? 'badge-info badge-outline' : 'badge-ghost'}`}>
+                                                {roleLabels[u.role] || 'Cliente'}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span className="font-bold text-primary">
+                                                {u._count.orders > 0 ? `${u._count.orders} uds.` : '—'}
+                                            </span>
+                                        </td>
+                                        <td className="text-xs text-base-content/70">
+                                            {new Date(u.created_at).toLocaleDateString('es-ES')}
+                                        </td>
+                                        <td>
+                                            <div className="flex gap-2">
+                                                <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
+                                                    Editar
+                                                </button>
+                                                <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
+                                                    Borrar
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

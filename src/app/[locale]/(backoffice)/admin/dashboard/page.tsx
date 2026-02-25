@@ -44,106 +44,102 @@ export default async function DashboardPage() {
 
     return (
         <>
-            <div className="admin-topbar">
-                <h1 className="admin-topbar-title">Dashboard</h1>
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">Dashboard</h1>
             </div>
 
-            <div className="admin-page">
-                {/* Stats Cards */}
-                <div className="admin-stats-grid">
-                    <div className="admin-stat-card">
-                        <div className="admin-stat-icon blue">📦</div>
-                        <div className="admin-stat-info">
-                            <h3>Productos</h3>
-                            <div className="admin-stat-value">{stats.totalProducts}</div>
-                        </div>
+            <div className="flex flex-col gap-8">
+                {/* DaisyUI Stats Cards */}
+                <div className="stats shadow-xl bg-base-100 w-full overflow-hidden">
+                    <div className="stat">
+                        <div className="stat-figure text-info text-4xl">📦</div>
+                        <div className="stat-title">Productos</div>
+                        <div className="stat-value text-info">{stats.totalProducts}</div>
+                        <div className="stat-desc">Stock gestionado</div>
                     </div>
 
-                    <div className="admin-stat-card">
-                        <div className="admin-stat-icon green">💰</div>
-                        <div className="admin-stat-info">
-                            <h3>Ingresos</h3>
-                            <div className="admin-stat-value">{stats.totalRevenue.toFixed(2)}€</div>
-                        </div>
+                    <div className="stat">
+                        <div className="stat-figure text-success text-4xl">💰</div>
+                        <div className="stat-title">Ingresos</div>
+                        <div className="stat-value text-success">{stats.totalRevenue.toFixed(2)}€</div>
+                        <div className="stat-desc">Histórico validado</div>
                     </div>
 
-                    <div className="admin-stat-card">
-                        <div className="admin-stat-icon purple">🛒</div>
-                        <div className="admin-stat-info">
-                            <h3>Pedidos</h3>
-                            <div className="admin-stat-value">{stats.totalOrders}</div>
-                        </div>
+                    <div className="stat">
+                        <div className="stat-figure text-secondary text-4xl">🛒</div>
+                        <div className="stat-title">Pedidos Totales</div>
+                        <div className="stat-value text-secondary">{stats.totalOrders}</div>
+                        <div className="stat-desc">Procesados este mes</div>
                     </div>
 
-                    <div className="admin-stat-card">
-                        <div className="admin-stat-icon orange">👥</div>
-                        <div className="admin-stat-info">
-                            <h3>Usuarios</h3>
-                            <div className="admin-stat-value">{stats.totalUsers}</div>
-                        </div>
+                    <div className="stat">
+                        <div className="stat-figure text-warning text-4xl">👥</div>
+                        <div className="stat-title">Usuarios</div>
+                        <div className="stat-value text-warning">{stats.totalUsers}</div>
+                        <div className="stat-desc">Registrados</div>
                     </div>
                 </div>
 
-                {/* Recent Orders */}
-                <div className="admin-table-container">
-                    <div className="admin-table-header">
-                        <h2 className="admin-table-title">Últimos Pedidos</h2>
-                        <Link href="/es/admin/orders" className="admin-btn admin-btn-secondary admin-btn-sm">
-                            Ver todos →
-                        </Link>
+                {/* Recent Orders with DaisyUI Table */}
+                <div className="card bg-base-100 shadow-xl w-full">
+                    <div className="card-body p-0 overflow-x-auto">
+                        <div className="flex justify-between items-center p-6 border-b border-base-200">
+                            <h2 className="card-title text-xl">Últimos Pedidos</h2>
+                            <Link href="/es/admin/orders" className="btn btn-outline btn-sm">
+                                Ver todos →
+                            </Link>
+                        </div>
+                        <table className="table table-zebra table-md w-full">
+                            <thead>
+                                <tr className="bg-base-200">
+                                    <th>Nº Pedido</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Pago</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {stats.recentOrders.map((order) => (
+                                    <tr key={order.id} className="hover">
+                                        <td>
+                                            <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
+                                                {order.order_number}
+                                            </Link>
+                                        </td>
+                                        <td>{order.users?.name || order.guest_email || '—'}</td>
+                                        <td className="font-bold">{Number(order.total).toFixed(2)}€</td>
+                                        <td>
+                                            <div className="badge badge-outline">
+                                                {statusLabels[order.status] || order.status}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={`badge ${order.payment_status === 'PAID' ? 'badge-success' : 'badge-warning'}`}>
+                                                {order.payment_status === 'PAID' ? 'Pagado' : order.payment_status === 'PENDING' ? 'Pendiente' : order.payment_status}
+                                            </div>
+                                        </td>
+                                        <td className="text-xs text-base-content/70">
+                                            {new Date(order.created_at).toLocaleDateString('es-ES', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric',
+                                            })}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {stats.recentOrders.length === 0 && (
+                                    <tr>
+                                        <td colSpan={6} className="text-center py-10 text-base-content/50">
+                                            <div className="text-5xl mb-4">📋</div>
+                                            <h3 className="text-lg font-bold">No hay pedidos aún</h3>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Nº Pedido</th>
-                                <th>Cliente</th>
-                                <th>Total</th>
-                                <th>Estado</th>
-                                <th>Pago</th>
-                                <th>Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {stats.recentOrders.map((order) => (
-                                <tr key={order.id}>
-                                    <td>
-                                        <Link href={`/es/admin/orders/${order.id}`} style={{ fontWeight: 600, color: 'var(--color-accent)', textDecoration: 'none' }}>
-                                            {order.order_number}
-                                        </Link>
-                                    </td>
-                                    <td>{order.users?.name || order.guest_email || '—'}</td>
-                                    <td style={{ fontWeight: 600 }}>{Number(order.total).toFixed(2)}€</td>
-                                    <td>
-                                        <span className={`admin-badge ${order.status.toLowerCase()}`}>
-                                            {statusLabels[order.status] || order.status}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`admin-badge ${order.payment_status.toLowerCase()}`}>
-                                            {order.payment_status === 'PAID' ? 'Pagado' : order.payment_status === 'PENDING' ? 'Pendiente' : order.payment_status}
-                                        </span>
-                                    </td>
-                                    <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
-                                        {new Date(order.created_at).toLocaleDateString('es-ES', {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric',
-                                        })}
-                                    </td>
-                                </tr>
-                            ))}
-                            {stats.recentOrders.length === 0 && (
-                                <tr>
-                                    <td colSpan={6}>
-                                        <div className="admin-empty">
-                                            <div className="admin-empty-icon">📋</div>
-                                            <h3>No hay pedidos aún</h3>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </>
