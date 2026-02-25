@@ -90,7 +90,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                                     <td style={{ padding: '1rem', fontWeight: 600 }}>{itemsSubtotal.toFixed(2)}€</td>
                                 </tr>
                                 <tr>
-                                    <td colSpan={3} style={{ textAlign: 'right', padding: '1rem' }}>Envío ({order.shipping_methods?.shipping_method_translations[0]?.name}):</td>
+                                    <td colSpan={3} style={{ textAlign: 'right', padding: '1rem' }}>Envío ({order.shipping_methods?.shipping_method_translations?.[0]?.name || 'N/A'}):</td>
                                     <td style={{ padding: '1rem', fontWeight: 600 }}>{Number(order.shipping_cost).toFixed(2)}€</td>
                                 </tr>
                                 <tr style={{ backgroundColor: 'var(--color-background-soft)' }}>
@@ -112,8 +112,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                         <h2 className="admin-table-title" style={{ marginBottom: '1rem' }}>Gestionar Pedido</h2>
                         <OrderManagerForm
                             orderId={order.id}
-                            currentStatus={order.status}
-                            currentPaymentStatus={order.payment_status}
+                            currentStatus={order.status || 'PENDING'}
+                            currentPaymentStatus={order.payment_status || 'PENDING'}
                             statusLabels={statusLabels}
                             paymentLabels={paymentLabels}
                         />
