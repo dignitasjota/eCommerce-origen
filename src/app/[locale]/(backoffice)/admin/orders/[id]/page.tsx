@@ -48,8 +48,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                     <h1 className="admin-topbar-title">Pedido {order.order_number}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
-                    <span className={`admin-badge ${order.status.toLowerCase()}`}>{statusLabels[order.status] || order.status}</span>
-                    <span className={`admin-badge ${order.payment_status.toLowerCase()}`}>{paymentLabels[order.payment_status] || order.payment_status}</span>
+                    <span className={`admin-badge ${order.status?.toLowerCase() || 'pending'}`}>{order.status ? (statusLabels[order.status] || order.status) : 'Desconocido'}</span>
+                    <span className={`admin-badge ${order.payment_status?.toLowerCase() || 'pending'}`}>{order.payment_status ? (paymentLabels[order.payment_status] || order.payment_status) : 'Desconocido'}</span>
                 </div>
             </div>
 

@@ -53,13 +53,13 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
                                     <td style={{ fontWeight: 600 }}>{Number(order.total).toFixed(2)}€</td>
                                     <td style={{ fontSize: '0.8rem' }}>{order.shipping_methods?.shipping_method_translations[0]?.name || '—'}</td>
                                     <td>
-                                        <span className={`admin-badge ${order.status.toLowerCase()}`}>
-                                            {statusLabels[order.status] || order.status}
+                                        <span className={`admin-badge ${order.status?.toLowerCase() || 'pending'}`}>
+                                            {order.status ? (statusLabels[order.status] || order.status) : 'Desconocido'}
                                         </span>
                                     </td>
                                     <td>
-                                        <span className={`admin-badge ${order.payment_status.toLowerCase()}`}>
-                                            {paymentLabels[order.payment_status] || order.payment_status}
+                                        <span className={`admin-badge ${order.payment_status?.toLowerCase() || 'pending'}`}>
+                                            {order.payment_status ? (paymentLabels[order.payment_status] || order.payment_status) : 'Desconocido'}
                                         </span>
                                     </td>
                                     <td style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
