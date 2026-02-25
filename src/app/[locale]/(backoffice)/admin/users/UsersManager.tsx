@@ -6,17 +6,29 @@ import { createUser, updateUser, deleteUser } from './actions';
 export default function UsersManager({ initialUsers }: { initialUsers: any[] }) {
     const [activeTab, setActiveTab] = useState<'customers' | 'system'>('customers');
     const [users, setUsers] = useState(initialUsers);
+    const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
 
     const filteredUsers = useMemo(() => {
-        return users.filter(u => {
+        let filtered = users.filter((u: any) => {
             if (activeTab === 'system') return u.role === 'ADMIN' || u.role === 'ORDER_MANAGER';
             return u.role === 'CUSTOMER';
         });
-    }, [users, activeTab]);
+
+        if (searchTerm) {
+            const lowerSearch = searchTerm.toLowerCase();
+            filtered = filtered.filter((u: any) => {
+                const nameMatch = u.name?.toLowerCase().includes(lowerSearch) ?? false;
+                const emailMatch = u.email?.toLowerCase().includes(lowerSearch) ?? false;
+                const phoneMatch = u.phone?.toLowerCase().includes(lowerSearch) ?? false;
+                return nameMatch || emailMatch || phoneMatch;
+            });
+        }
+        return filtered;
+    }, [users, activeTab, searchTerm]);
 
     // Form states
     const [name, setName] = useState('');
@@ -175,15 +187,31 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
                         aria-label="  Clientes  "
                         checked={activeTab === 'customers'}
-                        onChange={() => setActiveTab('customers')}
+                        onChange={() => {
+                            setActiveTab('customers');
+                            setSearchTerm('');
+                        }}
                     />
                     <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
                         {activeTab === 'customers' && (
                             <>
-                                <div className="admin-table-header">
+                                <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <h2 className="admin-table-title">
                                         {filteredUsers.length} clientes registrados
                                     </h2>
+                                    <div style={{ position: 'relative', width: '300px' }}>
+                                        <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
+                                            🔍
+                                        </span>
+                                        <input
+                                            type="text"
+                                            className="admin-form-input"
+                                            placeholder="Buscar por nombre, email, teléfono"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            style={{ paddingLeft: '2.5rem', margin: 0 }}
+                                        />
+                                    </div>
                                 </div>
                                 <table className="admin-table">
                                     <thead>
@@ -241,15 +269,31 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
                         aria-label="  Usuarios del Sistema  "
                         checked={activeTab === 'system'}
-                        onChange={() => setActiveTab('system')}
+                        onChange={() => {
+                            setActiveTab('system');
+                            setSearchTerm('');
+                        }}
                     />
                     <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
                         {activeTab === 'system' && (
                             <>
-                                <div className="admin-table-header">
+                                <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <h2 className="admin-table-title">
                                         {filteredUsers.length} cuentas del sistema
                                     </h2>
+                                    <div style={{ position: 'relative', width: '300px' }}>
+                                        <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
+                                            🔍
+                                        </span>
+                                        <input
+                                            type="text"
+                                            className="admin-form-input"
+                                            placeholder="Buscar nombre, email, teléfono..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            style={{ paddingLeft: '2.5rem', margin: 0 }}
+                                        />
+                                    </div>
                                 </div>
                                 <table className="admin-table">
                                     <thead>
