@@ -158,79 +158,138 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                 </div>
             </div>
 
-            {/* Navegación por Pestañas (Estilo Archivador DaisyUI) */}
-            <div className="px-8 mt-4">
-                <div role="tablist" className="tabs tabs-lifted tabs-lg">
-                    <button
-                        role="tab"
-                        className={`tab ${activeTab === 'customers' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
-                        onClick={() => setActiveTab('customers')}
-                    >
-                        🛍️ Clientes
-                    </button>
-                    <button
-                        role="tab"
-                        className={`tab ${activeTab === 'system' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
-                        onClick={() => setActiveTab('system')}
-                    >
-                        🛡️ Usuarios del Sistema
-                    </button>
-                </div>
-            </div>
-
             <div className="px-8 pb-8">
-                <div className="card bg-base-100 shadow-xl overflow-x-auto rounded-none rounded-b-xl border-t-0">
-                    <div className="card-body p-0">
-                        <div className="flex justify-between items-center p-6 border-b border-base-200">
-                            <h2 className="card-title text-xl">
-                                {filteredUsers.length} {activeTab === 'customers' ? 'clientes registrados' : 'cuentas del sistema'}
-                            </h2>
-                        </div>
-                        <table className="table table-zebra table-md w-full">
-                            <thead>
-                                <tr className="bg-base-200">
-                                    <th>Nombre Completo</th>
-                                    <th>Correo Electrónico</th>
-                                    <th>Teléfono</th>
-                                    <th>Permisos/Rol</th>
-                                    <th>Pedidos</th>
-                                    <th>Registro</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredUsers.map((u) => (
-                                    <tr key={u.id} className="hover">
-                                        <td className="font-bold">{u.name || '—'}</td>
-                                        <td>{u.email}</td>
-                                        <td className="text-sm">{u.phone || '—'}</td>
-                                        <td>
-                                            <div className={`badge ${u.role === 'ADMIN' ? 'badge-primary badge-outline' : u.role === 'ORDER_MANAGER' ? 'badge-info badge-outline' : 'badge-ghost'}`}>
-                                                {roleLabels[u.role] || 'Cliente'}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span className="font-bold text-primary">
-                                                {u._count.orders > 0 ? `${u._count.orders} uds.` : '—'}
-                                            </span>
-                                        </td>
-                                        <td className="text-xs text-base-content/70">
-                                            {new Date(u.created_at).toLocaleDateString('es-ES')}
-                                        </td>
-                                        <td>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
-                                                    Editar
-                                                </button>
-                                                <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
-                                                    Borrar
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                <div role="tablist" className="tabs tabs-lifted tabs-lg">
+                    {/* --- TAB CLIENTES --- */}
+                    <input
+                        type="radio"
+                        name="users_tabs"
+                        role="tab"
+                        className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                        aria-label="🛍️ Clientes"
+                        checked={activeTab === 'customers'}
+                        onChange={() => setActiveTab('customers')}
+                    />
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box rounded-tl-none p-0 shadow-xl overflow-hidden">
+                        {activeTab === 'customers' && (
+                            <div className="overflow-x-auto">
+                                <div className="flex justify-between items-center p-6 border-b border-base-200">
+                                    <h2 className="card-title text-xl">
+                                        {filteredUsers.length} clientes registrados
+                                    </h2>
+                                </div>
+                                <table className="table table-zebra table-md w-full">
+                                    <thead>
+                                        <tr className="bg-base-200">
+                                            <th>Nombre Completo</th>
+                                            <th>Correo Electrónico</th>
+                                            <th>Teléfono</th>
+                                            <th>Permisos/Rol</th>
+                                            <th>Pedidos</th>
+                                            <th>Registro</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredUsers.map((u) => (
+                                            <tr key={u.id} className="hover">
+                                                <td className="font-bold">{u.name || '—'}</td>
+                                                <td>{u.email}</td>
+                                                <td className="text-sm">{u.phone || '—'}</td>
+                                                <td>
+                                                    <div className="badge badge-ghost">Cliente</div>
+                                                </td>
+                                                <td>
+                                                    <span className="font-bold text-primary">
+                                                        {u._count.orders > 0 ? `${u._count.orders} uds.` : '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="text-xs text-base-content/70">
+                                                    {new Date(u.created_at).toLocaleDateString('es-ES')}
+                                                </td>
+                                                <td>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
+                                                            Editar
+                                                        </button>
+                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
+                                                            Borrar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- TAB SISTEMA --- */}
+                    <input
+                        type="radio"
+                        name="users_tabs"
+                        role="tab"
+                        className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                        aria-label="🛡️ Usuarios del Sistema"
+                        checked={activeTab === 'system'}
+                        onChange={() => setActiveTab('system')}
+                    />
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-xl overflow-hidden">
+                        {activeTab === 'system' && (
+                            <div className="overflow-x-auto">
+                                <div className="flex justify-between items-center p-6 border-b border-base-200">
+                                    <h2 className="card-title text-xl">
+                                        {filteredUsers.length} cuentas del sistema
+                                    </h2>
+                                </div>
+                                <table className="table table-zebra table-md w-full">
+                                    <thead>
+                                        <tr className="bg-base-200">
+                                            <th>Nombre Completo</th>
+                                            <th>Correo Electrónico</th>
+                                            <th>Teléfono</th>
+                                            <th>Permisos/Rol</th>
+                                            <th>Pedidos</th>
+                                            <th>Registro</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredUsers.map((u) => (
+                                            <tr key={u.id} className="hover">
+                                                <td className="font-bold">{u.name || '—'}</td>
+                                                <td>{u.email}</td>
+                                                <td className="text-sm">{u.phone || '—'}</td>
+                                                <td>
+                                                    <div className={`badge ${u.role === 'ADMIN' ? 'badge-primary badge-outline' : 'badge-info badge-outline'}`}>
+                                                        {roleLabels[u.role] || 'Cliente'}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="font-bold text-primary">
+                                                        {u._count.orders > 0 ? `${u._count.orders} uds.` : '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="text-xs text-base-content/70">
+                                                    {new Date(u.created_at).toLocaleDateString('es-ES')}
+                                                </td>
+                                                <td>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
+                                                            Editar
+                                                        </button>
+                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
+                                                            Borrar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
