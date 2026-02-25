@@ -33,14 +33,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.setAttribute('data-admin-theme', newTheme);
     };
 
-    // Prevent hydration mismatch by not rendering anything until mounted
-    if (!mounted) {
-        return <div style={{ visibility: 'hidden' }}>{children}</div>;
-    }
-
     return (
         <ThemeContext.Provider value={{ theme, toggleTheme }}>
-            {children}
+            {!mounted ? (
+                <div style={{ visibility: 'hidden' }}>{children}</div>
+            ) : (
+                children
+            )}
         </ThemeContext.Provider>
     );
 }
