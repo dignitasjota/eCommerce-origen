@@ -171,8 +171,8 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         type="radio"
                         name="users_tabs"
                         role="tab"
-                        className="tab font-semibold"
-                        aria-label="🛍️ Clientes"
+                        className="tab font-semibold px-6"
+                        aria-label="Clientes"
                         checked={activeTab === 'customers'}
                         onChange={() => setActiveTab('customers')}
                     />
@@ -236,8 +236,8 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         type="radio"
                         name="users_tabs"
                         role="tab"
-                        className="tab font-semibold"
-                        aria-label="🛡️ Usuarios del Sistema"
+                        className="tab font-semibold px-6"
+                        aria-label="Usuarios del Sistema"
                         checked={activeTab === 'system'}
                         onChange={() => setActiveTab('system')}
                     />

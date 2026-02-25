@@ -72,8 +72,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab font-semibold"
-                    aria-label="📱 Configuración Global"
+                    className="tab font-semibold px-6"
+                    aria-label="Configuración Global"
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
@@ -131,8 +131,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab font-semibold"
-                    aria-label="🧩 Módulos del Frontend"
+                    className="tab font-semibold px-6"
+                    aria-label="Módulos del Frontend"
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
@@ -199,8 +199,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab font-semibold"
-                    aria-label="🔍 Optimización SEO"
+                    className="tab font-semibold px-6"
+                    aria-label="Optimización SEO"
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
