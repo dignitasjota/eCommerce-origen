@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 export default function OrdersList({ initialOrders }: { initialOrders: any[] }) {
     const [orders, setOrders] = useState(initialOrders);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const statusLabels: Record<string, string> = {
         PENDING: 'Pendiente', CONFIRMED: 'Confirmado', PROCESSING: 'Procesando',
@@ -15,6 +16,15 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
         PENDING: 'Pendiente', PAID: 'Pagado', FAILED: 'Fallido', REFUNDED: 'Reembolsado',
     };
 
+    const filteredOrders = orders.filter((order) => {
+        const search = searchTerm.toLowerCase();
+        const orderNumberMatch = String(order.order_number).toLowerCase().includes(search);
+        const nameMatch = order.users?.name?.toLowerCase().includes(search) ?? false;
+        const emailMatch = order.guest_email?.toLowerCase().includes(search) ?? false;
+
+        return orderNumberMatch || nameMatch || emailMatch;
+    });
+
     return (
         <>
             <div className="admin-topbar">
@@ -23,8 +33,21 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
 
             <div className="admin-page">
                 <div className="admin-table-container">
-                    <div className="admin-table-header">
-                        <h2 className="admin-table-title">{orders.length} pedidos totales</h2>
+                    <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 className="admin-table-title">{filteredOrders.length} pedidos totales</h2>
+                        <div style={{ position: 'relative', width: '300px' }}>
+                            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
+                                🔍
+                            </span>
+                            <input
+                                type="text"
+                                className="admin-form-input"
+                                placeholder="Buscar por número, cliente o email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ paddingLeft: '2.5rem', margin: 0 }}
+                            />
+                        </div>
                     </div>
                     <table className="admin-table">
                         <thead>
@@ -41,7 +64,7 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
                             </tr>
                         </thead>
                         <tbody>
-                            {orders.map((order) => (
+                            {filteredOrders.map((order) => (
                                 <tr key={order.id}>
                                     <td>
                                         <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
@@ -72,13 +95,13 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
                                     </td>
                                 </tr>
                             ))}
-                            {orders.length === 0 && (
+                            {filteredOrders.length === 0 && (
                                 <tr>
                                     <td colSpan={9}>
                                         <div className="admin-empty">
                                             <div className="admin-empty-icon">📦</div>
-                                            <h3>Aún no has recibido ningún pedido</h3>
-                                            <p>Cuando tus clientes realicen compras, aparecerán listadas aquí.</p>
+                                            <h3>{searchTerm ? `No se encontraron pedidos para "${searchTerm}"` : 'Aún no has recibido ningún pedido'}</h3>
+                                            <p>{searchTerm ? 'Prueba con otros términos de búsqueda.' : 'Cuando tus clientes realicen compras, aparecerán listadas aquí.'}</p>
                                         </div>
                                     </td>
                                 </tr>
