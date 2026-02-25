@@ -159,18 +159,18 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
             </div>
 
             <div className="px-8 pb-8">
-                <div role="tablist" className="tabs tabs-lifted tabs-lg">
+                <div role="tablist" className="tabs tabs-lift tabs-lg">
                     {/* --- TAB CLIENTES --- */}
                     <input
                         type="radio"
                         name="users_tabs"
                         role="tab"
-                        className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                        className="tab font-semibold"
                         aria-label="🛍️ Clientes"
                         checked={activeTab === 'customers'}
                         onChange={() => setActiveTab('customers')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box rounded-tl-none p-0 shadow-xl overflow-hidden">
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-sm overflow-hidden">
                         {activeTab === 'customers' && (
                             <div className="overflow-x-auto">
                                 <div className="flex justify-between items-center p-6 border-b border-base-200">
@@ -230,12 +230,12 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         type="radio"
                         name="users_tabs"
                         role="tab"
-                        className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                        className="tab font-semibold"
                         aria-label="🛡️ Usuarios del Sistema"
                         checked={activeTab === 'system'}
                         onChange={() => setActiveTab('system')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-xl overflow-hidden">
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-sm overflow-hidden">
                         {activeTab === 'system' && (
                             <div className="overflow-x-auto">
                                 <div className="flex justify-between items-center p-6 border-b border-base-200">

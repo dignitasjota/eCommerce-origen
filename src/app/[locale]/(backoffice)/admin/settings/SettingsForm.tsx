@@ -66,18 +66,18 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             )}
 
-            <div role="tablist" className="tabs tabs-lifted tabs-lg mb-8 w-full max-w-full overflow-x-auto overflow-y-hidden">
+            <div role="tablist" className="tabs tabs-lift tabs-lg mb-8 w-full max-w-full overflow-x-auto overflow-y-hidden">
                 {/* --- TAB GLOBAL --- */}
                 <input
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                    className="tab font-semibold"
                     aria-label="📱 Configuración Global"
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-xl overflow-hidden mt-4">
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
                     {activeTab === 'general' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -131,12 +131,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                    className="tab font-semibold"
                     aria-label="🧩 Módulos del Frontend"
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-xl overflow-hidden mt-4">
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
                     {activeTab === 'modules' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -199,12 +199,12 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     type="radio"
                     name="settings_tabs"
                     role="tab"
-                    className="tab [--tab-bg:var(--fallback-b1,oklch(var(--b1)))] font-semibold"
+                    className="tab font-semibold"
                     aria-label="🔍 Optimización SEO"
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-xl overflow-hidden mt-4">
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
                     {activeTab === 'seo' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
