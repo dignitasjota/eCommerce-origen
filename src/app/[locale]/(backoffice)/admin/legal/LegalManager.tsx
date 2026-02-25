@@ -8,6 +8,7 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ id: string, slug: string } | null>(null);
 
     // Form states
     const [title, setTitle] = useState('');
@@ -57,17 +58,22 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
         }
     };
 
-    const handleDelete = async (id: string, pageSlug: string) => {
-        if (!confirm(`¿Seguro que deseas eliminar la página /legal/${pageSlug}?`)) return;
+    const handleDelete = (id: string, pageSlug: string) => {
+        setItemToDelete({ id, slug: pageSlug });
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         setIsLoading(true);
         try {
-            await deleteLegalPage(id);
+            await deleteLegalPage(itemToDelete.id);
             window.location.reload();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');
         } finally {
             setIsLoading(false);
+            setItemToDelete(null);
         }
     };
 
@@ -193,6 +199,26 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {itemToDelete && (
+                <div className="modal modal-open modal-bottom sm:modal-middle" style={{ zIndex: 1100 }}>
+                    <div className="modal-box">
+                        <h3 className="font-bold text-lg text-error">Confirmar borrado</h3>
+                        <p className="py-4">¿Seguro que deseas eliminar la página <strong>/legal/{itemToDelete.slug}</strong>? Esta acción no se puede deshacer.</p>
+                        <div className="modal-action">
+                            <button className="btn btn-ghost" onClick={() => setItemToDelete(null)} disabled={isLoading}>
+                                Cancelar
+                            </button>
+                            <button className="btn btn-error" onClick={confirmDelete} disabled={isLoading}>
+                                {isLoading ? <span className="loading loading-spinner"></span> : 'Eliminar permanentemente'}
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={() => setItemToDelete(null)}>close</button>
+                    </form>
                 </div>
             )}
         </>

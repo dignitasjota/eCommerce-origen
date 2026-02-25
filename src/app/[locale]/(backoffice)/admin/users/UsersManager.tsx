@@ -9,6 +9,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
 
     const filteredUsers = useMemo(() => {
         return users.filter(u => {
@@ -133,17 +134,22 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
         }
     };
 
-    const handleDelete = async (id: string, userName: string) => {
-        if (!confirm(`¿Seguro que deseas eliminar la cuenta de ${userName || 'este usuario'}? (Esta acción también borrará sus datos)`)) return;
+    const handleDelete = (id: string, userName: string) => {
+        setItemToDelete({ id, name: userName || 'este usuario' });
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         setIsLoading(true);
         try {
-            await deleteUser(id);
+            await deleteUser(itemToDelete.id);
             window.location.reload();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');
         } finally {
             setIsLoading(false);
+            setItemToDelete(null);
         }
     };
 
@@ -425,6 +431,26 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {itemToDelete && (
+                <div className="modal modal-open modal-bottom sm:modal-middle">
+                    <div className="modal-box">
+                        <h3 className="font-bold text-lg text-error">Confirmar borrado</h3>
+                        <p className="py-4">¿Seguro que deseas eliminar la cuenta de <strong>{itemToDelete.name}</strong>? Esta acción también borrará sus datos y pedidos asociados.</p>
+                        <div className="modal-action">
+                            <button className="btn btn-ghost" onClick={() => setItemToDelete(null)} disabled={isLoading}>
+                                Cancelar
+                            </button>
+                            <button className="btn btn-error" onClick={confirmDelete} disabled={isLoading}>
+                                {isLoading ? <span className="loading loading-spinner"></span> : 'Eliminar permanentemente'}
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={() => setItemToDelete(null)}>close</button>
+                    </form>
                 </div>
             )}
         </>

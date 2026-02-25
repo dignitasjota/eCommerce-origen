@@ -8,6 +8,7 @@ export default function CategoriesManager({ initialCategories, allParentCategori
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
     // Form states
     const [name, setName] = useState('');
@@ -62,17 +63,22 @@ export default function CategoriesManager({ initialCategories, allParentCategori
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('¿Estás seguro de que quieres eliminar esta categoría?')) return;
+    const handleDelete = (id: string) => {
+        setItemToDelete(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
         setIsLoading(true);
         try {
-            await deleteCategory(id);
+            await deleteCategory(itemToDelete);
             window.location.reload();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar la categoría');
         } finally {
             setIsLoading(false);
+            setItemToDelete(null);
         }
     };
 
@@ -244,6 +250,26 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                             </div>
                         </form>
                     </div>
+                </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {itemToDelete && (
+                <div className="modal modal-open modal-bottom sm:modal-middle" style={{ zIndex: 1100 }}>
+                    <div className="modal-box">
+                        <h3 className="font-bold text-lg text-error">Confirmar borrado</h3>
+                        <p className="py-4">¿Estás seguro de que quieres eliminar esta categoría? Esta acción no se puede deshacer.</p>
+                        <div className="modal-action">
+                            <button className="btn btn-ghost" onClick={() => setItemToDelete(null)} disabled={isLoading}>
+                                Cancelar
+                            </button>
+                            <button className="btn btn-error" onClick={confirmDelete} disabled={isLoading}>
+                                {isLoading ? <span className="loading loading-spinner"></span> : 'Eliminar permanentemente'}
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={() => setItemToDelete(null)}>close</button>
+                    </form>
                 </div>
             )}
         </>
