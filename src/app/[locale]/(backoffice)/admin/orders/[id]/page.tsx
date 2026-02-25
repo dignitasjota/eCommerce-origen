@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 import { sendEmail } from '@/lib/email';
 import { getOrderStatusUpdateEmailHtml } from '@/lib/emails/order-status-update';
+import OrderManagerForm from './OrderManagerForm';
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
     const order = await prisma.order.findUnique({
@@ -33,38 +34,6 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     const paymentLabels: Record<string, string> = {
         PENDING: 'Pendiente', PAID: 'Pagado', FAILED: 'Fallido', REFUNDED: 'Reembolsado',
     };
-
-    // Server Action para actualizar el estado
-    async function updateOrderStatus(formData: FormData) {
-        'use server';
-        const newStatus = formData.get('status') as string;
-
-        if (!newStatus || newStatus === order?.status) return;
-
-        await prisma.order.update({
-            where: { id: params.id },
-            data: { status: newStatus as any }
-        });
-
-        // 📧 Fase 8: Enviar Email al Cliente sobre el cambio de estado
-        try {
-            const customerEmail = order?.users?.email || order?.guest_email;
-            const customerName = order?.users?.name || order?.guest_name || 'Cliente';
-
-            if (customerEmail) {
-                await sendEmail({
-                    to: customerEmail,
-                    subject: `Actualización de tu Pedido #${order?.order_number}`,
-                    html: getOrderStatusUpdateEmailHtml(order?.order_number || '', customerName, newStatus)
-                });
-            }
-        } catch (emailError) {
-            console.error('Error al enviar email de actualización de estado:', emailError);
-        }
-
-        revalidatePath(`/es/admin/orders/${params.id}`);
-        revalidatePath(`/es/admin/orders`);
-    }
 
     // Calcula el subtotal reconstruido
     const itemsSubtotal = order.order_items.reduce((acc, item) => acc + (Number(item.price) * item.quantity), 0);
@@ -138,21 +107,16 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
                     {/* Actualizar Estado */}
+                    {/* Actualizar Estado con Client Component */}
                     <div className="admin-table-container" style={{ padding: '1.5rem' }}>
                         <h2 className="admin-table-title" style={{ marginBottom: '1rem' }}>Gestionar Pedido</h2>
-                        <form action={updateOrderStatus} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 500 }}>Estado del Pedido (Cambiar notificará al cliente)</label>
-                                <select name="status" defaultValue={order.status} className="admin-input">
-                                    {Object.entries(statusLabels).map(([key, label]) => (
-                                        <option key={key} value={key}>{label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <button type="submit" className="admin-btn admin-btn-primary" style={{ width: '100%' }}>
-                                Actualizar Estado
-                            </button>
-                        </form>
+                        <OrderManagerForm
+                            orderId={order.id}
+                            currentStatus={order.status}
+                            currentPaymentStatus={order.payment_status}
+                            statusLabels={statusLabels}
+                            paymentLabels={paymentLabels}
+                        />
                     </div>
 
                     {/* Datos del Cliente */}
