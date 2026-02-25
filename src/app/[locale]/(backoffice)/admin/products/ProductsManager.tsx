@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createProduct, updateProduct, deleteProduct, updateProductRelations } from './actions';
 
 export default function ProductsManager({ products }: { products: any[] }) {
+    const [searchTerm, setSearchTerm] = useState('');
     // ---- Product Core Edit Modal States ----
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -138,6 +139,20 @@ export default function ProductsManager({ products }: { products: any[] }) {
         }
     };
 
+    const filteredProducts = React.useMemo(() => {
+        if (!searchTerm) return products;
+        const lowerSearch = searchTerm.toLowerCase();
+
+        return products.filter(product => {
+            const nameMatch = product.product_translations[0]?.name?.toLowerCase().includes(lowerSearch) ?? false;
+            const slugMatch = product.slug?.toLowerCase().includes(lowerSearch) ?? false;
+            const skuMatch = product.sku?.toLowerCase().includes(lowerSearch) ?? false;
+            const categoryMatch = product.product_categories[0]?.categories?.category_translations[0]?.name?.toLowerCase().includes(lowerSearch) ?? false;
+
+            return nameMatch || slugMatch || skuMatch || categoryMatch;
+        });
+    }, [products, searchTerm]);
+
     return (
         <>
             {/* Topbar */}
@@ -153,8 +168,21 @@ export default function ProductsManager({ products }: { products: any[] }) {
             {/* List Table */}
             <div className="admin-page">
                 <div className="admin-table-container">
-                    <div className="admin-table-header">
-                        <h2 className="admin-table-title">{products.length} productos</h2>
+                    <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 className="admin-table-title">{filteredProducts.length} productos</h2>
+                        <div style={{ position: 'relative', width: '300px' }}>
+                            <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-tertiary)' }}>
+                                🔍
+                            </span>
+                            <input
+                                type="text"
+                                className="admin-form-input"
+                                placeholder="Buscar por nombre, SKU o categoría..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{ paddingLeft: '2.5rem', margin: 0 }}
+                            />
+                        </div>
                     </div>
                     <table className="admin-table">
                         <thead>
@@ -168,7 +196,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {products.map((product) => {
+                            {filteredProducts.map((product) => {
                                 const translation = product.product_translations[0];
                                 const category = product.product_categories[0]?.categories?.category_translations[0];
                                 const image = product.product_images?.length ? product.product_images[0] : null;
@@ -223,13 +251,13 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                     </tr>
                                 );
                             })}
-                            {products.length === 0 && (
+                            {filteredProducts.length === 0 && (
                                 <tr>
                                     <td colSpan={6}>
                                         <div className="admin-empty">
                                             <div className="admin-empty-icon">📦</div>
-                                            <h3>No hay productos aún</h3>
-                                            <p>Crea tu primer producto para empezar a vender</p>
+                                            <h3>{searchTerm ? `No se encontraron productos para "${searchTerm}"` : 'No hay productos aún'}</h3>
+                                            <p>{searchTerm ? 'Prueba a buscar con otra palabra clave.' : 'Crea tu primer producto para empezar a vender'}</p>
                                         </div>
                                     </td>
                                 </tr>
