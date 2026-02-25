@@ -44,11 +44,11 @@ export default async function DashboardPage() {
 
     return (
         <>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">Dashboard</h1>
+            <div className="admin-topbar">
+                <h1 className="admin-topbar-title">Dashboard</h1>
             </div>
 
-            <div className="flex flex-col gap-8">
+            <div className="admin-page" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 {/* DaisyUI Stats Cards */}
                 <div className="stats shadow-xl bg-base-100 w-full overflow-hidden">
                     <div className="stat">
@@ -80,66 +80,66 @@ export default async function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Recent Orders with DaisyUI Table */}
-                <div className="card bg-base-100 shadow-xl w-full">
-                    <div className="card-body overflow-x-auto">
-                        <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
-                            <h2 className="card-title text-xl">Últimos Pedidos</h2>
-                            <Link href="/es/admin/orders" className="btn btn-outline btn-sm">
-                                Ver todos →
-                            </Link>
-                        </div>
-                        <table className="table table-zebra table-md w-full">
-                            <thead>
-                                <tr className="bg-base-200">
-                                    <th>Nº Pedido</th>
-                                    <th>Cliente</th>
-                                    <th>Total</th>
-                                    <th>Estado</th>
-                                    <th>Pago</th>
-                                    <th>Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stats.recentOrders.map((order) => (
-                                    <tr key={order.id} className="hover">
-                                        <td>
-                                            <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
-                                                {order.order_number}
-                                            </Link>
-                                        </td>
-                                        <td>{order.users?.name || order.guest_email || '—'}</td>
-                                        <td className="font-bold">{Number(order.total).toFixed(2)}€</td>
-                                        <td>
-                                            <div className="badge badge-outline">
-                                                {statusLabels[order.status] || order.status}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div className={`badge ${order.payment_status === 'PAID' ? 'badge-success' : 'badge-warning'}`}>
-                                                {order.payment_status === 'PAID' ? 'Pagado' : order.payment_status === 'PENDING' ? 'Pendiente' : order.payment_status}
-                                            </div>
-                                        </td>
-                                        <td className="text-xs text-base-content/70">
-                                            {new Date(order.created_at).toLocaleDateString('es-ES', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {stats.recentOrders.length === 0 && (
-                                    <tr>
-                                        <td colSpan={6} className="text-center py-10 text-base-content/50">
-                                            <div className="text-5xl mb-4">📋</div>
-                                            <h3 className="text-lg font-bold">No hay pedidos aún</h3>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                {/* Recent Orders with Custom Admin Table */}
+                <div className="admin-table-container">
+                    <div className="admin-table-header">
+                        <h2 className="admin-table-title">Últimos Pedidos</h2>
+                        <Link href="/es/admin/orders" className="admin-btn admin-btn-secondary admin-btn-sm">
+                            Ver todos →
+                        </Link>
                     </div>
+                    <table className="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Nº Pedido</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Pago</th>
+                                <th>Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {stats.recentOrders.map((order) => (
+                                <tr key={order.id}>
+                                    <td>
+                                        <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
+                                            {order.order_number}
+                                        </Link>
+                                    </td>
+                                    <td>{order.users?.name || order.guest_email || '—'}</td>
+                                    <td className="font-bold">{Number(order.total).toFixed(2)}€</td>
+                                    <td>
+                                        <span className={`admin-badge ${order.status === 'DELIVERED' || order.status === 'SHIPPED' ? 'active' : 'inactive'}`}>
+                                            {statusLabels[order.status] || order.status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span className={`admin-badge ${order.payment_status === 'PAID' ? 'active' : 'inactive'}`}>
+                                            {order.payment_status === 'PAID' ? 'Pagado' : order.payment_status === 'PENDING' ? 'Pendiente' : order.payment_status}
+                                        </span>
+                                    </td>
+                                    <td className="text-xs text-base-content/70">
+                                        {new Date(order.created_at).toLocaleDateString('es-ES', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric',
+                                        })}
+                                    </td>
+                                </tr>
+                            ))}
+                            {stats.recentOrders.length === 0 && (
+                                <tr>
+                                    <td colSpan={6}>
+                                        <div className="admin-empty">
+                                            <div className="admin-empty-icon">📋</div>
+                                            <h3>No hay pedidos aún</h3>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </>

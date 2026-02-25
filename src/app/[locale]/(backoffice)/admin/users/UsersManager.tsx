@@ -155,17 +155,17 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
 
     return (
         <>
-            <div className="flex justify-between items-center mb-8 px-8 pt-8">
-                <h1 className="text-3xl font-bold">Usuarios y Clientes</h1>
-                <div className="flex gap-4">
-                    <button onClick={() => openModal()} className="btn btn-primary">
+            <div className="admin-topbar">
+                <h1 className="admin-topbar-title">Usuarios y Clientes</h1>
+                <div className="admin-topbar-actions">
+                    <button onClick={() => openModal()} className="admin-btn admin-btn-primary">
                         + Registrar Usuario Interno
                     </button>
                 </div>
             </div>
 
-            <div className="px-8 pb-8">
-                <div role="tablist" className="tabs tabs-lift tabs-lg">
+            <div className="admin-page">
+                <div role="tablist" className="tabs tabs-lift tabs-lg w-full">
                     {/* --- TAB CLIENTES --- */}
                     <input
                         type="radio"
@@ -176,17 +176,17 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         checked={activeTab === 'customers'}
                         onChange={() => setActiveTab('customers')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                    <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
                         {activeTab === 'customers' && (
-                            <div className="overflow-x-auto">
-                                <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
-                                    <h2 className="card-title text-xl">
+                            <>
+                                <div className="admin-table-header">
+                                    <h2 className="admin-table-title">
                                         {filteredUsers.length} clientes registrados
                                     </h2>
                                 </div>
-                                <table className="table table-zebra table-md w-full">
+                                <table className="admin-table">
                                     <thead>
-                                        <tr className="bg-base-200">
+                                        <tr>
                                             <th>Nombre Completo</th>
                                             <th>Correo Electrónico</th>
                                             <th>Teléfono</th>
@@ -198,12 +198,12 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                     </thead>
                                     <tbody>
                                         {filteredUsers.map((u) => (
-                                            <tr key={u.id} className="hover">
+                                            <tr key={u.id}>
                                                 <td className="font-bold">{u.name || '—'}</td>
                                                 <td>{u.email}</td>
-                                                <td className="text-sm">{u.phone || '—'}</td>
+                                                <td>{u.phone || '—'}</td>
                                                 <td>
-                                                    <div className="badge badge-ghost">Cliente</div>
+                                                    <span className="admin-badge inactive">Cliente</span>
                                                 </td>
                                                 <td>
                                                     <span className="font-bold text-primary">
@@ -215,10 +215,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                                 </td>
                                                 <td>
                                                     <div className="flex gap-2">
-                                                        <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
+                                                        <button onClick={() => openModal(u)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                             Editar
                                                         </button>
-                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
+                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="admin-btn admin-btn-danger admin-btn-sm" title="Borrar Cuenta">
                                                             Borrar
                                                         </button>
                                                     </div>
@@ -227,7 +227,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
+                            </>
                         )}
                     </div>
 
@@ -241,17 +241,17 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         checked={activeTab === 'system'}
                         onChange={() => setActiveTab('system')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                    <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
                         {activeTab === 'system' && (
-                            <div className="overflow-x-auto">
-                                <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
-                                    <h2 className="card-title text-xl">
+                            <>
+                                <div className="admin-table-header">
+                                    <h2 className="admin-table-title">
                                         {filteredUsers.length} cuentas del sistema
                                     </h2>
                                 </div>
-                                <table className="table table-zebra table-md w-full">
+                                <table className="admin-table">
                                     <thead>
-                                        <tr className="bg-base-200">
+                                        <tr>
                                             <th>Nombre Completo</th>
                                             <th>Correo Electrónico</th>
                                             <th>Teléfono</th>
@@ -263,14 +263,14 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                     </thead>
                                     <tbody>
                                         {filteredUsers.map((u) => (
-                                            <tr key={u.id} className="hover">
+                                            <tr key={u.id}>
                                                 <td className="font-bold">{u.name || '—'}</td>
                                                 <td>{u.email}</td>
-                                                <td className="text-sm">{u.phone || '—'}</td>
+                                                <td>{u.phone || '—'}</td>
                                                 <td>
-                                                    <div className={`badge ${u.role === 'ADMIN' ? 'badge-primary badge-outline' : 'badge-info badge-outline'}`}>
-                                                        {roleLabels[u.role] || 'Cliente'}
-                                                    </div>
+                                                    <span className={`admin-badge active`} style={{ backgroundColor: u.role === 'ADMIN' ? 'var(--color-primary)' : 'var(--color-info)' }}>
+                                                        {roleLabels[u.role] || u.role}
+                                                    </span>
                                                 </td>
                                                 <td>
                                                     <span className="font-bold text-primary">
@@ -282,10 +282,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                                 </td>
                                                 <td>
                                                     <div className="flex gap-2">
-                                                        <button onClick={() => openModal(u)} className="btn btn-outline btn-sm">
+                                                        <button onClick={() => openModal(u)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                             Editar
                                                         </button>
-                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="btn btn-error btn-sm" title="Borrar Cuenta">
+                                                        <button onClick={() => handleDelete(u.id, u.name || u.email)} className="admin-btn admin-btn-danger admin-btn-sm" title="Borrar Cuenta">
                                                             Borrar
                                                         </button>
                                                     </div>
@@ -294,7 +294,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
+                            </>
                         )}
                     </div>
                 </div>
