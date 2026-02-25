@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { createProduct, updateProduct, deleteProduct } from './actions';
+import { createProduct, updateProduct, deleteProduct, updateProductRelations } from './actions';
 
 export default function ProductsManager({ products }: { products: any[] }) {
+    // ---- Product Core Edit Modal States ----
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Form states
     const [name, setName] = useState('');
     const [slug, setSlug] = useState('');
     const [sku, setSku] = useState('');
@@ -18,6 +18,14 @@ export default function ProductsManager({ products }: { products: any[] }) {
     const [description, setDescription] = useState('');
     const [stock, setStock] = useState('0');
 
+    // ---- Relations Edit Modal States ----
+    const [isRelationsModalOpen, setIsRelationsModalOpen] = useState(false);
+    const [relationsProduct, setRelationsProduct] = useState<any>(null);
+    const [crossSells, setCrossSells] = useState<string[]>([]);
+    const [upSells, setUpSells] = useState<string[]>([]);
+    const [isRelationsLoading, setIsRelationsLoading] = useState(false);
+
+    // --- Core Edit Functions ---
     const openModal = (product: any = null) => {
         setEditingProduct(product);
         if (product) {
@@ -52,7 +60,6 @@ export default function ProductsManager({ products }: { products: any[] }) {
         const form = e.currentTarget as HTMLFormElement;
         const formData = new FormData(form);
 
-        // Ensure switch states are added if inputs are not tracked correctly by default FormData
         formData.set('is_active', isActive ? 'true' : 'false');
 
         try {
@@ -84,8 +91,50 @@ export default function ProductsManager({ products }: { products: any[] }) {
         }
     };
 
+    // --- Relations Edit Functions ---
+    const openRelationsModal = (product: any) => {
+        setRelationsProduct(product);
+
+        const existingRelations = product.related_to || [];
+        const initialCrossSells = existingRelations.filter((r: any) => r.relation_type === 'CROSS_SELL').map((r: any) => r.related_product_id);
+        const initialUpSells = existingRelations.filter((r: any) => r.relation_type === 'UP_SELL').map((r: any) => r.related_product_id);
+
+        setCrossSells(initialCrossSells);
+        setUpSells(initialUpSells);
+        setIsRelationsModalOpen(true);
+    };
+
+    const closeRelationsModal = () => {
+        setIsRelationsModalOpen(false);
+        setRelationsProduct(null);
+        setCrossSells([]);
+        setUpSells([]);
+    };
+
+    const handleSelectMultiple = (e: React.ChangeEvent<HTMLSelectElement>, setter: Function) => {
+        const options = Array.from(e.target.selectedOptions, option => option.value);
+        setter(options);
+    };
+
+    const handleRelationsSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!relationsProduct) return;
+
+        setIsRelationsLoading(true);
+        const result = await updateProductRelations(relationsProduct.id, crossSells, upSells);
+        setIsRelationsLoading(false);
+
+        if (result.success) {
+            alert('Relaciones actualizadas exitosamente');
+            window.location.reload();
+        } else {
+            alert(result.error);
+        }
+    };
+
     return (
         <>
+            {/* Topbar */}
             <div className="admin-topbar">
                 <h1 className="admin-topbar-title">Productos</h1>
                 <div className="admin-topbar-actions">
@@ -95,6 +144,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                 </div>
             </div>
 
+            {/* List Table */}
             <div className="admin-page">
                 <div className="admin-table-container">
                     <div className="admin-table-header">
@@ -156,9 +206,9 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                                 <button onClick={() => openModal(product)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                     Editar opciones
                                                 </button>
-                                                <Link href={`/es/admin/products/${product.id}/edit`} className="admin-btn admin-btn-outline admin-btn-sm">
+                                                <button onClick={() => openRelationsModal(product)} className="admin-btn admin-btn-outline admin-btn-sm">
                                                     Sugerencias (Cross-Sell)
-                                                </Link>
+                                                </button>
                                                 <button onClick={() => handleDelete(product.id)} className="admin-btn admin-btn-danger admin-btn-sm">
                                                     Borrar
                                                 </button>
@@ -169,7 +219,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                             })}
                             {products.length === 0 && (
                                 <tr>
-                                    <td colSpan={7}>
+                                    <td colSpan={6}>
                                         <div className="admin-empty">
                                             <div className="admin-empty-icon">📦</div>
                                             <h3>No hay productos aún</h3>
@@ -183,7 +233,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Core Product Form Modal */}
             {isModalOpen && (
                 <div className="admin-modal-overlay" onClick={closeModal} style={{ zIndex: 1000, alignContent: 'center' }}>
                     <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
@@ -323,6 +373,56 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                 </button>
                                 <button type="submit" className="admin-btn admin-btn-primary" disabled={isLoading}>
                                     {isLoading ? 'Guardando...' : 'Guardar Producto'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Relations Form Modal */}
+            {isRelationsModalOpen && relationsProduct && (
+                <div className="admin-modal-overlay" onClick={closeRelationsModal} style={{ zIndex: 1000, alignContent: 'center' }}>
+                    <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="admin-modal-header">
+                            <h2 className="admin-modal-title">
+                                Sugerencias de Compra
+                            </h2>
+                            <button className="admin-modal-close" type="button" onClick={closeRelationsModal}>×</button>
+                        </div>
+                        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                            Configura aquí las relaciones para el producto: <strong>{relationsProduct.product_translations[0]?.name || relationsProduct.slug}</strong>
+                        </p>
+
+                        <form onSubmit={handleRelationsSave} className="admin-form" style={{ padding: 0, border: 'none', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                                <label style={{ display: 'block', fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Ventas Cruzadas (Cross-Selling)</label>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Selecciona accesorios, consumibles o productos relacionados ("Frecuentemente comprados juntos").</p>
+                                <select multiple value={crossSells} onChange={(e) => handleSelectMultiple(e, setCrossSells)} style={{ width: '100%', minHeight: '150px', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontFamily: 'inherit', fontSize: '1rem' }} className="admin-input form-input">
+                                    {products.filter(p => p.id !== relationsProduct.id).map((p: any) => (
+                                        <option key={p.id} value={p.id} style={{ padding: '0.4rem', cursor: 'pointer' }}>{p.product_translations[0]?.name || p.slug} ({p.sku})</option>
+                                    ))}
+                                </select>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>* Mantén presionado Cmd (Mac) o Ctrl (Windows) para seleccionar múltiples.</p>
+                            </div>
+
+                            <div style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                                <label style={{ display: 'block', fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '0.5rem' }}>Mejora Premium (Up-Selling)</label>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1rem' }}>Selecciona alternativas superiores, modelos mejores o versiones Premium ("Quizás te interese esto en su lugar").</p>
+                                <select multiple value={upSells} onChange={(e) => handleSelectMultiple(e, setUpSells)} style={{ width: '100%', minHeight: '150px', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontFamily: 'inherit', fontSize: '1rem' }} className="admin-input form-input">
+                                    {products.filter(p => p.id !== relationsProduct.id).map((p: any) => (
+                                        <option key={p.id} value={p.id} style={{ padding: '0.4rem', cursor: 'pointer' }}>{p.product_translations[0]?.name || p.slug} ({p.sku})</option>
+                                    ))}
+                                </select>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', marginTop: '0.5rem' }}>* Mantén presionado Cmd (Mac) o Ctrl (Windows) para seleccionar múltiples.</p>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
+                                <button type="button" className="admin-btn admin-btn-secondary" onClick={closeRelationsModal}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="admin-btn admin-btn-primary" disabled={isRelationsLoading}>
+                                    {isRelationsLoading ? 'Guardando...' : 'Guardar y Sincronizar'}
                                 </button>
                             </div>
                         </form>

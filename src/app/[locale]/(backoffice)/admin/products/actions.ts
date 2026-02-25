@@ -188,3 +188,45 @@ export async function deleteProduct(id: string) {
     });
     revalidatePath('/[locale]/admin/products', 'page');
 }
+
+export async function updateProductRelations(
+    productId: string,
+    crossSellIds: string[],
+    upSellIds: string[]
+) {
+    try {
+        await prisma.relatedProduct.deleteMany({
+            where: { product_id: productId }
+        });
+
+        const newRelations = [];
+
+        for (const relatedId of crossSellIds) {
+            newRelations.push({
+                product_id: productId,
+                related_product_id: relatedId,
+                relation_type: 'CROSS_SELL' as const
+            });
+        }
+
+        for (const relatedId of upSellIds) {
+            newRelations.push({
+                product_id: productId,
+                related_product_id: relatedId,
+                relation_type: 'UP_SELL' as const
+            });
+        }
+
+        if (newRelations.length > 0) {
+            await prisma.relatedProduct.createMany({
+                data: newRelations
+            });
+        }
+
+        revalidatePath('/', 'layout');
+        return { success: true };
+    } catch (error) {
+        console.error("Error updating product relations:", error);
+        return { success: false, error: 'Hubo un error guardando las relaciones' };
+    }
+}
