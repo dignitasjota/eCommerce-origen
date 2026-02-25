@@ -66,26 +66,29 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             )}
 
-            {/* Navegación por Pestañas (Estilo Archivador) */}
-            <div className="flex border-b border-[var(--color-border)] mb-8 overflow-x-auto">
+            {/* Navegación por Pestañas (Estilo Archivador DaisyUI) */}
+            <div role="tablist" className="tabs tabs-lifted tabs-lg mb-8 w-full max-w-full overflow-x-auto overflow-y-hidden">
                 <button
                     type="button"
+                    role="tab"
                     onClick={() => setActiveTab('general')}
-                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ${activeTab === 'general' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
+                    className={`tab ${activeTab === 'general' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
                 >
                     📱 Configuración Global
                 </button>
                 <button
                     type="button"
+                    role="tab"
                     onClick={() => setActiveTab('modules')}
-                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'modules' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
+                    className={`tab ${activeTab === 'modules' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
                 >
                     🧩 Módulos del Frontend
                 </button>
                 <button
                     type="button"
+                    role="tab"
                     onClick={() => setActiveTab('seo')}
-                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'seo' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
+                    className={`tab ${activeTab === 'seo' ? 'tab-active [--tab-bg:var(--fallback-b1,oklch(var(--b1)))]' : ''}`}
                 >
                     🔍 Optimización SEO
                 </button>
