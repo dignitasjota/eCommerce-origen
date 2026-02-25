@@ -15,6 +15,8 @@ export default function ProductsManager({ products }: { products: any[] }) {
     const [sku, setSku] = useState('');
     const [price, setPrice] = useState('');
     const [isActive, setIsActive] = useState(true);
+    const [description, setDescription] = useState('');
+    const [stock, setStock] = useState('0');
 
     const openModal = (product: any = null) => {
         setEditingProduct(product);
@@ -24,12 +26,16 @@ export default function ProductsManager({ products }: { products: any[] }) {
             setSku(product.sku || '');
             setPrice(product.price?.toString() || '');
             setIsActive(product.is_active);
+            setDescription(product.product_translations[0]?.description || '');
+            setStock(product.product_variants?.[0]?.stock?.toString() || '0');
         } else {
             setName('');
             setSlug('');
             setSku('');
             setPrice('');
             setIsActive(true);
+            setDescription('');
+            setStock('0');
         }
         setIsModalOpen(true);
     };
@@ -43,12 +49,11 @@ export default function ProductsManager({ products }: { products: any[] }) {
         e.preventDefault();
         setIsLoading(true);
 
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('slug', slug);
-        formData.append('sku', sku);
-        formData.append('price', price);
-        formData.append('is_active', isActive ? 'true' : 'false');
+        const form = e.currentTarget as HTMLFormElement;
+        const formData = new FormData(form);
+
+        // Ensure switch states are added if inputs are not tracked correctly by default FormData
+        formData.set('is_active', isActive ? 'true' : 'false');
 
         try {
             if (editingProduct) {
@@ -100,9 +105,8 @@ export default function ProductsManager({ products }: { products: any[] }) {
                             <tr>
                                 <th>Producto</th>
                                 <th>SKU</th>
-                                <th>Precio</th>
+                                <th>Precio / Stock</th>
                                 <th>Categoría</th>
-                                <th>Variantes</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
@@ -112,6 +116,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                 const translation = product.product_translations[0];
                                 const category = product.product_categories[0]?.categories?.category_translations[0];
                                 const image = product.product_images?.length ? product.product_images[0] : null;
+                                const prodStock = product.product_variants?.[0]?.stock || 0;
 
                                 return (
                                     <tr key={product.id}>
@@ -136,9 +141,11 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                             </div>
                                         </td>
                                         <td><code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{product.sku}</code></td>
-                                        <td style={{ fontWeight: 600 }}>{Number(product.price).toFixed(2)}€</td>
+                                        <td>
+                                            <div style={{ fontWeight: 600 }}>{Number(product.price).toFixed(2)}€</div>
+                                            <div style={{ fontSize: '0.8rem', color: prodStock > 0 ? 'green' : 'red' }}>Stock: {prodStock}</div>
+                                        </td>
                                         <td>{category?.name || '—'}</td>
-                                        <td>{product.product_variants?.length || 0}</td>
                                         <td>
                                             <span className={`admin-badge ${product.is_active ? 'active' : 'inactive'}`}>
                                                 {product.is_active ? 'Activo' : 'Inactivo'}
@@ -178,57 +185,123 @@ export default function ProductsManager({ products }: { products: any[] }) {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="admin-modal-overlay" onClick={closeModal}>
-                    <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                <div className="admin-modal-overlay" onClick={closeModal} style={{ zIndex: 1000, alignContent: 'center' }}>
+                    <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div className="admin-modal-header">
                             <h2 className="admin-modal-title">
                                 {editingProduct ? 'Editar Producto' : 'Crear Producto'}
                             </h2>
-                            <button className="admin-modal-close" onClick={closeModal}>×</button>
+                            <button className="admin-modal-close" type="button" onClick={closeModal}>×</button>
                         </div>
-                        <form onSubmit={handleSave} className="admin-form" style={{ padding: 0, border: 'none' }}>
-                            <div className="admin-form-group">
-                                <label className="admin-form-label">Nombre del Producto</label>
-                                <input
-                                    type="text"
-                                    className="admin-form-input"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSave} className="admin-form" style={{ padding: 0, border: 'none' }} encType="multipart/form-data">
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Nombre del Producto</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        className="admin-form-input"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        required
+                                    />
+                                </div>
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">Slug (URL)</label>
                                     <input
                                         type="text"
+                                        name="slug"
                                         className="admin-form-input"
                                         value={slug}
                                         onChange={(e) => setSlug(e.target.value)}
                                         required
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">SKU</label>
                                     <input
                                         type="text"
+                                        name="sku"
                                         className="admin-form-input"
                                         value={sku}
                                         onChange={(e) => setSku(e.target.value)}
                                         required
                                     />
                                 </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Precio base (€)</label>
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        step="0.01"
+                                        className="admin-form-input"
+                                        value={price}
+                                        onChange={(e) => setPrice(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Stock Actual</label>
+                                    <input
+                                        type="number"
+                                        name="stock"
+                                        className="admin-form-input"
+                                        value={stock}
+                                        onChange={(e) => setStock(e.target.value)}
+                                        required
+                                    />
+                                </div>
                             </div>
+
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Precio base (€)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
+                                <label className="admin-form-label">Descripción HTML / Texto</label>
+                                <textarea
                                     className="admin-form-input"
-                                    value={price}
-                                    onChange={(e) => setPrice(e.target.value)}
-                                    required
+                                    name="description"
+                                    rows={5}
+                                    style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
                                 />
+                                <p className="text-xs text-gray-500 mt-1">Escribe aquí todo sobre tu producto, admite etiquetas HTML básicas para enriquecer el texto.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Imagen Principal</label>
+                                    {editingProduct?.product_images?.[0] && (
+                                        <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                            <img src={editingProduct.product_images[0].url} alt="Main" style={{ maxHeight: '40px', objectFit: 'contain' }} />
+                                            <p className="text-xs text-gray-500 mt-1">Sube una nueva si quieres reemplazarla.</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        name="main_image"
+                                        accept="image/*"
+                                        className="admin-form-input p-2"
+                                    />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Añadir Fotos Secundarias</label>
+                                    {editingProduct?.product_images?.length > 1 && (
+                                        <div className="mb-2 p-2 bg-gray-100 rounded-md">
+                                            <p className="text-xs text-gray-500 mb-1">Ya hay {editingProduct.product_images.length - 1} foto/s en galería. Puedes subir más para añadirlas:</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        name="gallery_images"
+                                        accept="image/*"
+                                        multiple
+                                        className="admin-form-input p-2"
+                                    />
+                                </div>
                             </div>
 
                             <div className="admin-form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>

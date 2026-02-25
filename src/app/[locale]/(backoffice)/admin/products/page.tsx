@@ -14,7 +14,7 @@ async function getProducts() {
                 },
             },
             product_variants: true,
-            product_images: { take: 1, orderBy: { sort_order: 'asc' } },
+            product_images: { orderBy: { sort_order: 'asc' } },
         },
     });
 }
