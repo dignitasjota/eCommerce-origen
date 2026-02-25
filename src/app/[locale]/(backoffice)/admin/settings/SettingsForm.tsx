@@ -56,6 +56,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         }
     };
 
+    const [activeTab, setActiveTab] = useState('general');
+
     return (
         <form onSubmit={handleSubmit} className="admin-form" style={{ maxWidth: 800 }}>
             {message && (
@@ -64,139 +66,186 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             )}
 
-            <div className="space-y-4">
-                <div className="border-b pb-2 mb-4">
-                    <h3 className="text-lg font-medium text-[var(--color-primary)]">General</h3>
-                    <p className="text-sm text-gray-500 mt-1">Ajustes básicos de identidad de la tienda.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Nombre del sitio</label>
-                        <input name="site_name" className="admin-form-input" defaultValue={settingsMap['site_name'] || 'eShop'} />
-                    </div>
-
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Email de contacto</label>
-                        <input type="email" name="contact_email" className="admin-form-input" defaultValue={settingsMap['contact_email'] || 'contacto@eshop.com'} />
-                    </div>
-
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Moneda (ISO)</label>
-                        <input name="currency" className="admin-form-input" defaultValue={settingsMap['currency'] || 'EUR'} />
-                    </div>
-
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Logotipo del Backoffice / Sitio</label>
-                        {settingsMap['site_logo'] && (
-                            <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
-                                <img src={settingsMap['site_logo']} alt="Logo" style={{ maxHeight: '40px', objectFit: 'contain' }} />
-                            </div>
-                        )}
-                        <input type="file" name="site_logo" accept="image/*" className="admin-form-input p-2" />
-                    </div>
-
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Favicon (Icono de pestaña)</label>
-                        {settingsMap['site_favicon'] && (
-                            <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
-                                <img src={settingsMap['site_favicon']} alt="Favicon" style={{ maxHeight: '32px', objectFit: 'contain' }} />
-                            </div>
-                        )}
-                        <input type="file" name="site_favicon" accept="image/x-icon,image/png,image/jpeg,image/svg+xml" className="admin-form-input p-2" />
-                        <p className="text-xs text-gray-500 mt-1">Se recomienda formato cuadrado (.png, .ico, .svg).</p>
-                    </div>
-                </div>
+            {/* Navegación por Pestañas */}
+            <div className="flex space-x-2 border-b mb-8 overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('general')}
+                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'general' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    Configuración Global
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('modules')}
+                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'modules' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    Módulos del Frontend
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab('seo')}
+                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'seo' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                    Optimización SEO
+                </button>
             </div>
 
-            {/* Feature Toggles */}
-            <div className="mt-10 space-y-4">
-                <div className="border-b pb-2 mb-4">
-                    <h3 className="text-lg font-medium text-[var(--color-primary)]">Módulos del Frontend</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Activa o desactiva funcionalidades completas en la tienda pública.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Feature: Blog */}
-                    <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg dark:bg-indigo-900/30 dark:text-indigo-400">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="feature_blog_enabled" defaultChecked={settingsMap['feature_blog_enabled'] !== 'false'} className="sr-only peer" />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
-                            </label>
-                        </div>
-                        <h4 className="font-semibold text-[var(--color-text)] mb-1">Blog de Noticias</h4>
-                        <p className="text-sm text-[var(--color-text-secondary)]">Publica artículos y novedades para tus visitantes y mejora tu SEO.</p>
+            {/* --- Pestaña: General --- */}
+            {activeTab === 'general' && (
+                <div className="space-y-4 animate-fadeIn">
+                    <div className="border-b pb-2 mb-4">
+                        <h3 className="text-lg font-medium text-[var(--color-primary)]">Identidad y Base</h3>
+                        <p className="text-sm text-gray-500 mt-1">Ajustes básicos que definen tu tienda.</p>
                     </div>
 
-                    {/* Feature: Wishlist */}
-                    <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-2 bg-rose-50 text-rose-600 rounded-lg dark:bg-rose-900/30 dark:text-rose-400">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="feature_wishlist_enabled" defaultChecked={settingsMap['feature_wishlist_enabled'] !== 'false'} className="sr-only peer" />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
-                            </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Nombre del sitio</label>
+                            <input name="site_name" className="admin-form-input" defaultValue={settingsMap['site_name'] || 'eShop'} />
                         </div>
-                        <h4 className="font-semibold text-[var(--color-text)] mb-1">Listas de Deseos</h4>
-                        <p className="text-sm text-[var(--color-text-secondary)]">Permite a los usuarios guardar sus productos favoritos para más tarde.</p>
-                    </div>
 
-                    {/* Feature: Reviews */}
-                    <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-900/30 dark:text-amber-400">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" name="feature_reviews_enabled" defaultChecked={settingsMap['feature_reviews_enabled'] !== 'false'} className="sr-only peer" />
-                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
-                            </label>
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Email de contacto</label>
+                            <input type="email" name="contact_email" className="admin-form-input" defaultValue={settingsMap['contact_email'] || 'contacto@eshop.com'} />
                         </div>
-                        <h4 className="font-semibold text-[var(--color-text)] mb-1">Reseñas de Productos</h4>
-                        <p className="text-sm text-[var(--color-text-secondary)]">Habilita a los compradores valorar y comentar en los artículos.</p>
+
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Moneda (ISO)</label>
+                            <input name="currency" className="admin-form-input" defaultValue={settingsMap['currency'] || 'EUR'} />
+                        </div>
+
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Logotipo del Backoffice / Sitio</label>
+                            {settingsMap['site_logo'] && (
+                                <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                    <img src={settingsMap['site_logo']} alt="Logo" style={{ maxHeight: '40px', objectFit: 'contain' }} />
+                                </div>
+                            )}
+                            <input type="file" name="site_logo" accept="image/*" className="admin-form-input p-2" />
+                        </div>
+
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Favicon (Icono de pestaña)</label>
+                            {settingsMap['site_favicon'] && (
+                                <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                    <img src={settingsMap['site_favicon']} alt="Favicon" style={{ maxHeight: '32px', objectFit: 'contain' }} />
+                                </div>
+                            )}
+                            <input type="file" name="site_favicon" accept="image/x-icon,image/png,image/jpeg,image/svg+xml" className="admin-form-input p-2" />
+                            <p className="text-xs text-gray-500 mt-1">Se recomienda formato cuadrado (.png, .ico, .svg).</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* SEO Config */}
-            <div className="mt-8 space-y-4">
-                <h3 className="text-lg font-medium border-b pb-2 mb-4 text-[var(--color-primary)]">Optimización SEO Global</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Title (Título por defecto)</label>
-                        <input name="seo_default_title" className="admin-form-input" defaultValue={settingsMap['seo_default_title'] || 'eShop - La mejor tienda de ropa online'} placeholder="eShop - La mejor tienda" />
-                        <p className="text-xs text-gray-500 mt-1">Este título aparecerá en las páginas que no tengan un título específico.</p>
+            {/* --- Pestaña: Módulos --- */}
+            {activeTab === 'modules' && (
+                <div className="space-y-4 animate-fadeIn">
+                    <div className="border-b pb-2 mb-4">
+                        <h3 className="text-lg font-medium text-[var(--color-primary)]">Módulos del Frontend</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Activa o desactiva funcionalidades completas en la tienda pública.</p>
                     </div>
 
-                    <div className="admin-form-group">
-                        <label className="admin-form-label">Twitter Handle (@usuario)</label>
-                        <input name="seo_twitter_handle" className="admin-form-input" defaultValue={settingsMap['seo_twitter_handle'] || '@eshop'} placeholder="@tutienda" />
-                        <p className="text-xs text-gray-500 mt-1">Tu cuenta para enlazarse en las Twitter Cards al compartir productos.</p>
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Feature: Blog */}
+                        <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg dark:bg-indigo-900/30 dark:text-indigo-400">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="feature_blog_enabled" defaultChecked={settingsMap['feature_blog_enabled'] !== 'false'} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                </label>
+                            </div>
+                            <h4 className="font-semibold text-[var(--color-text)] mb-1">Blog de Noticias</h4>
+                            <p className="text-sm text-[var(--color-text-secondary)]">Publica artículos y novedades para tus visitantes y mejora tu SEO.</p>
+                        </div>
 
-                    <div className="admin-form-group md:col-span-2">
-                        <label className="admin-form-label">Meta Description Global</label>
-                        <textarea name="seo_default_description" className="admin-form-input" rows={3} defaultValue={settingsMap['seo_default_description'] || 'Descubre nuestra increíble colección de productos al mejor precio.'} placeholder="Escribe aquí un resumen atractivo para Google (máximo 160 caracteres)." />
-                        <p className="text-xs text-gray-500 mt-1">Aparece bajo el título en los resultados de búsqueda de Google.</p>
+                        {/* Feature: Wishlist */}
+                        <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-rose-50 text-rose-600 rounded-lg dark:bg-rose-900/30 dark:text-rose-400">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="feature_wishlist_enabled" defaultChecked={settingsMap['feature_wishlist_enabled'] !== 'false'} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                </label>
+                            </div>
+                            <h4 className="font-semibold text-[var(--color-text)] mb-1">Listas de Deseos</h4>
+                            <p className="text-sm text-[var(--color-text-secondary)]">Permite a los usuarios guardar sus productos favoritos para más tarde.</p>
+                        </div>
+
+                        {/* Feature: Reviews */}
+                        <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-900/30 dark:text-amber-400">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="feature_reviews_enabled" defaultChecked={settingsMap['feature_reviews_enabled'] !== 'false'} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                </label>
+                            </div>
+                            <h4 className="font-semibold text-[var(--color-text)] mb-1">Reseñas de Productos</h4>
+                            <p className="text-sm text-[var(--color-text-secondary)]">Habilita a los compradores valorar y comentar en los artículos.</p>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
-            <div className="mt-8 pt-6 border-t flex justify-end">
+            {/* --- Pestaña: SEO --- */}
+            {activeTab === 'seo' && (
+                <div className="space-y-4 animate-fadeIn">
+                    <div className="border-b pb-2 mb-4">
+                        <h3 className="text-lg font-medium text-[var(--color-primary)]">Metadatos Globales</h3>
+                        <p className="text-sm text-gray-500 mt-1">Configura cómo aparece tu tienda en Google y redes sociales.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Title (Título por defecto)</label>
+                            <input name="seo_default_title" className="admin-form-input" defaultValue={settingsMap['seo_default_title'] || 'eShop - La mejor tienda de ropa online'} placeholder="eShop - La mejor tienda" />
+                            <p className="text-xs text-gray-500 mt-1">Este título aparecerá en las páginas que no tengan un título específico.</p>
+                        </div>
+
+                        <div className="admin-form-group">
+                            <label className="admin-form-label">Twitter Handle (@usuario)</label>
+                            <input name="seo_twitter_handle" className="admin-form-input" defaultValue={settingsMap['seo_twitter_handle'] || '@eshop'} placeholder="@tutienda" />
+                            <p className="text-xs text-gray-500 mt-1">Tu cuenta para enlazarse en las Twitter Cards al compartir productos.</p>
+                        </div>
+
+                        <div className="admin-form-group md:col-span-2">
+                            <label className="admin-form-label">Meta Description Global</label>
+                            <textarea name="seo_default_description" className="admin-form-input" rows={3} defaultValue={settingsMap['seo_default_description'] || 'Descubre nuestra increíble colección de productos al mejor precio.'} placeholder="Escribe aquí un resumen atractivo para Google (máximo 160 caracteres)." />
+                            <p className="text-xs text-gray-500 mt-1">Aparece bajo el título en los resultados de búsqueda de Google.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Botón Flotante / Fijo abajo para guardar sea cual sea la pestaña */}
+            <div className="mt-8 pt-6 border-t flex justify-end sticky bottom-0 bg-white/90 backdrop-blur pb-4">
                 <button
                     type="submit"
-                    className="admin-btn admin-btn-primary px-8 py-3 text-lg"
+                    className="admin-btn admin-btn-primary px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-shadow"
                     disabled={isLoading}
                 >
                     {isLoading ? 'Guardando Ajustes...' : 'Guardar Ajustes'}
                 </button>
             </div>
+
+            {/* Animación local sencilla para la transición de pestañas */}
+            <style jsx>{`
+                .animate-fadeIn {
+                    animation: fadeIn 0.3s ease-in-out;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </form >
     );
 }
