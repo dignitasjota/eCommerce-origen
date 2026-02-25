@@ -812,3 +812,11 @@
         transform: translateY(10px);
     }
 }
+/* Fix for DaisyUI tabs padding */
+.tabs .tab {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+.tab[aria-label]::after {
+    padding: 0 1rem;
+}
