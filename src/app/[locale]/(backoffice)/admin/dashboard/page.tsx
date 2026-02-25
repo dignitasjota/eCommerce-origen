@@ -82,8 +82,8 @@ export default async function DashboardPage() {
 
                 {/* Recent Orders with DaisyUI Table */}
                 <div className="card bg-base-100 shadow-xl w-full">
-                    <div className="card-body p-0 overflow-x-auto">
-                        <div className="flex justify-between items-center p-6 border-b border-base-200">
+                    <div className="card-body overflow-x-auto">
+                        <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
                             <h2 className="card-title text-xl">Últimos Pedidos</h2>
                             <Link href="/es/admin/orders" className="btn btn-outline btn-sm">
                                 Ver todos →

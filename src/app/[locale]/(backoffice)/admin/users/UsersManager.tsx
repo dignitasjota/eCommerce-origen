@@ -170,10 +170,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         checked={activeTab === 'customers'}
                         onChange={() => setActiveTab('customers')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-sm overflow-hidden">
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
                         {activeTab === 'customers' && (
                             <div className="overflow-x-auto">
-                                <div className="flex justify-between items-center p-6 border-b border-base-200">
+                                <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
                                     <h2 className="card-title text-xl">
                                         {filteredUsers.length} clientes registrados
                                     </h2>
@@ -235,10 +235,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                         checked={activeTab === 'system'}
                         onChange={() => setActiveTab('system')}
                     />
-                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-0 shadow-sm overflow-hidden">
+                    <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
                         {activeTab === 'system' && (
                             <div className="overflow-x-auto">
-                                <div className="flex justify-between items-center p-6 border-b border-base-200">
+                                <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
                                     <h2 className="card-title text-xl">
                                         {filteredUsers.length} cuentas del sistema
                                     </h2>

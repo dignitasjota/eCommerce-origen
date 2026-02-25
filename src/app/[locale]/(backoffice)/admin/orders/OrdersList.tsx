@@ -23,8 +23,8 @@ export default function OrdersList({ initialOrders }: { initialOrders: any[] }) 
 
             <div className="px-8 pb-8">
                 <div className="card bg-base-100 shadow-xl w-full">
-                    <div className="card-body p-0 overflow-x-auto">
-                        <div className="flex justify-between items-center p-6 border-b border-base-200">
+                    <div className="card-body overflow-x-auto">
+                        <div className="flex justify-between items-center pb-4 mb-4 border-b border-base-200">
                             <h2 className="card-title text-xl">{orders.length} pedidos totales</h2>
                         </div>
                         <table className="table table-zebra table-md w-full">
