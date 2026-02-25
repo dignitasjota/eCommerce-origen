@@ -66,26 +66,26 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             )}
 
-            {/* Navegación por Pestañas */}
-            <div className="flex space-x-1 mb-8 overflow-x-auto p-1.5 bg-gray-100 rounded-xl max-w-fit border border-gray-200">
+            {/* Navegación por Pestañas (Estilo Archivador) */}
+            <div className="flex border-b border-[var(--color-border)] mb-8 overflow-x-auto">
                 <button
                     type="button"
                     onClick={() => setActiveTab('general')}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'general' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
+                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ${activeTab === 'general' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                 >
                     📱 Configuración Global
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveTab('modules')}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'modules' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
+                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'modules' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                 >
                     🧩 Módulos del Frontend
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveTab('seo')}
-                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'seo' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
+                    className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'seo' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
                 >
                     🔍 Optimización SEO
                 </button>
