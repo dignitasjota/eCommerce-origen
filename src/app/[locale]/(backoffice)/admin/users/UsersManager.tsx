@@ -1,13 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createUser, updateUser, deleteUser } from './actions';
 
 export default function UsersManager({ initialUsers }: { initialUsers: any[] }) {
+    const [activeTab, setActiveTab] = useState<'customers' | 'system'>('customers');
     const [users, setUsers] = useState(initialUsers);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const filteredUsers = useMemo(() => {
+        return users.filter(u => {
+            if (activeTab === 'system') return u.role === 'ADMIN' || u.role === 'ORDER_MANAGER';
+            return u.role === 'CUSTOMER';
+        });
+    }, [users, activeTab]);
 
     // Form states
     const [name, setName] = useState('');
@@ -99,10 +107,32 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                 </div>
             </div>
 
-            <div className="admin-page">
+            {/* Navegación por Pestañas (Estilo Archivador) */}
+            <div style={{ padding: '0 2rem' }}>
+                <div className="flex border-b border-[var(--color-border)] mb-6 overflow-x-auto">
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('customers')}
+                        className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ${activeTab === 'customers' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
+                    >
+                        🛍️ Clientes
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('system')}
+                        className={`px-6 py-3 text-sm font-semibold rounded-t-lg border border-b-0 transition-colors -mb-[1px] ml-1 ${activeTab === 'system' ? 'bg-[var(--color-surface)] border-[var(--color-border)] text-[var(--color-primary)] relative z-10' : 'bg-gray-50/50 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100/50'}`}
+                    >
+                        🛡️ Usuarios del Sistema
+                    </button>
+                </div>
+            </div>
+
+            <div className="admin-page" style={{ paddingTop: 0 }}>
                 <div className="admin-table-container">
                     <div className="admin-table-header">
-                        <h2 className="admin-table-title">{users.length} cuentas registradas</h2>
+                        <h2 className="admin-table-title">
+                            {filteredUsers.length} {activeTab === 'customers' ? 'clientes registrados' : 'cuentas del sistema'}
+                        </h2>
                     </div>
                     <table className="admin-table">
                         <thead>
@@ -117,7 +147,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map((u) => (
+                            {filteredUsers.map((u) => (
                                 <tr key={u.id}>
                                     <td style={{ fontWeight: 600 }}>{u.name || '—'}</td>
                                     <td>{u.email}</td>
