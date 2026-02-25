@@ -67,27 +67,27 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             )}
 
             {/* Navegación por Pestañas */}
-            <div className="flex space-x-2 border-b mb-8 overflow-x-auto">
+            <div className="flex space-x-1 mb-8 overflow-x-auto p-1.5 bg-gray-100 rounded-xl max-w-fit border border-gray-200">
                 <button
                     type="button"
                     onClick={() => setActiveTab('general')}
-                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'general' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'general' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
                 >
-                    Configuración Global
+                    📱 Configuración Global
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveTab('modules')}
-                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'modules' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'modules' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
                 >
-                    Módulos del Frontend
+                    🧩 Módulos del Frontend
                 </button>
                 <button
                     type="button"
                     onClick={() => setActiveTab('seo')}
-                    className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === 'seo' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                    className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${activeTab === 'seo' ? 'bg-white text-[var(--color-primary)] shadow-sm ring-1 ring-gray-900/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/50'}`}
                 >
-                    Optimización SEO
+                    🔍 Optimización SEO
                 </button>
             </div>
 
