@@ -24,6 +24,16 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
     const [role, setRole] = useState('CUSTOMER');
     const [password, setPassword] = useState('');
 
+    // Address states (Only for Customers)
+    const [addressId, setAddressId] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
+    const [address1, setAddress1] = useState('');
+    const [city, setCity] = useState('');
+    const [postalCode, setPostalCode] = useState('');
+    const [country, setCountry] = useState('España');
+    const [stateRegion, setStateRegion] = useState('');
+
     const roleLabels: Record<string, string> = { ADMIN: 'Administrador', ORDER_MANAGER: 'Gestor (Pedidos)', CUSTOMER: 'Cliente normal' };
     const roleColors: Record<string, string> = { ADMIN: 'purple', ORDER_MANAGER: 'blue', CUSTOMER: '' };
 
@@ -35,14 +45,44 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
             setPhone(user.phone || '');
             setRole(user.role || 'CUSTOMER');
             setPassword(''); // Nunca mostramos la contraseña al editar, la dejamos blanca para indicar "no cambiar"
+
+            if (user.role === 'CUSTOMER') {
+                const defaultAddress = user.addresses?.[0];
+                if (defaultAddress) {
+                    setAddressId(defaultAddress.id);
+                    setFirstName(defaultAddress.first_name || '');
+                    setLastName(defaultAddress.last_name || '');
+                    setAddress1(defaultAddress.address1 || '');
+                    setCity(defaultAddress.city || '');
+                    setPostalCode(defaultAddress.postal_code || '');
+                    setCountry(defaultAddress.country || 'España');
+                    setStateRegion(defaultAddress.state || '');
+                } else {
+                    resetAddressFields();
+                }
+            } else {
+                resetAddressFields();
+            }
         } else {
             setName('');
             setEmail('');
             setPhone('');
-            setRole('CUSTOMER');
+            setRole(activeTab === 'customers' ? 'CUSTOMER' : 'ADMIN');
             setPassword('');
+            resetAddressFields();
         }
         setIsModalOpen(true);
+    };
+
+    const resetAddressFields = () => {
+        setAddressId('');
+        setFirstName('');
+        setLastName('');
+        setAddress1('');
+        setCity('');
+        setPostalCode('');
+        setCountry('España');
+        setStateRegion('');
     };
 
     const closeModal = () => {
@@ -65,6 +105,17 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
             alert('Debes establecer una contraseña inicial para el nuevo usuario');
             setIsLoading(false);
             return;
+        }
+
+        if (role === 'CUSTOMER') {
+            if (addressId) formData.append('address_id', addressId);
+            formData.append('first_name', firstName);
+            formData.append('last_name', lastName);
+            formData.append('address1', address1);
+            formData.append('city', city);
+            formData.append('postal_code', postalCode);
+            formData.append('country', country);
+            formData.append('state', stateRegion);
         }
 
         try {
@@ -257,6 +308,51 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                                 />
                                 {editingUser && <p style={{ fontSize: '0.8rem', color: 'gray', marginTop: '0.25rem' }}>Si el usuario olvidó su clave, puedes forzar una nueva aquí enviándosela luego de forma segura.</p>}
                             </div>
+
+                            {role === 'CUSTOMER' && (
+                                <>
+                                    <hr style={{ margin: '1.5rem 0', borderColor: 'var(--color-border)' }} />
+                                    <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Dirección de Envío Principal</h3>
+
+                                    <div className="admin-form-row">
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">Nombre del receptor</label>
+                                            <input type="text" className="admin-form-input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Ej: Juan" />
+                                        </div>
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">Apellidos del receptor</label>
+                                            <input type="text" className="admin-form-input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Ej: Pérez" />
+                                        </div>
+                                    </div>
+
+                                    <div className="admin-form-group">
+                                        <label className="admin-form-label">Dirección (Calle, número, piso...)</label>
+                                        <input type="text" className="admin-form-input" value={address1} onChange={e => setAddress1(e.target.value)} placeholder="Ej: Calle Principal 123, 4ºB" />
+                                    </div>
+
+                                    <div className="admin-form-row">
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">Ciudad</label>
+                                            <input type="text" className="admin-form-input" value={city} onChange={e => setCity(e.target.value)} placeholder="Ej: Madrid" />
+                                        </div>
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">Provincia / Región</label>
+                                            <input type="text" className="admin-form-input" value={stateRegion} onChange={e => setStateRegion(e.target.value)} placeholder="Ej: Comunidad de Madrid" />
+                                        </div>
+                                    </div>
+
+                                    <div className="admin-form-row">
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">Código Postal</label>
+                                            <input type="text" className="admin-form-input" value={postalCode} onChange={e => setPostalCode(e.target.value)} placeholder="Ej: 28001" />
+                                        </div>
+                                        <div className="admin-form-group">
+                                            <label className="admin-form-label">País</label>
+                                            <input type="text" className="admin-form-input" value={country} onChange={e => setCountry(e.target.value)} placeholder="Ej: España" />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
                                 <button type="button" className="admin-btn admin-btn-secondary" onClick={closeModal}>

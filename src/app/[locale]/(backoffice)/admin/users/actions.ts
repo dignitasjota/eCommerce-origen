@@ -17,6 +17,16 @@ export async function createUser(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const addressData = role === 'CUSTOMER' ? {
+        first_name: formData.get('first_name') as string,
+        last_name: formData.get('last_name') as string,
+        address1: formData.get('address1') as string,
+        city: formData.get('city') as string,
+        postal_code: formData.get('postal_code') as string,
+        country: formData.get('country') as string || 'España',
+        state: formData.get('state') as string,
+    } : null;
+
     try {
         await prisma.user.create({
             data: {
@@ -25,6 +35,14 @@ export async function createUser(formData: FormData) {
                 phone,
                 role,
                 password_hash: hashedPassword,
+                ...(addressData && addressData.address1 ? {
+                    addresses: {
+                        create: {
+                            ...addressData,
+                            is_default: true
+                        }
+                    }
+                } : {})
             }
         });
         revalidatePath('/es/admin/users');
@@ -43,6 +61,18 @@ export async function updateUser(id: string, formData: FormData) {
     const role = formData.get('role') as 'ADMIN' | 'ORDER_MANAGER' | 'CUSTOMER';
     const password = formData.get('password') as string;
 
+    // Address extraction
+    const addressId = formData.get('address_id') as string;
+    const addressData = role === 'CUSTOMER' ? {
+        first_name: formData.get('first_name') as string,
+        last_name: formData.get('last_name') as string,
+        address1: formData.get('address1') as string,
+        city: formData.get('city') as string,
+        postal_code: formData.get('postal_code') as string,
+        country: formData.get('country') as string || 'España',
+        state: formData.get('state') as string,
+    } : null;
+
     const dataToUpdate: any = {
         name,
         email,
@@ -55,10 +85,33 @@ export async function updateUser(id: string, formData: FormData) {
     }
 
     try {
+        // En Prisma es difícil hacer un UPSERT anidado limpio si puede haber campos incompletos,  
+        // por lo que primero actualizamos el usuario principal.
         await prisma.user.update({
             where: { id },
             data: dataToUpdate
         });
+
+        // Si es cliente y rellenó al menos la dirección 1...
+        if (addressData && addressData.address1) {
+            if (addressId) {
+                // Actualiza dirección existente
+                await prisma.address.update({
+                    where: { id: addressId },
+                    data: addressData
+                });
+            } else {
+                // Crea una nueva dirección prederminada para él
+                await prisma.address.create({
+                    data: {
+                        ...addressData,
+                        user_id: id,
+                        is_default: true
+                    }
+                });
+            }
+        }
+
         revalidatePath('/es/admin/users');
     } catch (error: any) {
         if (error.code === 'P2002') {
