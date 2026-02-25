@@ -206,7 +206,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                                 <button onClick={() => openModal(product)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                     Editar opciones
                                                 </button>
-                                                <button onClick={() => openRelationsModal(product)} className="admin-btn admin-btn-outline admin-btn-sm">
+                                                <button onClick={() => openRelationsModal(product)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                     Sugerencias (Cross-Sell)
                                                 </button>
                                                 <button onClick={() => handleDelete(product.id)} className="admin-btn admin-btn-danger admin-btn-sm">
