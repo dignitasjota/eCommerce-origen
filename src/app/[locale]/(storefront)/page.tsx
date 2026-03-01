@@ -1,6 +1,7 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
+import HomeCarousel from '@/components/storefront/HomeCarousel';
 import styles from './page.module.css';
 
 type Props = {
@@ -38,6 +39,22 @@ async function HomePageContent({ locale }: { locale: string }) {
         }
     });
 
+    const settings = await prisma.siteSetting.findMany({
+        where: { key: { in: ['home_carousel_images', 'home_carousel_interval'] } }
+    });
+
+    let homeCarouselImages: string[] = [];
+    let homeCarouselInterval = 5000;
+
+    settings.forEach(s => {
+        if (s.key === 'home_carousel_images') {
+            try { homeCarouselImages = JSON.parse(s.value); } catch (e) { }
+        }
+        if (s.key === 'home_carousel_interval') {
+            homeCarouselInterval = parseInt(s.value, 10) || 5000;
+        }
+    });
+
     const categories = dbCategories.map(c => ({
         id: c.id,
         slug: c.slug,
@@ -56,26 +73,16 @@ async function HomePageContent({ locale }: { locale: string }) {
     return (
         <div className={styles.page}>
             {/* Hero Section */}
-            <section className={`hero-section ${styles.hero}`}>
-                <div className={styles.heroOverlay} />
-                <div className={`container ${styles.heroContent}`}>
-                    <span className={styles.heroBadge}>✨ {t('newArrivals')}</span>
-                    <h1 className={styles.heroTitle}>{t('heroTitle')}</h1>
-                    <p className={styles.heroSubtitle}>{t('heroSubtitle')}</p>
-                    <div className={styles.heroActions}>
-                        <Link href="/products" className="btn btn-primary btn-lg">
-                            {t('heroButton')}
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 12h14" />
-                                <path d="m12 5 7 7-7 7" />
-                            </svg>
-                        </Link>
-                    </div>
-                </div>
-                {/* Decorative elements */}
-                <div className={styles.heroDecor1} />
-                <div className={styles.heroDecor2} />
-            </section>
+            <HomeCarousel
+                images={homeCarouselImages}
+                interval={homeCarouselInterval}
+                texts={{
+                    newArrivals: t('newArrivals'),
+                    heroTitle: t('heroTitle'),
+                    heroSubtitle: t('heroSubtitle'),
+                    heroButton: t('heroButton')
+                }}
+            />
 
             {/* Categories Section */}
             <section className={styles.section}>

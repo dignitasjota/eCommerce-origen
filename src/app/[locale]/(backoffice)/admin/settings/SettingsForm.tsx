@@ -58,6 +58,19 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
     const [activeTab, setActiveTab] = useState('general');
 
+    // Add logic for current carousel images
+    const [carouselImages, setCarouselImages] = useState<string[]>(() => {
+        try {
+            return settingsMap['home_carousel_images'] ? JSON.parse(settingsMap['home_carousel_images']) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+
+    const handleRemoveCarouselImage = (indexToRemove: number) => {
+        setCarouselImages(prev => prev.filter((_, i) => i !== indexToRemove));
+    };
+
     return (
         <form onSubmit={handleSubmit} className="admin-form" style={{ maxWidth: 800 }}>
             {message && (
@@ -191,6 +204,66 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                     <h4 className="font-semibold text-[var(--color-text)] mb-1">Reseñas de Productos</h4>
                                     <p className="text-sm text-[var(--color-text-secondary)]">Habilita a los compradores valorar y comentar en los artículos.</p>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* --- TAB CARRUSEL --- */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab font-semibold"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Carrusel Inicio  "
+                    checked={activeTab === 'carousel'}
+                    onChange={() => setActiveTab('carousel')}
+                />
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                    {activeTab === 'carousel' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Carrusel de la Página Principal</h3>
+                                <p className="text-sm text-gray-500 mt-1">Sube las imágenes que aparecerán destacadas al entrar a la tienda y define su velocidad.</p>
+                            </div>
+
+                            <input type="hidden" name="carousel_images_current" value={JSON.stringify(carouselImages)} />
+
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Añadir nuevas imágenes</label>
+                                <input type="file" name="carousel_images_new" accept="image/*" multiple className="admin-form-input p-2" />
+                            </div>
+
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Intervalo de pase (en milisegundos)</label>
+                                <input type="number" name="home_carousel_interval" className="admin-form-input" defaultValue={settingsMap['home_carousel_interval'] || '5000'} min="1000" step="500" />
+                                <p className="text-xs text-gray-500 mt-1">Ejemplo: 5000 = 5 segundos. Por debajo de 1000 no se recomienda.</p>
+                            </div>
+
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Imágenes Actuales ({carouselImages.length})</label>
+                                {carouselImages.length === 0 ? (
+                                    <p className="text-sm text-gray-500">No hay imágenes configuradas.</p>
+                                ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                                        {carouselImages.map((src, idx) => (
+                                            <div key={idx} className="relative aspect-video bg-gray-100 rounded-md overflow-hidden border">
+                                                <img src={src} alt="Carrusel" className="w-full h-full object-cover" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveCarouselImage(idx)}
+                                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 transition"
+                                                    title="Eliminar"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
