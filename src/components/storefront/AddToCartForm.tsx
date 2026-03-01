@@ -150,11 +150,11 @@ export default function AddToCartForm({ productId, productName, image, basePrice
                 </button>
             </div>
 
-            {/* DaisyUI Toast */}
+            {/* DaisyUI Toast - Visibilidad Alta */}
             {showToast && (
-                <div className="toast toast-top toast-center z-50">
-                    <div className="alert alert-success shadow-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div style={{ position: 'fixed', top: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 999999, transition: 'all 0.3s ease-in-out' }}>
+                    <div className="alert shadow-2xl" style={{ backgroundColor: '#22c55e', color: 'white', borderRadius: '1rem', padding: '1rem 2rem', fontWeight: 600, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
                         <span>Añadido al carrito con éxito.</span>
                     </div>
                 </div>
