@@ -38,6 +38,7 @@ export default function AddToCartForm({ productId, productName, image, basePrice
     const { addItem } = useCart();
     const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
     const [quantity, setQuantity] = useState(1);
+    const [showToast, setShowToast] = useState(false);
 
     // Automatically select first option for each attribute if available
     useEffect(() => {
@@ -86,7 +87,8 @@ export default function AddToCartForm({ productId, productName, image, basePrice
             attributes: Object.keys(optionNames).length > 0 ? optionNames : undefined
         });
 
-        alert(`Añadido al carrito: ${quantity} x ${currentPrice}€`);
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
     };
 
     return (
@@ -147,6 +149,16 @@ export default function AddToCartForm({ productId, productName, image, basePrice
                     {isOutOfStock ? 'Agotado' : t('addToCart')}
                 </button>
             </div>
+
+            {/* DaisyUI Toast */}
+            {showToast && (
+                <div className="toast toast-top toast-center z-50">
+                    <div className="alert alert-success shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>Añadido al carrito con éxito.</span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
