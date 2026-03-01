@@ -19,6 +19,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
     const [isActive, setIsActive] = useState(true);
     const [description, setDescription] = useState('');
     const [stock, setStock] = useState('0');
+    const [unlimitedStock, setUnlimitedStock] = useState(true);
 
     // ---- Relations Edit Modal States ----
     const [isRelationsModalOpen, setIsRelationsModalOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
             setSku(product.sku || '');
             setPrice(product.price?.toString() || '');
             setIsActive(product.is_active);
+            setUnlimitedStock(product.unlimited_stock !== false); // default to true if undefined
             setDescription(product.product_translations[0]?.description || '');
             setStock(product.product_variants?.[0]?.stock?.toString() || '0');
         } else {
@@ -44,6 +46,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
             setSku('');
             setPrice('');
             setIsActive(true);
+            setUnlimitedStock(true);
             setDescription('');
             setStock('0');
         }
@@ -63,6 +66,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
         const formData = new FormData(form);
 
         formData.set('is_active', isActive ? 'true' : 'false');
+        formData.set('unlimited_stock', unlimitedStock ? 'true' : 'false');
 
         try {
             if (editingProduct) {
@@ -220,14 +224,18 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontWeight: 600 }}>{translation?.name || product.slug}</div>
-                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>{product.slug}</div>
+                                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>{product.slug}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td><code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{product.sku}</code></td>
-                                        <td>
+                                        <td className="text-center">
                                             <div style={{ fontWeight: 600 }}>{Number(product.price).toFixed(2)}€</div>
-                                            <div style={{ fontSize: '0.8rem', color: prodStock > 0 ? 'green' : 'red' }}>Stock: {prodStock}</div>
+                                            {product.unlimited_stock ? (
+                                                <div style={{ fontSize: '0.8rem', color: 'green' }}>∞ Ilimitado</div>
+                                            ) : (
+                                                <div style={{ fontSize: '0.8rem', color: prodStock > 0 ? 'green' : 'red' }}>Stock: {prodStock}</div>
+                                            )}
                                         </td>
                                         <td>{category?.name || '—'}</td>
                                         <td>
@@ -330,14 +338,27 @@ export default function ProductsManager({ products }: { products: any[] }) {
                                 </div>
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">Stock Actual</label>
-                                    <input
-                                        type="number"
-                                        name="stock"
-                                        className="admin-form-input"
-                                        value={stock}
-                                        onChange={(e) => setStock(e.target.value)}
-                                        required
-                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={unlimitedStock}
+                                                onChange={(e) => setUnlimitedStock(e.target.checked)}
+                                                className="checkbox checkbox-sm checkbox-primary"
+                                            />
+                                            Stock ilimitado
+                                        </label>
+                                        {!unlimitedStock && (
+                                            <input
+                                                type="number"
+                                                name="stock"
+                                                className="admin-form-input"
+                                                value={stock}
+                                                onChange={(e) => setStock(e.target.value)}
+                                                required
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

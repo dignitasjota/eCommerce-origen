@@ -70,8 +70,9 @@ export async function createProduct(formData: FormData) {
     const isActive = formData.get('is_active') === 'true';
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
+    const unlimitedStock = formData.get('unlimited_stock') === 'true';
     const stockStr = formData.get('stock') as string;
-    const stock = parseInt(stockStr || '0', 10);
+    const stock = unlimitedStock ? 0 : parseInt(stockStr || '0', 10);
 
     const price = parseFloat(priceStr);
     if (isNaN(price)) throw new Error('Precio inválido');
@@ -86,6 +87,7 @@ export async function createProduct(formData: FormData) {
             sku,
             price,
             is_active: isActive,
+            unlimited_stock: unlimitedStock,
             product_translations: {
                 create: {
                     id: crypto.randomUUID(),
@@ -117,8 +119,9 @@ export async function updateProduct(id: string, formData: FormData) {
     const isActive = formData.get('is_active') === 'true';
     const name = formData.get('name') as string;
     const description = formData.get('description') as string;
+    const unlimitedStock = formData.get('unlimited_stock') === 'true';
     const stockStr = formData.get('stock') as string;
-    const stock = parseInt(stockStr || '0', 10);
+    const stock = unlimitedStock ? 0 : parseInt(stockStr || '0', 10);
 
     const price = parseFloat(priceStr);
     if (isNaN(price)) throw new Error('Precio inválido');
@@ -132,7 +135,8 @@ export async function updateProduct(id: string, formData: FormData) {
                 slug,
                 sku,
                 price,
-                is_active: isActive
+                is_active: isActive,
+                unlimited_stock: unlimitedStock
             }
         }),
         prisma.productTranslation.upsert({
