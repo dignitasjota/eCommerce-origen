@@ -464,7 +464,7 @@ export async function generateMetadata({ params }: Props) {
                     alt: name,
                 },
             ],
-            type: 'product',
+            type: 'website',
             locale: locale,
         },
         twitter: {
