@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import WishlistButton from '@/components/storefront/WishlistButton';
+import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import styles from './page.module.css'; // We'll create this or reuse globals
 
 type Props = {
@@ -112,9 +113,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                                 <div style={{ marginTop: '0.5rem', fontWeight: '600', color: 'var(--color-primary)' }}>
                                     <span className="card-price">{product.price} €</span>
                                 </div>
-                                <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-                                    {t('addToCart')}
-                                </button>
+                                <AddToCartClientButton product={{ id: product.id, name: product.name, price: product.price, image: product.image || undefined }} />
                             </div>
                         </Link>
                     ))}

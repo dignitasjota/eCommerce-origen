@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
+import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import styles from './page.module.css';
 
 type Props = {
@@ -153,9 +154,11 @@ async function HomePageContent({ locale }: { locale: string }) {
                                         <div className={styles.productPricing}>
                                             <span className="card-price">{product.price} €</span>
                                         </div>
-                                        <button className={`btn btn-primary ${styles.addToCartBtn}`}>
-                                            {tProduct('addToCart')}
-                                        </button>
+                                        <AddToCartClientButton
+                                            product={{ id: product.id, name: product.name, price: product.price, image: product.image || undefined }}
+                                            variantClass={`btn btn-primary ${styles.addToCartBtn}`}
+                                            style={{}}
+                                        />
                                     </div>
                                 </Link>
                             ))}
