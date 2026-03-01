@@ -72,14 +72,14 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="admin-form" style={{ maxWidth: 800 }}>
+        <form onSubmit={handleSubmit} className="w-full">
             {message && (
                 <div className={`p-4 mb-6 rounded-md ${message.isError ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
                     {message.text}
                 </div>
             )}
 
-            <div role="tablist" className="tabs tabs-lift tabs-lg mb-8 w-full max-w-full overflow-x-auto overflow-y-hidden">
+            <div role="tablist" className="tabs tabs-lift tabs-lg w-full mb-8">
                 {/* --- TAB GLOBAL --- */}
                 <input
                     type="radio"
@@ -91,7 +91,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
                     {activeTab === 'general' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -151,7 +151,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
                     {activeTab === 'modules' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -220,7 +220,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'carousel'}
                     onChange={() => setActiveTab('carousel')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
                     {activeTab === 'carousel' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -280,7 +280,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm overflow-hidden">
+                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
                     {activeTab === 'seo' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -312,7 +312,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
             </div>
 
             {/* Botón Flotante / Fijo abajo para guardar sea cual sea la pestaña */}
-            <div className="mt-8 pt-6 border-t flex justify-end sticky bottom-0 bg-white/90 backdrop-blur pb-4">
+            <div className="mt-8 flex justify-start pb-4">
                 <button
                     type="submit"
                     className="admin-btn admin-btn-primary px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-shadow"
