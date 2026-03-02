@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { createPage, updatePage, deletePage } from './actions';
 
-export default function PagesManager({ initialPages, pagesPrefix }: { initialPages: any[], pagesPrefix: string }) {
+export default function PagesManager({ initialPages, pagesPrefix, categories }: { initialPages: any[], pagesPrefix: string, categories: any[] }) {
     const [pages, setPages] = useState(initialPages);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<any>(null);
@@ -177,7 +177,28 @@ export default function PagesManager({ initialPages, pagesPrefix }: { initialPag
                             </div>
 
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Contenido HTML</label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
+                                    <label className="admin-form-label" style={{ marginBottom: 0 }}>Contenido HTML</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                        <select id="categorySelect" className="admin-form-input" style={{ padding: '0.25rem 0.5rem', minHeight: 'auto', height: 'auto', width: 'auto' }}>
+                                            <option value="">Selecciona una categoría...</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>{c.category_translations[0]?.name || c.slug}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            className="admin-btn admin-btn-secondary admin-btn-sm"
+                                            onClick={() => {
+                                                const select = document.getElementById('categorySelect') as HTMLSelectElement;
+                                                if (select && select.value) {
+                                                    setContent(prev => prev + `\n{{category_id:${select.value}}}`);
+                                                }
+                                            }}>
+                                            + Insertar Categoría
+                                        </button>
+                                    </div>
+                                </div>
                                 <textarea
                                     className="admin-form-input"
                                     style={{ minHeight: '30vh', resize: 'vertical' }}

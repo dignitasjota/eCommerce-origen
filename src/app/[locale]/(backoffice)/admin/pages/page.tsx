@@ -13,5 +13,10 @@ export default async function PagesPage() {
     const prefixSetting = await prisma.siteSetting.findUnique({ where: { key: 'pages_prefix' } });
     const prefix = prefixSetting ? prefixSetting.value : 'page';
 
-    return <PagesManager initialPages={pages} pagesPrefix={prefix} />;
+    const categories = await prisma.category.findMany({
+        include: { category_translations: { where: { locale: 'es' } } },
+        orderBy: { sort_order: 'asc' }
+    });
+
+    return <PagesManager initialPages={pages} pagesPrefix={prefix} categories={categories} />;
 }

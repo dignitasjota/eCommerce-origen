@@ -57,6 +57,72 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Not Found' };
 }
 
+async function CategoryBlock({ categoryId, locale }: { categoryId: string; locale: string }) {
+    const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+        include: { category_translations: { where: { locale } } }
+    });
+
+    if (!category) return null;
+
+    const products = await prisma.product.findMany({
+        where: {
+            is_active: true,
+            product_categories: { some: { category_id: categoryId } }
+        },
+        take: 8,
+        orderBy: { created_at: 'desc' },
+        include: {
+            product_translations: { where: { locale } },
+            product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+        }
+    });
+
+    if (products.length === 0) return null;
+
+    return (
+        <div className="not-prose my-12" style={{ fontFamily: 'inherit' }}>
+            <h3 className="text-2xl font-bold mb-8 text-[var(--color-text)] border-b pb-2 inline-block border-[var(--color-primary)]">
+                {category.category_translations[0]?.name || category.slug}
+            </h3>
+            <div className="product-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                gap: '2rem'
+            }}>
+                {products.map((p, index) => {
+                    const name = p.product_translations[0]?.name || p.slug;
+                    const image = p.product_images[0]?.url || null;
+                    return (
+                        <a
+                            key={p.id}
+                            href={`/${locale}/product/${p.slug}`}
+                            className={`card product-card animate-fade-in-up stagger-${(index % 12) + 1}`}
+                            style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
+                        >
+                            <figure className="aspect-[4/5] overflow-hidden bg-[var(--color-background)] relative group">
+                                {image ? (
+                                    <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0', color: '#999' }}>
+                                        Sin imagen
+                                    </div>
+                                )}
+                            </figure>
+                            <div className="card-body p-5">
+                                <h4 className="card-title text-lg m-0" style={{ textDecoration: 'none' }}>{name}</h4>
+                                <div className="mt-2 text-lg font-bold text-[var(--color-primary)]">
+                                    <span className="card-price">{Number(p.price).toFixed(2)} €</span>
+                                </div>
+                            </div>
+                        </a>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 export default async function DynamicPageView({ params }: Props) {
     const resolvedParams = await params;
     const { dynamicSlug } = resolvedParams;
@@ -115,16 +181,23 @@ export default async function DynamicPageView({ params }: Props) {
         });
         if (page && page.page_translations[0]) {
             const { title, content } = page.page_translations[0];
+            const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
+
             return (
                 <div className="container py-12 md:py-16">
                     <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
                         <header className="mb-10 border-b border-[var(--color-border)] pb-6">
                             <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
                         </header>
-                        <div
-                            className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]"
-                            dangerouslySetInnerHTML={{ __html: content }}
-                        />
+                        <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
+                            {contentParts.map((part: string, index: number) => {
+                                if (part.startsWith('{{category_id:')) {
+                                    const id = part.replace('{{category_id:', '').replace('}}', '');
+                                    return <CategoryBlock key={index} categoryId={id} locale={locale} />;
+                                }
+                                return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                            })}
+                        </div>
                     </div>
                 </div>
             );
