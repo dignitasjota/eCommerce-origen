@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/[locale]/layout,_N_T_/[locale]/(backoffice)/layout,_N_T_/[locale]/(backoffice)/admin/layout,_N_T_/[locale]/(backoffice)/admin/settings/layout,_N_T_/[locale]/(backoffice)/admin/settings/page,_N_T_/es/admin/settings"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/$d$locale/!KGJhY2tvZmZpY2Up/admin/settings/__PAGE__",
+    "/$d$locale/!KGJhY2tvZmZpY2Up/admin/settings",
+    "/$d$locale/!KGJhY2tvZmZpY2Up/admin",
+    "/$d$locale/!KGJhY2tvZmZpY2Up",
+    "/$d$locale",
+    "/_index",
+    "/_head"
+  ]
+}

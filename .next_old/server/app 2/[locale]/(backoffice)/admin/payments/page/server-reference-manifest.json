@@ -1,0 +1,50 @@
+{
+  "node": {
+    "406291dae547706ff110a8e494d9eebbabc46c84f0": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "createPaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "exportedName": "createPaymentMethod",
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+    },
+    "6025d7241ca4f3c5a4c5bb85b8332c4b8ff1fda4b6": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "updatePaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "exportedName": "updatePaymentMethod",
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+    },
+    "40c0b210680b940fc81721c272e22dea5b4f9a9d36": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "deletePaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "exportedName": "deletePaymentMethod",
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+    }
+  },
+  "edge": {}
+}

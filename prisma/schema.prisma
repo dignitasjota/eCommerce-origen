@@ -501,6 +501,28 @@ model LegalPageTranslation {
   @@map("legal_page_translations")
 }
 
+model Page {
+  id                String            @id @default(uuid()) @db.VarChar(36)
+  slug              String            @unique(map: "page_slug") @db.VarChar(255)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @default(now())
+  page_translations PageTranslation[]
+
+  @@map("pages")
+}
+
+model PageTranslation {
+  id      String @id @default(uuid()) @db.VarChar(36)
+  page_id String @db.VarChar(36)
+  locale  String @db.VarChar(5)
+  title   String @db.VarChar(255)
+  content String @db.LongText
+  pages   Page   @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "page_translations_ibfk_1")
+
+  @@unique([page_id, locale], map: "uq_page_locale")
+  @@map("page_translations")
+}
+
 model SiteSetting {
   id    String @id @default(uuid()) @db.VarChar(36)
   key   String @unique(map: "key") @db.VarChar(255)

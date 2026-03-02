@@ -1,0 +1,426 @@
+{
+  "node": {
+    "40541350396586c13ad51a3dd3bb015cd695035c6b": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/blog/page": {
+          "moduleId": 8916,
+          "async": false,
+          "exportedName": "createBlogPost",
+          "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/blog/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts",
+      "exportedName": "createBlogPost"
+    },
+    "60c90c7f4332e25cbc089ebd83b50714e914c4f914": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/blog/page": {
+          "moduleId": 8916,
+          "async": false,
+          "exportedName": "updateBlogPost",
+          "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/blog/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts",
+      "exportedName": "updateBlogPost"
+    },
+    "40608cd272772418d66c35bd6655992c43524af137": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/blog/page": {
+          "moduleId": 8916,
+          "async": false,
+          "exportedName": "deleteBlogPost",
+          "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/blog/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/blog/actions.ts",
+      "exportedName": "deleteBlogPost"
+    },
+    "605ea3b53217b4973a49932a1a82a104cf50840494": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "updateCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts",
+      "exportedName": "updateCategory"
+    },
+    "409cd56b39913e5977c8da48af6be74044d6ca917c": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "createCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts",
+      "exportedName": "createCategory"
+    },
+    "4024ac8f82402500957f8588b91e1240dd8f8e80c8": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "deleteCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts",
+      "exportedName": "deleteCategory"
+    },
+    "407db47a781a0e92e6bbac0f2cca0b2ca8d2024514": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/coupons/page": {
+          "moduleId": 58201,
+          "async": false,
+          "exportedName": "createCoupon",
+          "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/coupons/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts",
+      "exportedName": "createCoupon"
+    },
+    "609bc755a352179cc884880dfee52dbcada6891bb9": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/coupons/page": {
+          "moduleId": 58201,
+          "async": false,
+          "exportedName": "updateCoupon",
+          "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/coupons/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts",
+      "exportedName": "updateCoupon"
+    },
+    "40fa8823ae248f4fc9d9d82579d547b1ac49eb9714": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/coupons/page": {
+          "moduleId": 58201,
+          "async": false,
+          "exportedName": "deleteCoupon",
+          "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/coupons/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/coupons/actions.ts",
+      "exportedName": "deleteCoupon"
+    },
+    "40ea9a8188fc9fa3ae39a3b650852f0003c9254571": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/legal/page": {
+          "moduleId": 49311,
+          "async": false,
+          "exportedName": "createLegalPage",
+          "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/legal/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts",
+      "exportedName": "createLegalPage"
+    },
+    "60ef65fc095ec95ac262e5cbee977ddeeeb3412e24": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/legal/page": {
+          "moduleId": 49311,
+          "async": false,
+          "exportedName": "updateLegalPage",
+          "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/legal/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts",
+      "exportedName": "updateLegalPage"
+    },
+    "40fdec4d842374e6464da64013bcfca834dfc7f3a7": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/legal/page": {
+          "moduleId": 49311,
+          "async": false,
+          "exportedName": "deleteLegalPage",
+          "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/legal/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/legal/actions.ts",
+      "exportedName": "deleteLegalPage"
+    },
+    "4072464308bb58bcb497d9fcba32219a400637b496": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/orders/[id]/page": {
+          "moduleId": 33416,
+          "async": false,
+          "exportedName": "updateOrderFullStatus",
+          "filename": "src/app/[locale]/(backoffice)/admin/orders/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/orders/[id]/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/orders/actions.ts",
+      "exportedName": "updateOrderFullStatus"
+    },
+    "406291dae547706ff110a8e494d9eebbabc46c84f0": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "createPaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts",
+      "exportedName": "createPaymentMethod"
+    },
+    "6025d7241ca4f3c5a4c5bb85b8332c4b8ff1fda4b6": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "updatePaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts",
+      "exportedName": "updatePaymentMethod"
+    },
+    "40c0b210680b940fc81721c272e22dea5b4f9a9d36": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/payments/page": {
+          "moduleId": 30329,
+          "async": false,
+          "exportedName": "deletePaymentMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/payments/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/payments/actions.ts",
+      "exportedName": "deletePaymentMethod"
+    },
+    "40c3d638f1f00d474a121cb7bb8b9d409ff1e39dd0": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "createProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts",
+      "exportedName": "createProduct"
+    },
+    "60850232f8f00773326d9bf41c63b860e6278caa83": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "updateProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts",
+      "exportedName": "updateProduct"
+    },
+    "40d2971c46f1c2970c913eb280f028dc12061a6926": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "deleteProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts",
+      "exportedName": "deleteProduct"
+    },
+    "7079216a50babd0435f4aef4a3abf675ce52912a1d": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "updateProductRelations",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts",
+      "exportedName": "updateProductRelations"
+    },
+    "70102e6f182f77a187ef9d7d6f4bb35e5eab464e85": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/[id]/edit/page": {
+          "moduleId": 32476,
+          "async": false,
+          "exportedName": "updateProductRelations",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/[id]/edit/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/[id]/edit/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/products/[id]/edit/actions.ts",
+      "exportedName": "updateProductRelations"
+    },
+    "40a310d4ecfc02440524d0b17727cf380e5821a6bd": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/settings/page": {
+          "moduleId": 97292,
+          "async": false,
+          "exportedName": "updateSettings",
+          "filename": "src/app/[locale]/(backoffice)/admin/settings/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/settings/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/settings/actions.ts",
+      "exportedName": "updateSettings"
+    },
+    "4046bb5544e905351a96380dc09a2737dfc5c64106": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/shipping/page": {
+          "moduleId": 71114,
+          "async": false,
+          "exportedName": "createShippingMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/shipping/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts",
+      "exportedName": "createShippingMethod"
+    },
+    "6083054ffaa133595465952b653dcb5eec25ad6f2d": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/shipping/page": {
+          "moduleId": 71114,
+          "async": false,
+          "exportedName": "updateShippingMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/shipping/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts",
+      "exportedName": "updateShippingMethod"
+    },
+    "406d5b4c23a7e85cac7b0ee13ca0918a67251c429e": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/shipping/page": {
+          "moduleId": 71114,
+          "async": false,
+          "exportedName": "deleteShippingMethod",
+          "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/shipping/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/shipping/actions.ts",
+      "exportedName": "deleteShippingMethod"
+    },
+    "40c944a867f0d0d836e58554affbf3a0c6b9d536ed": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "createUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts",
+      "exportedName": "createUser"
+    },
+    "60514ff9a2a773d02e1472c3be7143ad28545ddb31": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "updateUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts",
+      "exportedName": "updateUser"
+    },
+    "40d74f6d9d1b4be57a60ce06f5dfcb45462c447d8f": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "deleteUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts",
+      "exportedName": "deleteUser"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "4hjUeYs5g+24AbrUDwngy9fBP5DOaR0fDnKpSZJWWUw="
+}

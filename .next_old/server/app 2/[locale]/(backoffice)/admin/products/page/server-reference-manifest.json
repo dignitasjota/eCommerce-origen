@@ -1,0 +1,65 @@
+{
+  "node": {
+    "40c3d638f1f00d474a121cb7bb8b9d409ff1e39dd0": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "createProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "exportedName": "createProduct",
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+    },
+    "60850232f8f00773326d9bf41c63b860e6278caa83": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "updateProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "exportedName": "updateProduct",
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+    },
+    "40d2971c46f1c2970c913eb280f028dc12061a6926": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "deleteProduct",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "exportedName": "deleteProduct",
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+    },
+    "7079216a50babd0435f4aef4a3abf675ce52912a1d": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/products/page": {
+          "moduleId": 66501,
+          "async": false,
+          "exportedName": "updateProductRelations",
+          "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/products/page": "action-browser"
+      },
+      "exportedName": "updateProductRelations",
+      "filename": "src/app/[locale]/(backoffice)/admin/products/actions.ts"
+    }
+  },
+  "edge": {}
+}

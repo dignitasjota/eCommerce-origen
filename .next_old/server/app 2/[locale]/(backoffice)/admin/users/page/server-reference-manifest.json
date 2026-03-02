@@ -1,0 +1,50 @@
+{
+  "node": {
+    "40c944a867f0d0d836e58554affbf3a0c6b9d536ed": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "createUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "exportedName": "createUser",
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+    },
+    "60514ff9a2a773d02e1472c3be7143ad28545ddb31": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "updateUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "exportedName": "updateUser",
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+    },
+    "40d74f6d9d1b4be57a60ce06f5dfcb45462c447d8f": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/users/page": {
+          "moduleId": 85669,
+          "async": false,
+          "exportedName": "deleteUser",
+          "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/users/page": "action-browser"
+      },
+      "exportedName": "deleteUser",
+      "filename": "src/app/[locale]/(backoffice)/admin/users/actions.ts"
+    }
+  },
+  "edge": {}
+}

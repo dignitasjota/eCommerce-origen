@@ -445,3 +445,21 @@ CREATE INDEX idx_cart_session ON cart_items(session_id);
 CREATE INDEX idx_reviews_product ON reviews(product_id);
 CREATE INDEX idx_blog_slug ON blog_posts(slug);
 CREATE INDEX idx_blog_published ON blog_posts(is_published);
+
+-- Pages (Static Pages)
+CREATE TABLE IF NOT EXISTS pages (
+    id VARCHAR(36) PRIMARY KEY,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS page_translations (
+    id VARCHAR(36) PRIMARY KEY,
+    page_id VARCHAR(36) NOT NULL,
+    locale VARCHAR(5) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content LONGTEXT NOT NULL,
+    FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_page_locale (page_id, locale)
+);
