@@ -13,15 +13,23 @@ interface Category {
     name: string;
 }
 
+interface MenuItem {
+    id: string;
+    label: string;
+    type: 'link' | 'categories';
+    url?: string;
+}
+
 interface HeaderClientProps {
     categories: Category[];
     features?: {
         blog: boolean;
         wishlist: boolean;
     };
+    menuItems: MenuItem[];
 }
 
-export default function HeaderClient({ categories, features }: HeaderClientProps) {
+export default function HeaderClient({ categories, features, menuItems }: HeaderClientProps) {
     const t = useTranslations('nav');
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
@@ -51,26 +59,33 @@ export default function HeaderClient({ categories, features }: HeaderClientProps
 
                 {/* Desktop Navigation */}
                 <nav className={styles.nav}>
-                    <Link href="/" className={`${styles.navLink} ${pathname === '/' ? styles.active : ''}`}>
-                        {t('home')}
-                    </Link>
-                    {categories.map((cat) => (
-                        <Link
-                            key={cat.id}
-                            href={`/category/${cat.slug}`}
-                            className={`${styles.navLink} ${pathname.startsWith(`/category/${cat.slug}`) ? styles.active : ''}`}
-                        >
-                            {cat.name}
-                        </Link>
-                    ))}
-                    <Link href="/products" className={`${styles.navLink} ${pathname.startsWith('/products') ? styles.active : ''}`}>
-                        Catálogo
-                    </Link>
-                    {features?.blog !== false && (
-                        <Link href="/blog" className={`${styles.navLink} ${pathname.startsWith('/blog') ? styles.active : ''}`}>
-                            Blog
-                        </Link>
-                    )}
+                    {menuItems.map(item => {
+                        if (item.type === 'categories') {
+                            return categories.map(cat => (
+                                <Link
+                                    key={`cat-${cat.id}`}
+                                    href={`/category/${cat.slug}`}
+                                    className={`${styles.navLink} ${pathname.startsWith(`/category/${cat.slug}`) ? styles.active : ''}`}
+                                >
+                                    {cat.name}
+                                </Link>
+                            ));
+                        }
+
+                        if (item.type === 'link' && item.url) {
+                            // Si es blog pero el blog está desactivado, podríamos ocultarlo
+                            // pero lo dejamos según haya configurado el admin.
+                            if (item.url === '/blog' && features?.blog === false) return null;
+
+                            const isActive = item.url === '/' ? pathname === '/' : pathname.startsWith(item.url);
+                            return (
+                                <Link key={item.id} href={item.url} className={`${styles.navLink} ${isActive ? styles.active : ''}`}>
+                                    {item.label}
+                                </Link>
+                            );
+                        }
+                        return null;
+                    })}
                 </nav>
 
                 {/* Actions */}
@@ -151,16 +166,25 @@ export default function HeaderClient({ categories, features }: HeaderClientProps
             {isMobileMenuOpen && (
                 <div className={styles.mobileMenu}>
                     <nav className={styles.mobileNav}>
-                        <Link href="/" className={styles.mobileNavLink}>{t('home')}</Link>
-                        {categories.map((cat) => (
-                            <Link key={cat.id} href={`/category/${cat.slug}`} className={styles.mobileNavLink}>
-                                {cat.name}
-                            </Link>
-                        ))}
-                        <Link href="/products" className={styles.mobileNavLink}>Catálogo</Link>
-                        {features?.blog !== false && (
-                            <Link href="/blog" className={styles.mobileNavLink}>Blog</Link>
-                        )}
+                        {menuItems.map(item => {
+                            if (item.type === 'categories') {
+                                return categories.map(cat => (
+                                    <Link key={`mob-cat-${cat.id}`} href={`/category/${cat.slug}`} className={styles.mobileNavLink}>
+                                        {cat.name}
+                                    </Link>
+                                ));
+                            }
+
+                            if (item.type === 'link' && item.url) {
+                                if (item.url === '/blog' && features?.blog === false) return null;
+                                return (
+                                    <Link key={`mob-link-${item.id}`} href={item.url} className={styles.mobileNavLink}>
+                                        {item.label}
+                                    </Link>
+                                );
+                            }
+                            return null;
+                        })}
                         <button onClick={() => { setIsMobileMenuOpen(false); setIsCartOpen(true); }} className={styles.mobileNavLink} style={{ background: 'transparent', border: 'none', textAlign: 'left', width: '100%', padding: '0.75rem 1rem', fontSize: '1.25rem' }}>{t('cart')} ({cartState.totalQuantity})</button>
                         {features?.wishlist !== false && (
                             <Link href="/account/wishlist" className={styles.mobileNavLink}>{t('wishlist')}</Link>

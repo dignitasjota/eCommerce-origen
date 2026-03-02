@@ -27,8 +27,9 @@ export default async function Header() {
     }));
 
     // Fase 11: Feature Flags
+    // Fase 11: Feature Flags
     const settings = await prisma.siteSetting.findMany({
-        where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled'] } }
+        where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'main_menu'] } }
     });
 
     const isFeatureEnabled = (key: string) => {
@@ -41,7 +42,26 @@ export default async function Header() {
         wishlist: isFeatureEnabled('feature_wishlist_enabled'),
     };
 
+    type MenuItem = { id: string; label: string; type: 'link' | 'categories'; url?: string };
+
+    const defaultMenu: MenuItem[] = [
+        { id: '1', label: 'Inicio', type: 'link', url: '/' },
+        { id: '2', label: 'Tienda', type: 'categories' },
+        { id: '3', label: 'Catálogo', type: 'link', url: '/products' },
+        { id: '4', label: 'Blog', type: 'link', url: '/blog' }
+    ];
+
+    const mainMenuSetting = settings.find(s => s.key === 'main_menu');
+    let mainMenu = defaultMenu;
+    if (mainMenuSetting) {
+        try {
+            mainMenu = JSON.parse(mainMenuSetting.value);
+        } catch (e) {
+            mainMenu = defaultMenu;
+        }
+    }
+
     return (
-        <HeaderClient categories={categories} features={features} />
+        <HeaderClient categories={categories} features={features} menuItems={mainMenu} />
     );
 }

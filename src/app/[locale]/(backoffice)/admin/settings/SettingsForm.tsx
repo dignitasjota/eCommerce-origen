@@ -58,6 +58,50 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
     const [activeTab, setActiveTab] = useState('general');
 
+    interface MenuItem {
+        id: string;
+        label: string;
+        type: 'link' | 'categories';
+        url?: string;
+    }
+
+    const defaultMenu: MenuItem[] = [
+        { id: '1', label: 'Inicio', type: 'link', url: '/' },
+        { id: '2', label: 'Tienda', type: 'categories' },
+        { id: '3', label: 'Catálogo', type: 'link', url: '/products' },
+        { id: '4', label: 'Blog', type: 'link', url: '/blog' }
+    ];
+
+    const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
+        try {
+            return settingsMap['main_menu'] ? JSON.parse(settingsMap['main_menu']) : defaultMenu;
+        } catch (e) {
+            return defaultMenu;
+        }
+    });
+
+    const addMenuItem = (type: 'link' | 'categories') => {
+        setMenuItems(prev => [...prev, { id: Date.now().toString(), label: type === 'categories' ? 'Tienda' : 'Nuevo Enlace', type, url: type === 'link' ? '/' : undefined }]);
+    };
+
+    const removeMenuItem = (id: string) => {
+        setMenuItems(prev => prev.filter(item => item.id !== id));
+    };
+
+    const updateMenuItem = (id: string, field: keyof MenuItem, value: string) => {
+        setMenuItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    };
+
+    const moveMenuItem = (index: number, direction: 'up' | 'down') => {
+        if ((direction === 'up' && index === 0) || (direction === 'down' && index === menuItems.length - 1)) return;
+        setMenuItems(prev => {
+            const newItems = [...prev];
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            [newItems[index], newItems[targetIndex]] = [newItems[targetIndex], newItems[index]];
+            return newItems;
+        });
+    };
+
     // Add logic for current carousel images
     const [carouselImages, setCarouselImages] = useState<string[]>(() => {
         try {
@@ -204,6 +248,85 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                     <h4 className="font-semibold text-[var(--color-text)] mb-1">Reseñas de Productos</h4>
                                     <p className="text-sm text-[var(--color-text-secondary)]">Habilita a los compradores valorar y comentar en los artículos.</p>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* --- TAB MENÚ --- */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab font-semibold"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Menú Principal  "
+                    checked={activeTab === 'menu'}
+                    onChange={() => setActiveTab('menu')}
+                />
+                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                    {activeTab === 'menu' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Menú Principal (Tienda)</h3>
+                                <p className="text-sm text-gray-500 mt-1">Configura los enlaces que aparecen en la barra de navegación pública superior.</p>
+                            </div>
+
+                            <input type="hidden" name="main_menu" value={JSON.stringify(menuItems)} />
+
+                            <div className="flex gap-4 mb-6">
+                                <button type="button" onClick={() => addMenuItem('link')} className="admin-btn admin-btn-secondary">
+                                    + Añadir Enlace Libre
+                                </button>
+                                <button type="button" onClick={() => addMenuItem('categories')} className="admin-btn admin-btn-secondary" disabled={menuItems.some(i => i.type === 'categories')}>
+                                    + Añadir Bloque de Categorías
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {menuItems.map((item, index) => (
+                                    <div key={item.id} className="flex gap-4 items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                        <div className="flex flex-col gap-1">
+                                            <button type="button" onClick={() => moveMenuItem(index, 'up')} disabled={index === 0} className="p-1 text-gray-400 hover:text-[var(--color-primary)] disabled:opacity-30">▲</button>
+                                            <button type="button" onClick={() => moveMenuItem(index, 'down')} disabled={index === menuItems.length - 1} className="p-1 text-gray-400 hover:text-[var(--color-primary)] disabled:opacity-30">▼</button>
+                                        </div>
+
+                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                            <div className="admin-form-group mb-0">
+                                                <label className="text-xs font-semibold text-gray-500 block mb-1">Etiqueta</label>
+                                                <input
+                                                    type="text"
+                                                    value={item.label}
+                                                    onChange={(e) => updateMenuItem(item.id, 'label', e.target.value)}
+                                                    className="admin-form-input p-2"
+                                                />
+                                            </div>
+                                            {item.type === 'link' ? (
+                                                <div className="admin-form-group mb-0">
+                                                    <label className="text-xs font-semibold text-gray-500 block mb-1">Ruta / URL (Ej: /blog)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.url || ''}
+                                                        onChange={(e) => updateMenuItem(item.id, 'url', e.target.value)}
+                                                        className="admin-form-input p-2"
+                                                        placeholder="/"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="admin-form-group mb-0 flex items-center pt-5">
+                                                    <div className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-lg text-sm font-medium">
+                                                        [Módulo Dinámico: Categorías de Tienda]
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button type="button" onClick={() => removeMenuItem(item.id)} className="text-red-500 hover:text-red-700 p-2 hidden-mobile">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                                        </button>
+                                    </div>
+                                ))}
+                                {menuItems.length === 0 && <p className="text-gray-500 text-sm italic">El menú está vacío. Los usuarios no verán enlaces de navegación.</p>}
                             </div>
                         </div>
                     )}
