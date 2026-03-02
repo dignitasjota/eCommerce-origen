@@ -135,7 +135,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
-                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
                     {activeTab === 'general' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -195,7 +195,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
-                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
                     {activeTab === 'modules' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -264,7 +264,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'menu'}
                     onChange={() => setActiveTab('menu')}
                 />
-                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
                     {activeTab === 'menu' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -343,7 +343,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'carousel'}
                     onChange={() => setActiveTab('carousel')}
                 />
-                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
                     {activeTab === 'carousel' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -403,7 +403,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
-                <div role="tabpanel" className="tab-content admin-form" style={{ borderTopLeftRadius: 0, marginTop: '-1px', maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
                     {activeTab === 'seo' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
