@@ -17,12 +17,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const slug = dynamicSlug[0];
         const legalPage = await prisma.legalPage.findUnique({
             where: { slug },
-            include: { legal_page_translations: { where: { locale } } }
+            include: { legal_page_translations: true }
         });
-        if (legalPage && legalPage.legal_page_translations[0]) {
+        if (legalPage && legalPage.legal_page_translations.length > 0) {
+            const translation = legalPage.legal_page_translations.find(t => t.locale === locale)
+                || legalPage.legal_page_translations.find(t => t.locale === 'es')
+                || legalPage.legal_page_translations[0];
+
             return {
-                title: legalPage.legal_page_translations[0].title,
-                description: `Información legal sobre ${legalPage.legal_page_translations[0].title}`,
+                title: translation.title,
+                description: `Información legal sobre ${translation.title}`,
             };
         }
     }
@@ -44,12 +48,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     if (pageSlug) {
         const page = await prisma.page.findUnique({
             where: { slug: pageSlug },
-            include: { page_translations: { where: { locale } } }
+            include: { page_translations: true }
         });
-        if (page && page.page_translations[0]) {
+        if (page && page.page_translations.length > 0) {
+            const translation = page.page_translations.find(t => t.locale === locale)
+                || page.page_translations.find(t => t.locale === 'es')
+                || page.page_translations[0];
+
             return {
-                title: page.page_translations[0].title,
-                description: page.page_translations[0].title,
+                title: translation.title,
+                description: translation.title,
             };
         }
     }
@@ -133,10 +141,14 @@ export default async function DynamicPageView({ params }: Props) {
         const slug = dynamicSlug[0];
         const legalPage = await prisma.legalPage.findUnique({
             where: { slug },
-            include: { legal_page_translations: { where: { locale } } }
+            include: { legal_page_translations: true }
         });
-        if (legalPage && legalPage.legal_page_translations[0]) {
-            const { title, content } = legalPage.legal_page_translations[0];
+        if (legalPage && legalPage.legal_page_translations.length > 0) {
+            const translation = legalPage.legal_page_translations.find(t => t.locale === locale)
+                || legalPage.legal_page_translations.find(t => t.locale === 'es')
+                || legalPage.legal_page_translations[0];
+
+            const { title, content } = translation;
             return (
                 <div className="container py-12 md:py-16">
                     <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
@@ -177,10 +189,14 @@ export default async function DynamicPageView({ params }: Props) {
     if (pageSlug) {
         const page = await prisma.page.findUnique({
             where: { slug: pageSlug },
-            include: { page_translations: { where: { locale } } }
+            include: { page_translations: true }
         });
-        if (page && page.page_translations[0]) {
-            const { title, content } = page.page_translations[0];
+        if (page && page.page_translations.length > 0) {
+            const translation = page.page_translations.find(t => t.locale === locale)
+                || page.page_translations.find(t => t.locale === 'es')
+                || page.page_translations[0];
+
+            const { title, content } = translation;
             const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
 
             return (
