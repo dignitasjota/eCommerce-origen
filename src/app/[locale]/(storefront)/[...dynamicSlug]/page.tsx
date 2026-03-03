@@ -65,9 +65,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: 'Not Found' };
 }
 
-async function CategoryBlock({ categoryId, locale }: { categoryId: string; locale: string }) {
+async function CategoryBlock({ categorySlug, locale }: { categorySlug: string; locale: string }) {
     const category = await prisma.category.findUnique({
-        where: { id: categoryId },
+        where: { slug: categorySlug },
         include: { category_translations: { where: { locale } } }
     });
 
@@ -76,7 +76,7 @@ async function CategoryBlock({ categoryId, locale }: { categoryId: string; local
     const products = await prisma.product.findMany({
         where: {
             is_active: true,
-            product_categories: { some: { category_id: categoryId } }
+            product_categories: { some: { category_id: category.id } }
         },
         take: 8,
         orderBy: { created_at: 'desc' },
@@ -104,7 +104,7 @@ async function CategoryBlock({ categoryId, locale }: { categoryId: string; local
                     return (
                         <a
                             key={p.id}
-                            href={`/${locale}/product/${p.slug}`}
+                            href={locale === 'es' ? `/product/${p.slug}` : `/${locale}/product/${p.slug}`}
                             className={`card product-card animate-fade-in-up stagger-${(index % 12) + 1}`}
                             style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
                         >
@@ -208,8 +208,8 @@ export default async function DynamicPageView({ params }: Props) {
                         <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
                             {contentParts.map((part: string, index: number) => {
                                 if (part.startsWith('{{category_id:')) {
-                                    const id = part.replace('{{category_id:', '').replace('}}', '');
-                                    return <CategoryBlock key={index} categoryId={id} locale={locale} />;
+                                    const slug = part.replace('{{category_id:', '').replace('}}', '');
+                                    return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
                                 }
                                 return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
                             })}

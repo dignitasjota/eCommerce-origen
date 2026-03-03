@@ -1,0 +1,118 @@
+
+> ecommerce@0.1.0 build
+> npx prisma generate && next build
+
+
+✔ Generated Prisma Client (v7.4.1) to ./node_modules/@prisma/client in 156ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+
+  Creating an optimized production build ...
+/*! 🌼 daisyUI 5.5.19 */
+✓ Compiled successfully in 2.8s
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/64) ...
+  Generating static pages using 7 workers (16/64) 
+  Generating static pages using 7 workers (32/64) 
+  Generating static pages using 7 workers (48/64) 
+✓ Generating static pages using 7 workers (64/64) in 1818.9ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /_not-found
+├ ● /[locale]
+│ ├ /es
+│ └ /en
+├ ƒ /[locale]/[...dynamicSlug]
+├ ƒ /[locale]/account/addresses
+├ ƒ /[locale]/account/orders
+├ ƒ /[locale]/account/profile
+├ ƒ /[locale]/account/wishlist
+├ ● /[locale]/admin
+│ ├ /es/admin
+│ └ /en/admin
+├ ● /[locale]/admin/blog
+│ ├ /es/admin/blog
+│ └ /en/admin/blog
+├ ● /[locale]/admin/categories
+│ ├ /es/admin/categories
+│ └ /en/admin/categories
+├ ● /[locale]/admin/coupons
+│ ├ /es/admin/coupons
+│ └ /en/admin/coupons
+├ ● /[locale]/admin/dashboard
+│ ├ /es/admin/dashboard
+│ └ /en/admin/dashboard
+├ ● /[locale]/admin/legal
+│ ├ /es/admin/legal
+│ └ /en/admin/legal
+├ ● /[locale]/admin/orders
+│ ├ /es/admin/orders
+│ └ /en/admin/orders
+├ ƒ /[locale]/admin/orders/[id]
+├ ● /[locale]/admin/pages
+│ ├ /es/admin/pages
+│ └ /en/admin/pages
+├ ● /[locale]/admin/payments
+│ ├ /es/admin/payments
+│ └ /en/admin/payments
+├ ● /[locale]/admin/products
+│ ├ /es/admin/products
+│ └ /en/admin/products
+├ ƒ /[locale]/admin/products/[id]/edit
+├ ● /[locale]/admin/settings
+│ ├ /es/admin/settings
+│ └ /en/admin/settings
+├ ● /[locale]/admin/shipping
+│ ├ /es/admin/shipping
+│ └ /en/admin/shipping
+├ ● /[locale]/admin/users
+│ ├ /es/admin/users
+│ └ /en/admin/users
+├ ● /[locale]/auth/forgot-password
+│ ├ /es/auth/forgot-password
+│ └ /en/auth/forgot-password
+├ ● /[locale]/auth/login
+│ ├ /es/auth/login
+│ └ /en/auth/login
+├ ● /[locale]/auth/register
+│ ├ /es/auth/register
+│ └ /en/auth/register
+├ ● /[locale]/auth/reset-password
+│ ├ /es/auth/reset-password
+│ └ /en/auth/reset-password
+├ ● /[locale]/blog
+│ ├ /es/blog
+│ └ /en/blog
+├ ƒ /[locale]/blog/[slug]
+├ ● /[locale]/cart
+│ ├ /es/cart
+│ └ /en/cart
+├ ƒ /[locale]/category/[slug]
+├ ƒ /[locale]/checkout
+├ ƒ /[locale]/checkout/success/[orderId]
+├ ƒ /[locale]/product/[slug]
+├ ƒ /[locale]/products
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/seed-legal
+├ ƒ /api/storefront/checkout
+├ ƒ /api/storefront/forgot-password
+├ ƒ /api/storefront/register
+├ ƒ /api/storefront/reset-password
+├ ƒ /api/storefront/reviews
+├ ƒ /api/storefront/wishlist
+├ ○ /robots.txt
+└ ○ /sitemap.xml
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
