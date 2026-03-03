@@ -430,8 +430,8 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 </div>
                                 <div className="admin-form-group grid-cols-1 md:col-span-2 mt-4 pt-4 border-t">
                                     <label className="admin-form-label text-[var(--color-primary)]">Rutas: Prefijo de URL para Páginas de Contenido</label>
-                                    <input name="pages_prefix" className="admin-form-input" defaultValue={settingsMap['pages_prefix'] ?? 'page'} placeholder="page" />
-                                    <p className="text-xs text-gray-500 mt-1">Escribe "page" para que las URLs sean <code>/es/page/mi-pagina</code>. Déjalo completamente vacío para que estén en la raíz: <code>/es/mi-pagina</code>.</p>
+                                    <input name="pages_prefix" className="admin-form-input" defaultValue={settingsMap['pages_prefix'] ?? ''} placeholder="" />
+                                    <p className="text-xs text-gray-500 mt-1">Escribe "page" para que las URLs sean <code>/page/mi-pagina</code>. Déjalo completamente vacío para que estén en la raíz: <code>/mi-pagina</code>.</p>
                                 </div>
                             </div>
                         </div>

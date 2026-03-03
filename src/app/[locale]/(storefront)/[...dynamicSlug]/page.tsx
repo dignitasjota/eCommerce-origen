@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         where: { key: 'pages_prefix' }
     });
     const prefixSetting = settingsMap.find(s => s.key === 'pages_prefix');
-    const prefix = prefixSetting ? prefixSetting.value : 'page';
+    const prefix = prefixSetting ? prefixSetting.value : '';
 
     let pageSlug = null;
     if (prefix === '' && dynamicSlug.length === 1) {
@@ -163,7 +163,7 @@ export default async function DynamicPageView({ params }: Props) {
         where: { key: 'pages_prefix' }
     });
     const prefixSetting = settingsMap.find(s => s.key === 'pages_prefix');
-    const prefix = prefixSetting ? prefixSetting.value : 'page';
+    const prefix = prefixSetting ? prefixSetting.value : '';
 
     let pageSlug = null;
     if (prefix === '' && dynamicSlug.length === 1) {

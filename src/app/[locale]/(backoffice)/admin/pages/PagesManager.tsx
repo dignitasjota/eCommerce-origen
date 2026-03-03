@@ -173,7 +173,7 @@ export default function PagesManager({ initialPages, pagesPrefix, categories }: 
                                     required
                                     placeholder="Ej: sobre-nosotros"
                                 />
-                                <p style={{ fontSize: '0.8rem', color: 'gray', marginTop: '0.25rem' }}>Aparecerá en www.tutienda.com/es{pagesPrefix ? `/${pagesPrefix}` : ''}/<b>{slug || '...'}</b></p>
+                                <p style={{ fontSize: '0.8rem', color: 'gray', marginTop: '0.25rem' }}>Aparecerá en www.tutienda.com{pagesPrefix ? `/${pagesPrefix}` : ''}/<b>{slug || '...'}</b></p>
                             </div>
 
                             <div className="admin-form-group">

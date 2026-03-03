@@ -11,7 +11,7 @@ async function getPages() {
 export default async function PagesPage() {
     const pages = await getPages();
     const prefixSetting = await prisma.siteSetting.findUnique({ where: { key: 'pages_prefix' } });
-    const prefix = prefixSetting ? prefixSetting.value : 'page';
+    const prefix = prefixSetting ? prefixSetting.value : '';
 
     const categories = await prisma.category.findMany({
         include: { category_translations: { where: { locale: 'es' } } },
