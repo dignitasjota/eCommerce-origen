@@ -1,0 +1,50 @@
+{
+  "node": {
+    "605ea3b53217b4973a49932a1a82a104cf50840494": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "updateCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "exportedName": "updateCategory",
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+    },
+    "409cd56b39913e5977c8da48af6be74044d6ca917c": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "createCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "exportedName": "createCategory",
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+    },
+    "4024ac8f82402500957f8588b91e1240dd8f8e80c8": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/categories/page": {
+          "moduleId": 24763,
+          "async": false,
+          "exportedName": "deleteCategory",
+          "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/categories/page": "action-browser"
+      },
+      "exportedName": "deleteCategory",
+      "filename": "src/app/[locale]/(backoffice)/admin/categories/actions.ts"
+    }
+  },
+  "edge": {}
+}

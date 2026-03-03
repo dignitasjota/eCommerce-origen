@@ -1,0 +1,3 @@
+{
+  "/api/storefront/forgot-password/route": "app/api/storefront/forgot-password/route.js"
+}

@@ -1,0 +1,20 @@
+{
+  "node": {
+    "40a310d4ecfc02440524d0b17727cf380e5821a6bd": {
+      "workers": {
+        "app/[locale]/(backoffice)/admin/settings/page": {
+          "moduleId": 97292,
+          "async": false,
+          "exportedName": "updateSettings",
+          "filename": "src/app/[locale]/(backoffice)/admin/settings/actions.ts"
+        }
+      },
+      "layer": {
+        "app/[locale]/(backoffice)/admin/settings/page": "action-browser"
+      },
+      "exportedName": "updateSettings",
+      "filename": "src/app/[locale]/(backoffice)/admin/settings/actions.ts"
+    }
+  },
+  "edge": {}
+}
