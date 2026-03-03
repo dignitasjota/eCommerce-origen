@@ -220,5 +220,18 @@ export default async function DynamicPageView({ params }: Props) {
         }
     }
 
-    notFound();
+    return (
+        <div style={{ padding: '50px', backgroundColor: 'red', color: 'white', fontFamily: 'monospace', minHeight: '100vh', zIndex: 9999, position: 'relative' }}>
+            <h1>DEBUG INFO</h1>
+            <pre>
+                {JSON.stringify({
+                    dynamicSlug,
+                    locale,
+                    prefix,
+                    pageSlug,
+                    settingsMapLength: settingsMap.length
+                }, null, 2)}
+            </pre>
+        </div>
+    );
 }

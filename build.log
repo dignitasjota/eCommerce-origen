@@ -1,10 +1,9 @@
 
-> ecommerce@0.1.0 plesk-build
+> ecommerce@0.1.0 build
 > npx prisma generate && next build
 
-Prisma schema loaded from prisma/schema.prisma.
 
-✔ Generated Prisma Client (v7.4.1) to ./node_modules/@prisma/client in 129ms
+✔ Generated Prisma Client (v7.4.1) to ./node_modules/@prisma/client in 160ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
@@ -12,17 +11,16 @@ Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 ▲ Next.js 16.1.6 (Turbopack)
 - Environments: .env
 
-⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
   Creating an optimized production build ...
 /*! 🌼 daisyUI 5.5.19 */
-✓ Compiled successfully in 2.1s
+✓ Compiled successfully in 3.2s
   Running TypeScript ...
   Collecting page data using 7 workers ...
-  Generating static pages using 7 workers (0/62) ...
-  Generating static pages using 7 workers (15/62) 
-  Generating static pages using 7 workers (30/62) 
-  Generating static pages using 7 workers (46/62) 
-✓ Generating static pages using 7 workers (62/62) in 1736.5ms
+  Generating static pages using 7 workers (0/64) ...
+  Generating static pages using 7 workers (16/64) 
+  Generating static pages using 7 workers (32/64) 
+  Generating static pages using 7 workers (48/64) 
+✓ Generating static pages using 7 workers (64/64) in 1879.8ms
   Finalizing page optimization ...
 
 Route (app)
@@ -30,7 +28,7 @@ Route (app)
 ├ ● /[locale]
 │ ├ /es
 │ └ /en
-├ ƒ /[locale]/[legalSlug]
+├ ƒ /[locale]/[...dynamicSlug]
 ├ ƒ /[locale]/account/addresses
 ├ ƒ /[locale]/account/orders
 ├ ƒ /[locale]/account/profile
@@ -57,12 +55,16 @@ Route (app)
 │ ├ /es/admin/orders
 │ └ /en/admin/orders
 ├ ƒ /[locale]/admin/orders/[id]
+├ ● /[locale]/admin/pages
+│ ├ /es/admin/pages
+│ └ /en/admin/pages
 ├ ● /[locale]/admin/payments
 │ ├ /es/admin/payments
 │ └ /en/admin/payments
 ├ ● /[locale]/admin/products
 │ ├ /es/admin/products
 │ └ /en/admin/products
+├ ƒ /[locale]/admin/products/[id]/edit
 ├ ● /[locale]/admin/settings
 │ ├ /es/admin/settings
 │ └ /en/admin/settings
