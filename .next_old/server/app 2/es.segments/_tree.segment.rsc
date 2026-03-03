@@ -1,9 +1,0 @@
-:HL["/_next/static/chunks/2b9d495c193ceffd.css","style"]
-:HL["/_next/static/chunks/caaf6b43e347b64d.css","style"]
-:HL["/_next/static/chunks/baa806871f3e08f7.css","style"]
-:HL["/uploads/products/headphones-1.jpg","image"]
-:HL["/uploads/products/smartphone-1.jpg","image"]
-:HL["/uploads/products/laptop-1.jpg","image"]
-:HL["/uploads/products/running-shoes-1.jpg","image"]
-:HL["/uploads/products/watch-1.jpg","image"]
-0:{"buildId":"c7tVb_63jhpw6KXnxT4HP","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"locale","paramType":"d","paramKey":"es","hasRuntimePrefetch":false,"slots":{"children":{"name":"(storefront)","paramType":null,"paramKey":"(storefront)","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
