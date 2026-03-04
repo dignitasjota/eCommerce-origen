@@ -3,6 +3,8 @@ import { getLocale } from 'next-intl/server';
 import { Metadata } from 'next';
 import prisma from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 type Props = {
     params: Promise<{ locale: string; dynamicSlug: string[] }> | { locale: string; dynamicSlug: string[] };
 };
@@ -32,13 +34,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     // Comprobar si es Page
-    const settingsMap = await prisma.siteSetting.findMany({
+    const prefixSetting = await prisma.siteSetting.findUnique({
         where: { key: 'pages_prefix' }
     });
-    const prefixSetting = settingsMap.find(s => s.key === 'pages_prefix');
-    const prefix = (prefixSetting?.value && prefixSetting.value !== 'null') ? prefixSetting.value : '';
+    const prefix = (prefixSetting?.value && prefixSetting.value.trim() !== '' && prefixSetting.value !== 'null') ? prefixSetting.value.trim() : '';
 
-    let pageSlug = null;
+    let pageSlug: string | null = null;
     if (prefix === '' && dynamicSlug.length === 1) {
         pageSlug = dynamicSlug[0];
     } else if (prefix !== '' && dynamicSlug.length === 2 && dynamicSlug[0] === prefix) {
@@ -171,13 +172,12 @@ export default async function DynamicPageView({ params }: Props) {
     }
 
     // Renderizado Page Normal
-    const settingsMap = await prisma.siteSetting.findMany({
+    const prefixSetting = await prisma.siteSetting.findUnique({
         where: { key: 'pages_prefix' }
     });
-    const prefixSetting = settingsMap.find(s => s.key === 'pages_prefix');
-    const prefix = (prefixSetting?.value && prefixSetting.value !== 'null') ? prefixSetting.value : '';
+    const prefix = (prefixSetting?.value && prefixSetting.value.trim() !== '' && prefixSetting.value !== 'null') ? prefixSetting.value.trim() : '';
 
-    let pageSlug = null;
+    let pageSlug: string | null = null;
     if (prefix === '' && dynamicSlug.length === 1) {
         // En root: /[slug]
         pageSlug = dynamicSlug[0];
@@ -220,18 +220,5 @@ export default async function DynamicPageView({ params }: Props) {
         }
     }
 
-    return (
-        <div style={{ padding: '50px', backgroundColor: 'red', color: 'white', fontFamily: 'monospace', minHeight: '100vh', zIndex: 9999, position: 'relative' }}>
-            <h1>DEBUG INFO</h1>
-            <pre>
-                {JSON.stringify({
-                    dynamicSlug,
-                    locale,
-                    prefix,
-                    pageSlug,
-                    settingsMapLength: settingsMap.length
-                }, null, 2)}
-            </pre>
-        </div>
-    );
+    notFound();
 }

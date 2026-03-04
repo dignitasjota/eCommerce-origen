@@ -183,7 +183,7 @@ export default function PagesManager({ initialPages, pagesPrefix, categories }: 
                                         <select id="categorySelect" className="admin-form-input" style={{ padding: '0.25rem 0.5rem', minHeight: 'auto', height: 'auto', width: 'auto' }}>
                                             <option value="">Selecciona una categoría...</option>
                                             {categories.map(c => (
-                                                <option key={c.id} value={c.id}>{c.category_translations[0]?.name || c.slug}</option>
+                                                <option key={c.id} value={c.slug}>{c.category_translations[0]?.name || c.slug}</option>
                                             ))}
                                         </select>
                                         <button
