@@ -9,58 +9,44 @@ type Props = {
     params: Promise<{ locale: string; dynamicSlug: string[] }> | { locale: string; dynamicSlug: string[] };
 };
 
+// Busca una Page normal por cualquier segmento del slug (funciona con y sin prefix)
+async function findPageBySlug(segments: string[]) {
+    for (const segment of segments) {
+        const page = await prisma.page.findUnique({
+            where: { slug: segment },
+            include: { page_translations: true }
+        });
+        if (page && page.page_translations.length > 0) return page;
+    }
+    return null;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const resolvedParams = await params;
     const { dynamicSlug } = resolvedParams;
     const locale = await getLocale();
 
-    // Comprobar si es legal (1 segmento)
+    // 1. Comprobar si es página legal
     if (dynamicSlug.length === 1) {
-        const slug = dynamicSlug[0];
         const legalPage = await prisma.legalPage.findUnique({
-            where: { slug },
+            where: { slug: dynamicSlug[0] },
             include: { legal_page_translations: true }
         });
         if (legalPage && legalPage.legal_page_translations.length > 0) {
-            const translation = legalPage.legal_page_translations.find(t => t.locale === locale)
+            const t = legalPage.legal_page_translations.find(t => t.locale === locale)
                 || legalPage.legal_page_translations.find(t => t.locale === 'es')
                 || legalPage.legal_page_translations[0];
-
-            return {
-                title: translation.title,
-                description: `Información legal sobre ${translation.title}`,
-            };
+            return { title: t.title, description: `Información legal sobre ${t.title}` };
         }
     }
 
-    // Comprobar si es Page
-    const prefixSetting = await prisma.siteSetting.findUnique({
-        where: { key: 'pages_prefix' }
-    });
-    const prefix = (prefixSetting?.value && prefixSetting.value.trim() !== '' && prefixSetting.value !== 'null') ? prefixSetting.value.trim() : '';
-
-    let pageSlug: string | null = null;
-    if (prefix === '' && dynamicSlug.length === 1) {
-        pageSlug = dynamicSlug[0];
-    } else if (prefix !== '' && dynamicSlug.length === 2 && dynamicSlug[0] === prefix) {
-        pageSlug = dynamicSlug[1];
-    }
-
-    if (pageSlug) {
-        const page = await prisma.page.findUnique({
-            where: { slug: pageSlug },
-            include: { page_translations: true }
-        });
-        if (page && page.page_translations.length > 0) {
-            const translation = page.page_translations.find(t => t.locale === locale)
-                || page.page_translations.find(t => t.locale === 'es')
-                || page.page_translations[0];
-
-            return {
-                title: translation.title,
-                description: translation.title,
-            };
-        }
+    // 2. Comprobar si es página de contenido
+    const page = await findPageBySlug(dynamicSlug);
+    if (page) {
+        const t = page.page_translations.find(t => t.locale === locale)
+            || page.page_translations.find(t => t.locale === 'es')
+            || page.page_translations[0];
+        return { title: t.title, description: t.title };
     }
 
     return { title: 'Not Found' };
@@ -137,11 +123,10 @@ export default async function DynamicPageView({ params }: Props) {
     const { dynamicSlug } = resolvedParams;
     const locale = await getLocale();
 
-    // Renderizado Legal (1 segmento)
+    // 1. Renderizado Legal (solo 1 segmento)
     if (dynamicSlug.length === 1) {
-        const slug = dynamicSlug[0];
         const legalPage = await prisma.legalPage.findUnique({
-            where: { slug },
+            where: { slug: dynamicSlug[0] },
             include: { legal_page_translations: true }
         });
         if (legalPage && legalPage.legal_page_translations.length > 0) {
@@ -149,12 +134,11 @@ export default async function DynamicPageView({ params }: Props) {
                 || legalPage.legal_page_translations.find(t => t.locale === 'es')
                 || legalPage.legal_page_translations[0];
 
-            const { title, content } = translation;
             return (
                 <div className="container py-12 md:py-16">
                     <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
                         <header className="mb-10 border-b border-[var(--color-border)] pb-6">
-                            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
+                            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{translation.title}</h1>
                             <p className="text-sm text-[var(--color-text-secondary)]">
                                 Última actualización: {new Date(legalPage.updated_at).toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', {
                                     year: 'numeric', month: 'long', day: 'numeric'
@@ -163,7 +147,7 @@ export default async function DynamicPageView({ params }: Props) {
                         </header>
                         <div
                             className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]"
-                            dangerouslySetInnerHTML={{ __html: content }}
+                            dangerouslySetInnerHTML={{ __html: translation.content }}
                         />
                     </div>
                 </div>
@@ -171,54 +155,36 @@ export default async function DynamicPageView({ params }: Props) {
         }
     }
 
-    // Renderizado Page Normal
-    const prefixSetting = await prisma.siteSetting.findUnique({
-        where: { key: 'pages_prefix' }
-    });
-    const prefix = (prefixSetting?.value && prefixSetting.value.trim() !== '' && prefixSetting.value !== 'null') ? prefixSetting.value.trim() : '';
+    // 2. Renderizado Page Normal — busca por slug en cualquier segmento de la URL
+    const page = await findPageBySlug(dynamicSlug);
+    if (page) {
+        const translation = page.page_translations.find(t => t.locale === locale)
+            || page.page_translations.find(t => t.locale === 'es')
+            || page.page_translations[0];
 
-    let pageSlug: string | null = null;
-    if (prefix === '' && dynamicSlug.length === 1) {
-        // En root: /[slug]
-        pageSlug = dynamicSlug[0];
-    } else if (prefix !== '' && dynamicSlug.length === 2 && dynamicSlug[0] === prefix) {
-        // En /[prefix]/[slug]
-        pageSlug = dynamicSlug[1];
-    }
+        const { title, content } = translation;
+        const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
 
-    if (pageSlug) {
-        const page = await prisma.page.findUnique({
-            where: { slug: pageSlug },
-            include: { page_translations: true }
-        });
-        if (page && page.page_translations.length > 0) {
-            const translation = page.page_translations.find(t => t.locale === locale)
-                || page.page_translations.find(t => t.locale === 'es')
-                || page.page_translations[0];
-
-            const { title, content } = translation;
-            const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
-
-            return (
-                <div className="container py-12 md:py-16">
-                    <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
-                        <header className="mb-10 border-b border-[var(--color-border)] pb-6">
-                            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
-                        </header>
-                        <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
-                            {contentParts.map((part: string, index: number) => {
-                                if (part.startsWith('{{category_id:')) {
-                                    const slug = part.replace('{{category_id:', '').replace('}}', '');
-                                    return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
-                                }
-                                return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
-                            })}
-                        </div>
+        return (
+            <div className="container py-12 md:py-16">
+                <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
+                    <header className="mb-10 border-b border-[var(--color-border)] pb-6">
+                        <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
+                    </header>
+                    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
+                        {contentParts.map((part: string, index: number) => {
+                            if (part.startsWith('{{category_id:')) {
+                                const slug = part.replace('{{category_id:', '').replace('}}', '');
+                                return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
+                            }
+                            return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                        })}
                     </div>
                 </div>
-            );
-        }
+            </div>
+        );
     }
 
+    // 3. Nada encontrado
     notFound();
 }
