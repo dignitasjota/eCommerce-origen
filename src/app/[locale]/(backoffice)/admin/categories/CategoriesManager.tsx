@@ -37,11 +37,12 @@ export default function CategoriesManager({ initialCategories, allParentCategori
         setEditingCategory(null);
     };
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
 
-        const formData = new FormData();
+        const formData = new FormData(e.currentTarget);
+        // Add React states manually (since inputs lack 'name' attrs, except 'image')
         formData.append('name', name);
         formData.append('slug', slug);
         if (parentId) formData.append('parent_id', parentId);
@@ -102,6 +103,9 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                         <thead>
                             <tr>
                                 <th>Categoría</th>
+                                <th>ID</th>
+                                <th>Imagen</th>
+                                <th>Nombre</th>
                                 <th>Slug</th>
                                 <th>Padre</th>
                                 <th>Productos</th>
@@ -119,6 +123,19 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                                                 {cat.image && <span style={{ marginRight: 8 }}>🖼</span>}
                                                 {t?.name || cat.slug}
                                             </td>
+                                            <td>
+                                                <code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
+                                                    ...{cat.id.split('-')[0]}
+                                                </code>
+                                            </td>
+                                            <td>
+                                                {cat.image ? (
+                                                    <img src={cat.image} alt="Cat" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                ) : (
+                                                    <span style={{ fontSize: '1.5rem', opacity: 0.5 }}>📁</span>
+                                                )}
+                                            </td>
+                                            <td style={{ fontWeight: 'bold' }}>{t?.name || cat.slug}</td>
                                             <td><code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{cat.slug}</code></td>
                                             <td>—</td>
                                             <td>{cat._count?.product_categories || 0}</td>
@@ -145,9 +162,22 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                                                     <td style={{ paddingLeft: '2.5rem', color: 'var(--color-text-secondary)' }}>
                                                         ↳ {st?.name || sub.slug}
                                                     </td>
+                                                    <td>
+                                                        <code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
+                                                            ...{sub.id.split('-')[0]}
+                                                        </code>
+                                                    </td>
+                                                    <td>
+                                                        {sub.image ? (
+                                                            <img src={sub.image} alt="Sub Cat" style={{ width: '32px', height: '32px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                        ) : (
+                                                            <span style={{ fontSize: '1.5rem', opacity: 0.5 }}>📁</span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ color: 'var(--color-text-secondary)' }}>{st?.name || sub.slug}</td>
                                                     <td><code style={{ fontSize: '0.8rem', background: 'var(--color-background)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>{sub.slug}</code></td>
                                                     <td>{t?.name}</td>
-                                                    <td>—</td>
+                                                    <td>{sub._count?.product_categories || 0}</td>
                                                     <td>
                                                         <span className={`admin-badge ${sub.is_active ? 'active' : 'inactive'}`}>
                                                             {sub.is_active ? 'Activa' : 'Inactiva'}
@@ -225,6 +255,22 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                                         )
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="admin-form-group">
+                                <label className="admin-form-label">Imagen Destacada</label>
+                                {editingCategory?.image && (
+                                    <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                        <img src={editingCategory.image} alt="Main" style={{ maxHeight: '40px', objectFit: 'contain' }} />
+                                        <p className="text-xs text-gray-500 mt-1">Sube una nueva si quieres reemplazarla.</p>
+                                    </div>
+                                )}
+                                <input
+                                    type="file"
+                                    name="image"
+                                    accept="image/*"
+                                    className="admin-form-input p-2"
+                                />
                             </div>
 
                             <div className="admin-form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
