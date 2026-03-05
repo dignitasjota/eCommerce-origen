@@ -91,7 +91,7 @@ async function CategoryBlock({ categorySlug, locale }: { categorySlug: string; l
                     return (
                         <a
                             key={p.id}
-                            href={locale === 'es' ? `/product/${p.slug}` : `/${locale}/product/${p.slug}`}
+                            href={`/${locale}/product/${p.slug}`}
                             className={`card product-card animate-fade-in-up stagger-${(index % 12) + 1}`}
                             style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column' }}
                         >
