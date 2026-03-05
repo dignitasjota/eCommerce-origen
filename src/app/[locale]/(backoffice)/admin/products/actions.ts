@@ -109,7 +109,7 @@ export async function createProduct(formData: FormData) {
 
     await handleImagesUpload(formData, productId);
 
-    revalidatePath('/[locale]/admin/products', 'page');
+    revalidatePath('/', 'layout');
 }
 
 export async function updateProduct(id: string, formData: FormData) {
@@ -183,14 +183,14 @@ export async function updateProduct(id: string, formData: FormData) {
 
     await handleImagesUpload(formData, id);
 
-    revalidatePath('/[locale]/admin/products', 'page');
+    revalidatePath('/', 'layout');
 }
 
 export async function deleteProduct(id: string) {
     await prisma.product.delete({
         where: { id }
     });
-    revalidatePath('/[locale]/admin/products', 'page');
+    revalidatePath('/', 'layout');
 }
 
 export async function updateProductRelations(

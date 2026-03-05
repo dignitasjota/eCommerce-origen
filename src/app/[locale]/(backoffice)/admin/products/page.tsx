@@ -1,6 +1,8 @@
 import prisma from '@/lib/db';
 import ProductsManager from './ProductsManager';
 
+export const dynamic = 'force-dynamic';
+
 async function getProducts() {
     return prisma.product.findMany({
         orderBy: { created_at: 'desc' },
