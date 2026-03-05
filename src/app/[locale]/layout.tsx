@@ -1,6 +1,6 @@
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
-import { redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/navigation';
 import { Metadata } from 'next';
 import prisma from '@/lib/db';
@@ -57,10 +57,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     const { locale } = await params;
 
     if (!routing.locales.includes(locale as 'es' | 'en')) {
-        // El middleware de next-intl no reescribió la URL (bug en Next.js 16 + Plesk).
-        // El param [locale] contiene en realidad el primer segmento de la ruta (ej: "packs-ahorro").
-        // Redirigimos a /es/packs-ahorro para que el routing funcione correctamente.
-        redirect(`/${routing.defaultLocale}/${locale}`);
+        notFound();
     }
 
     setRequestLocale(locale);

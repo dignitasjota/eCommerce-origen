@@ -122,91 +122,68 @@ export default async function DynamicPageView({ params }: Props) {
     const resolvedParams = await params;
     const { dynamicSlug } = resolvedParams;
     const locale = await getLocale();
-    const debug: Record<string, unknown> = { dynamicSlug, locale, timestamp: new Date().toISOString() };
 
-    try {
-        // 1. Renderizado Legal (solo 1 segmento)
-        debug.step = 'legal-check';
-        if (dynamicSlug.length === 1) {
-            const legalPage = await prisma.legalPage.findUnique({
-                where: { slug: dynamicSlug[0] },
-                include: { legal_page_translations: true }
-            });
-            debug.legalFound = !!legalPage;
-            if (legalPage && legalPage.legal_page_translations.length > 0) {
-                const translation = legalPage.legal_page_translations.find(t => t.locale === locale)
-                    || legalPage.legal_page_translations.find(t => t.locale === 'es')
-                    || legalPage.legal_page_translations[0];
-
-                return (
-                    <div className="container py-12 md:py-16">
-                        <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
-                            <header className="mb-10 border-b border-[var(--color-border)] pb-6">
-                                <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{translation.title}</h1>
-                                <p className="text-sm text-[var(--color-text-secondary)]">
-                                    Última actualización: {new Date(legalPage.updated_at).toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', {
-                                        year: 'numeric', month: 'long', day: 'numeric'
-                                    })}
-                                </p>
-                            </header>
-                            <div
-                                className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]"
-                                dangerouslySetInnerHTML={{ __html: translation.content }}
-                            />
-                        </div>
-                    </div>
-                );
-            }
-        }
-
-        // 2. Renderizado Page Normal
-        debug.step = 'page-check';
-        const page = await findPageBySlug(dynamicSlug);
-        debug.pageFound = !!page;
-        debug.pageId = page?.id;
-        debug.pageSlug = page?.slug;
-        debug.translationsCount = page?.page_translations?.length;
-
-        if (page) {
-            const translation = page.page_translations.find(t => t.locale === locale)
-                || page.page_translations.find(t => t.locale === 'es')
-                || page.page_translations[0];
-
-            const { title, content } = translation;
-            const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
+    // 1. Renderizado Legal (solo 1 segmento)
+    if (dynamicSlug.length === 1) {
+        const legalPage = await prisma.legalPage.findUnique({
+            where: { slug: dynamicSlug[0] },
+            include: { legal_page_translations: true }
+        });
+        if (legalPage && legalPage.legal_page_translations.length > 0) {
+            const translation = legalPage.legal_page_translations.find(t => t.locale === locale)
+                || legalPage.legal_page_translations.find(t => t.locale === 'es')
+                || legalPage.legal_page_translations[0];
 
             return (
                 <div className="container py-12 md:py-16">
                     <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
                         <header className="mb-10 border-b border-[var(--color-border)] pb-6">
-                            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
+                            <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{translation.title}</h1>
+                            <p className="text-sm text-[var(--color-text-secondary)]">
+                                Última actualización: {new Date(legalPage.updated_at).toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', {
+                                    year: 'numeric', month: 'long', day: 'numeric'
+                                })}
+                            </p>
                         </header>
-                        <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
-                            {contentParts.map((part: string, index: number) => {
-                                if (part.startsWith('{{category_id:')) {
-                                    const slug = part.replace('{{category_id:', '').replace('}}', '');
-                                    return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
-                                }
-                                return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
-                            })}
-                        </div>
+                        <div
+                            className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]"
+                            dangerouslySetInnerHTML={{ __html: translation.content }}
+                        />
                     </div>
                 </div>
             );
         }
-
-        debug.step = 'not-found';
-    } catch (error: unknown) {
-        debug.step = 'error';
-        debug.error = error instanceof Error ? error.message : String(error);
     }
 
-    // DIAGNÓSTICO TEMPORAL — muestra qué ve el catch-all (borrar cuando funcione)
-    return (
-        <div style={{ padding: '40px', background: '#1a1a2e', color: '#0f0', fontFamily: 'monospace', minHeight: '50vh' }}>
-            <h2 style={{ color: '#ff6' }}>CATCH-ALL DIAGNOSTIC</h2>
-            <p style={{ color: '#aaa' }}>Si ves esto, el catch-all SÍ se ejecuta. El problema está en los datos de abajo:</p>
-            <pre style={{ whiteSpace: 'pre-wrap', marginTop: '1rem' }}>{JSON.stringify(debug, null, 2)}</pre>
-        </div>
-    );
+    // 2. Renderizado Page Normal
+    const page = await findPageBySlug(dynamicSlug);
+    if (page) {
+        const translation = page.page_translations.find(t => t.locale === locale)
+            || page.page_translations.find(t => t.locale === 'es')
+            || page.page_translations[0];
+
+        const { title, content } = translation;
+        const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
+
+        return (
+            <div className="container py-12 md:py-16">
+                <div className="max-w-4xl mx-auto bg-[var(--color-surface)] p-8 md:p-12 rounded-2xl shadow-sm border border-[var(--color-border)]">
+                    <header className="mb-10 border-b border-[var(--color-border)] pb-6">
+                        <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
+                    </header>
+                    <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
+                        {contentParts.map((part: string, index: number) => {
+                            if (part.startsWith('{{category_id:')) {
+                                const slug = part.replace('{{category_id:', '').replace('}}', '');
+                                return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
+                            }
+                            return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                        })}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    notFound();
 }

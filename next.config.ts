@@ -12,6 +12,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Fallback: si el middleware no reescribe la URL para añadir el locale,
+        // este rewrite a nivel de config lo hace. Necesario para Plesk/Passenger
+        // donde NextResponse.rewrite() del middleware no funciona correctamente.
+        {
+          source: '/:path((?!es|en|api|_next|_vercel|uploads|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)',
+          destination: '/es/:path',
+        },
+      ],
+    };
+  },
 };
 
 export default withNextIntl(nextConfig);
