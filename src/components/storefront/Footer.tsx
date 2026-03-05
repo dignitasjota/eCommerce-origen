@@ -19,7 +19,7 @@ export default async function Footer() {
             }
         }),
         prisma.siteSetting.findMany({
-            where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled'] } }
+            where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_contact_enabled'] } }
         })
     ]);
 
@@ -31,6 +31,7 @@ export default async function Footer() {
     const features = {
         blog: isFeatureEnabled('feature_blog_enabled'),
         wishlist: isFeatureEnabled('feature_wishlist_enabled'),
+        contact: isFeatureEnabled('feature_contact_enabled')
     };
 
     return (
@@ -80,6 +81,7 @@ export default async function Footer() {
                         <li><Link href="/account">{tNav('account')}</Link></li>
                         <li><Link href="/account/orders">{tNav('orders')}</Link></li>
                         {features.wishlist && <li><Link href="/account/wishlist">{tNav('wishlist')}</Link></li>}
+                        {features.contact && <li><Link href="/contact">Contacto</Link></li>}
                     </ul>
                 </div>
 

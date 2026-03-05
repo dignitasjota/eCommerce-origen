@@ -33,7 +33,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         const formData = new FormData(e.currentTarget);
 
         // Handle unchecked checkboxes (FormData doesn't include them)
-        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled'];
+        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled', 'feature_contact_enabled'];
         checkBoxes.forEach(box => {
             if (!formData.has(box)) {
                 formData.append(box, 'false');
@@ -248,6 +248,21 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                     </div>
                                     <h4 className="font-semibold text-[var(--color-text)] mb-1">Reseñas de Productos</h4>
                                     <p className="text-sm text-[var(--color-text-secondary)]">Habilita a los compradores valorar y comentar en los artículos.</p>
+                                </div>
+
+                                {/* Feature: Contact */}
+                                <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-900/30 dark:text-emerald-400">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" name="feature_contact_enabled" defaultChecked={settingsMap['feature_contact_enabled'] !== 'false'} className="sr-only peer" />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                        </label>
+                                    </div>
+                                    <h4 className="font-semibold text-[var(--color-text)] mb-1">Formulario de Contacto</h4>
+                                    <p className="text-sm text-[var(--color-text-secondary)]">Página de contacto (/contact) para que los clientes puedan escribirte consultas y dudas.</p>
                                 </div>
                             </div>
                         </div>

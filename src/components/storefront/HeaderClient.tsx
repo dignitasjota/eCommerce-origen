@@ -26,6 +26,7 @@ interface HeaderClientProps {
     features?: {
         blog: boolean;
         wishlist: boolean;
+        contact?: boolean;
     };
     menuItems: MenuItem[];
 }
@@ -86,9 +87,10 @@ export default function HeaderClient({ categories, features, menuItems }: Header
                         }
 
                         if (item.type === 'link' && item.url) {
-                            // Si es blog pero el blog está desactivado, podríamos ocultarlo
-                            // pero lo dejamos según haya configurado el admin.
+                            // Hide blog if disabled
                             if (item.url === '/blog' && features?.blog === false) return null;
+                            // Hide contact if disabled
+                            if (item.url === '/contact' && features?.contact === false) return null;
 
                             const isActive = item.url === '/' ? pathname === '/' : pathname.startsWith(item.url);
                             return (
@@ -198,6 +200,7 @@ export default function HeaderClient({ categories, features, menuItems }: Header
 
                             if (item.type === 'link' && item.url) {
                                 if (item.url === '/blog' && features?.blog === false) return null;
+                                if (item.url === '/contact' && features?.contact === false) return null;
                                 return (
                                     <Link key={`mob-link-${item.id}`} href={item.url} className={styles.mobileNavLink}>
                                         {item.label}
