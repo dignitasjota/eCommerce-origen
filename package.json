@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && next build",
+    "build": "rm -rf .next && npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "plesk-build": "npx prisma generate && next build",
+    "plesk-build": "rm -rf .next && npx prisma generate && next build",
     "postinstall": "npx prisma generate"
   },
   "dependencies": {
