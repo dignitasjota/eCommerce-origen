@@ -465,6 +465,63 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                         </div>
                     )}
                 </div>
+
+                {/* --- TAB EMAIL & NOTIFICACIONES --- */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab font-semibold"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Notificaciones (SMTP)  "
+                    checked={activeTab === 'email'}
+                    onChange={() => setActiveTab('email')}
+                />
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                    {activeTab === 'email' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Servidor de Correo & Contacto</h3>
+                                <p className="text-sm text-gray-500 mt-1">Configura las notificaciones de la tienda usando tu propio SMTP, y hacia dónde llegan los mensajes de contacto.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Email de Recepción de Contactos</label>
+                                    <input type="email" name="contact_email_receiver" className="admin-form-input" defaultValue={settingsMap['contact_email_receiver'] || 'admin@tutienda.com'} placeholder="admin@tutienda.com" />
+                                    <p className="text-xs text-gray-500 mt-1">A esta dirección llegarán los mensajes que te envíen usando el formulario de Contacto.</p>
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Remitente (Email FROM)</label>
+                                    <input name="smtp_from" className="admin-form-input" defaultValue={settingsMap['smtp_from'] || 'no-reply@tutienda.com'} />
+                                    <p className="text-xs text-gray-500 mt-1">Aparece como "De:" en los emails.</p>
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Host SMTP</label>
+                                    <input name="smtp_host" className="admin-form-input" defaultValue={settingsMap['smtp_host'] || ''} placeholder="mail.tutienda.com o smtp.gmail.com" />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Puerto SMTP</label>
+                                    <input name="smtp_port" type="number" className="admin-form-input" defaultValue={settingsMap['smtp_port'] || '465'} placeholder="465, 587 o 25" />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Usuario SMTP</label>
+                                    <input name="smtp_user" className="admin-form-input" defaultValue={settingsMap['smtp_user'] || ''} />
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Contraseña SMTP</label>
+                                    <input type="password" name="smtp_pass" className="admin-form-input" defaultValue={settingsMap['smtp_pass'] || ''} />
+                                    <p className="text-xs text-gray-500 mt-1">Tu clave de la cuenta de correo. Recomendado cuenta dedicada.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
             </div>
 
             {/* Botón Flotante / Fijo abajo para guardar sea cual sea la pestaña */}

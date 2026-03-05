@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { submitContactForm } from './actions';
 
 export default function ContactForm() {
     const [isLoading, setIsLoading] = useState(false);
@@ -16,13 +17,15 @@ export default function ContactForm() {
         const formData = new FormData(e.currentTarget);
 
         try {
-            // Simulator: Wait 1 second to mock sending real email/db save
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // You can replace this later with a Real Server action
-            console.log('Contacto enviado:', Object.fromEntries(formData));
+            const result = await submitContactForm(formData);
 
-            setIsSuccess(true);
-            (e.target as HTMLFormElement).reset();
+            if (result.success) {
+                setIsSuccess(true);
+                (e.target as HTMLFormElement).reset();
+            } else {
+                console.error('Error in server sending message:', result.error);
+                setIsError(true);
+            }
         } catch (error) {
             console.error('Error sending message', error);
             setIsError(true);
