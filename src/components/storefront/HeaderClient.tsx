@@ -18,6 +18,7 @@ interface MenuItem {
     label: string;
     type: 'link' | 'categories';
     url?: string;
+    showAllCategories?: boolean;
 }
 
 interface HeaderClientProps {
@@ -61,15 +62,27 @@ export default function HeaderClient({ categories, features, menuItems }: Header
                 <nav className={styles.nav}>
                     {menuItems.map(item => {
                         if (item.type === 'categories') {
-                            return categories.map(cat => (
-                                <Link
-                                    key={`cat-${cat.id}`}
-                                    href={`/category/${cat.slug}`}
-                                    className={`${styles.navLink} ${pathname.startsWith(`/category/${cat.slug}`) ? styles.active : ''}`}
-                                >
-                                    {cat.name}
-                                </Link>
-                            ));
+                            if (item.showAllCategories) {
+                                return categories.map(cat => (
+                                    <Link
+                                        key={`cat-${cat.id}`}
+                                        href={`/category/${cat.slug}`}
+                                        className={`${styles.navLink} ${pathname.startsWith(`/category/${cat.slug}`) ? styles.active : ''}`}
+                                    >
+                                        {cat.name}
+                                    </Link>
+                                ));
+                            } else {
+                                return (
+                                    <Link
+                                        key={item.id}
+                                        href="/categories"
+                                        className={`${styles.navLink} ${pathname.startsWith('/categories') ? styles.active : ''}`}
+                                    >
+                                        {item.label || t('categories')}
+                                    </Link>
+                                );
+                            }
                         }
 
                         if (item.type === 'link' && item.url) {
@@ -168,11 +181,19 @@ export default function HeaderClient({ categories, features, menuItems }: Header
                     <nav className={styles.mobileNav}>
                         {menuItems.map(item => {
                             if (item.type === 'categories') {
-                                return categories.map(cat => (
-                                    <Link key={`mob-cat-${cat.id}`} href={`/category/${cat.slug}`} className={styles.mobileNavLink}>
-                                        {cat.name}
-                                    </Link>
-                                ));
+                                if (item.showAllCategories) {
+                                    return categories.map(cat => (
+                                        <Link key={`mob-cat-${cat.id}`} href={`/category/${cat.slug}`} className={styles.mobileNavLink}>
+                                            {cat.name}
+                                        </Link>
+                                    ));
+                                } else {
+                                    return (
+                                        <Link key={`mob-link-${item.id}`} href="/categories" className={styles.mobileNavLink}>
+                                            {item.label || t('categories')}
+                                        </Link>
+                                    );
+                                }
                             }
 
                             if (item.type === 'link' && item.url) {

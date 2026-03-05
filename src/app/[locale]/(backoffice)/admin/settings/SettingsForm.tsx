@@ -63,6 +63,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
         label: string;
         type: 'link' | 'categories';
         url?: string;
+        showAllCategories?: boolean;
     }
 
     const defaultMenu: MenuItem[] = [
@@ -81,14 +82,14 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     });
 
     const addMenuItem = (type: 'link' | 'categories') => {
-        setMenuItems(prev => [...prev, { id: Date.now().toString(), label: type === 'categories' ? 'Tienda' : 'Nuevo Enlace', type, url: type === 'link' ? '/' : undefined }]);
+        setMenuItems(prev => [...prev, { id: Date.now().toString(), label: type === 'categories' ? 'Tienda' : 'Nuevo Enlace', type, url: type === 'link' ? '/' : undefined, showAllCategories: false }]);
     };
 
     const removeMenuItem = (id: string) => {
         setMenuItems(prev => prev.filter(item => item.id !== id));
     };
 
-    const updateMenuItem = (id: string, field: keyof MenuItem, value: string) => {
+    const updateMenuItem = (id: string, field: keyof MenuItem, value: any) => {
         setMenuItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
     };
 
@@ -313,10 +314,22 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                                     />
                                                 </div>
                                             ) : (
-                                                <div className="admin-form-group mb-0 flex items-center pt-5">
-                                                    <div className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-lg text-sm font-medium">
+                                                <div className="admin-form-group mb-0 flex flex-col pt-3 gap-3">
+                                                    <div className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
                                                         [Módulo Dinámico: Categorías de Tienda]
                                                     </div>
+                                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={item.showAllCategories || false}
+                                                            onChange={(e) => updateMenuItem(item.id, 'showAllCategories', e.target.checked)}
+                                                            className="w-4 h-4 text-[var(--color-primary)] rounded"
+                                                        />
+                                                        <span>Desplegar todas las categorías como enlaces separados</span>
+                                                    </label>
+                                                    <p className="text-xs text-gray-500 italic mt-0">
+                                                        Si está desactivado, se mostrará un único enlace "{item.label}" que llevará a la página principal de categorías.
+                                                    </p>
                                                 </div>
                                             )}
                                         </div>
