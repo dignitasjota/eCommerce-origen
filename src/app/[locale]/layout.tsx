@@ -57,20 +57,7 @@ export default async function LocaleLayout({ children, params }: Props) {
     const { locale } = await params;
 
     if (!routing.locales.includes(locale as 'es' | 'en')) {
-        // DIAGNÓSTICO TEMPORAL — ver qué locale recibe el layout
-        return (
-            <html lang="es">
-                <body style={{ background: '#ff6600', color: '#fff', padding: '40px', fontFamily: 'monospace' }}>
-                    <h1>LAYOUT DIAGNOSTIC</h1>
-                    <p><b>locale recibido:</b> "{locale}"</p>
-                    <p><b>routing.locales:</b> {JSON.stringify(routing.locales)}</p>
-                    <p><b>URL completa:</b> Revisa la barra de dirección del navegador</p>
-                    <p><b>typeof locale:</b> {typeof locale}</p>
-                    <p><b>locale.length:</b> {locale.length}</p>
-                    <p><b>locale charCodes:</b> {Array.from(locale).map(c => c.charCodeAt(0)).join(', ')}</p>
-                </body>
-            </html>
-        );
+        notFound();
     }
 
     setRequestLocale(locale);

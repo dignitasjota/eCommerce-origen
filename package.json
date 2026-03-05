@@ -7,6 +7,7 @@
     "build": "npx prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
+    "plesk-clean": "git checkout -- . && git clean -fd src/ && echo 'Limpieza completada'",
     "plesk-build": "npx prisma generate && next build",
     "postinstall": "npx prisma generate"
   },

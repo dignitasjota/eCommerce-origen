@@ -123,10 +123,6 @@ export default async function DynamicPageView({ params }: Props) {
     const { dynamicSlug } = resolvedParams;
     const locale = await getLocale();
 
-    // DIAGNÓSTICO TEMPORAL
-    const page_diag = await findPageBySlug(dynamicSlug);
-    console.log('CATCH-ALL DIAGNOSTIC', { dynamicSlug, locale, pageFound: !!page_diag, pageSlug: page_diag?.slug });
-
     // 1. Renderizado Legal (solo 1 segmento)
     if (dynamicSlug.length === 1) {
         const legalPage = await prisma.legalPage.findUnique({
