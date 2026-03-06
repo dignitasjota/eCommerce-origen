@@ -83,24 +83,15 @@
     color: var(--color-text-primary) !important;
 }
 
-:root[data-admin-theme="dark"] .tabs-lift>.tab {
+:root[data-admin-theme="dark"] .tabs-bordered>.tab {
     color: var(--color-text-secondary);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
-:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked),
-:root[data-admin-theme="dark"] .tabs-lift>.tab.tab-active {
-    background-color: var(--color-surface) !important;
-    border-color: var(--color-border) !important;
-    border-bottom-color: transparent !important;
+:root[data-admin-theme="dark"] .tabs-bordered>.tab:is(input:checked),
+:root[data-admin-theme="dark"] .tabs-bordered>.tab.tab-active {
     color: var(--color-text-primary) !important;
-    --tab-bg: var(--color-surface);
-    --tab-border-color: var(--color-border);
-}
-
-:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked):before,
-:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked):after {
-    --fallback-b1: #1e2128;
-    /* --color-surface fallback */
+    border-color: var(--color-primary) !important;
 }
 
 

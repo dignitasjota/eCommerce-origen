@@ -124,7 +124,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                 </div>
             )}
 
-            <div role="tablist" className="tabs tabs-lift tabs-lg w-full mb-8">
+            <div role="tablist" className="tabs tabs-bordered tabs-lg w-full mb-8">
                 {/* --- TAB GLOBAL --- */}
                 <input
                     type="radio"
@@ -136,7 +136,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'general' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -196,7 +196,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'modules' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -280,7 +280,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'menu'}
                     onChange={() => setActiveTab('menu')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'menu' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -371,7 +371,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'carousel'}
                     onChange={() => setActiveTab('carousel')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'carousel' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -431,7 +431,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'seo' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -477,7 +477,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'email'}
                     onChange={() => setActiveTab('email')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
                     {activeTab === 'email' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">

@@ -177,7 +177,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
             </div>
 
             <div className="admin-page">
-                <div role="tablist" className="tabs tabs-lift tabs-lg w-full">
+                <div role="tablist" className="tabs tabs-bordered tabs-lg w-full mb-4">
                     {/* --- TAB CLIENTES --- */}
                     <input
                         type="radio"
@@ -192,7 +192,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                             setSearchTerm('');
                         }}
                     />
-                    <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
+                    <div role="tabpanel" className="tab-content admin-table-container">
                         {activeTab === 'customers' && (
                             <>
                                 <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -274,7 +274,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
                             setSearchTerm('');
                         }}
                     />
-                    <div role="tabpanel" className="tab-content admin-table-container" style={{ borderTopLeftRadius: 0, marginTop: '-1px' }}>
+                    <div role="tabpanel" className="tab-content admin-table-container">
                         {activeTab === 'system' && (
                             <>
                                 <div className="admin-table-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
