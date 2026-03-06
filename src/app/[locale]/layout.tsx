@@ -63,8 +63,13 @@ export default async function LocaleLayout({ children, params }: Props) {
     setRequestLocale(locale);
     const messages = await getMessages();
 
+    const themeSetting = await prisma.siteSetting.findUnique({
+        where: { key: 'storefront_theme' }
+    });
+    const theme = themeSetting?.value || 'default';
+
     return (
-        <html lang={locale} data-theme="default">
+        <html lang={locale} data-theme={theme}>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
             </head>

@@ -161,6 +161,18 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 </div>
 
                                 <div className="admin-form-group">
+                                    <label className="admin-form-label">Tema de Diseño Frontend</label>
+                                    <select name="storefront_theme" className="admin-form-input" defaultValue={settingsMap['storefront_theme'] || 'default'}>
+                                        <option value="default">Por Defecto (Navy & Rosa) - Base</option>
+                                        <option value="elegant-dark">Elegante (Oscuro y Dorado)</option>
+                                        <option value="eco-nature">Naturaleza & Eco (Verde y Salmón)</option>
+                                        <option value="vibrant-tech">Neón & Tecnología (Violeta y Cyan)</option>
+                                        <option value="pastel-breeze">Brisa Pastel (Mint y Melocotón)</option>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">El sitio público adaptará la paleta de colores según esta selección para vender distintos estilos.</p>
+                                </div>
+
+                                <div className="admin-form-group">
                                     <label className="admin-form-label">Logotipo del Backoffice / Sitio</label>
                                     {settingsMap['site_logo'] && (
                                         <div className="mb-2 p-2 admin-table-container rounded-md inline-block">
