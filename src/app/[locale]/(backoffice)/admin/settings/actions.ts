@@ -104,7 +104,8 @@ export async function updateSettings(formData: FormData) {
         );
 
         // Revalidate frontend paths so changes take effect immediately
-        revalidatePath('/', 'layout');
+        revalidatePath('/[locale]/admin/settings', 'page');
+        revalidatePath('/[locale]', 'layout');
 
         return { success: true, message: 'Ajustes guardados correctamente.' };
     } catch (error: any) {

@@ -169,12 +169,15 @@ export default function SettingsForm({ initialSettings, customThemes = [] }: Set
                                         <option value="eco-nature">Naturaleza & Eco (Verde y Salmón)</option>
                                         <option value="vibrant-tech">Neón & Tecnología (Violeta y Cyan)</option>
                                         <option value="pastel-breeze">Brisa Pastel (Mint y Melocotón)</option>
-                                        {customThemes.length > 0 && <optgroup label="Temas Personalizados" />}
-                                        {customThemes.map(theme => (
-                                            <option key={theme} value={theme}>
-                                                Personalizado: {theme}
-                                            </option>
-                                        ))}
+                                        {customThemes.length > 0 && (
+                                            <optgroup label="Temas Personalizados">
+                                                {customThemes.map(theme => (
+                                                    <option key={theme} value={theme}>
+                                                        Personalizado: {theme}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        )}
                                     </select>
                                     <p className="text-xs text-gray-500 mt-1">El sitio público adaptará la paleta de colores según esta selección para vender distintos estilos.</p>
                                 </div>
