@@ -13,9 +13,10 @@ interface Setting {
 
 interface SettingsFormProps {
     initialSettings: Setting[];
+    customThemes?: string[];
 }
 
-export default function SettingsForm({ initialSettings }: SettingsFormProps) {
+export default function SettingsForm({ initialSettings, customThemes = [] }: SettingsFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
@@ -168,8 +169,20 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                         <option value="eco-nature">Naturaleza & Eco (Verde y Salmón)</option>
                                         <option value="vibrant-tech">Neón & Tecnología (Violeta y Cyan)</option>
                                         <option value="pastel-breeze">Brisa Pastel (Mint y Melocotón)</option>
+                                        {customThemes.length > 0 && <optgroup label="Temas Personalizados" />}
+                                        {customThemes.map(theme => (
+                                            <option key={theme} value={theme}>
+                                                Personalizado: {theme}
+                                            </option>
+                                        ))}
                                     </select>
                                     <p className="text-xs text-gray-500 mt-1">El sitio público adaptará la paleta de colores según esta selección para vender distintos estilos.</p>
+                                </div>
+
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Subir Nuevo Tema (.css)</label>
+                                    <input type="file" name="theme_file" accept=".css" className="admin-form-input p-2" />
+                                    <p className="text-xs text-gray-500 mt-1">Sube un archivo .css para usarlo en la tienda. Al guardarlo aparecerá en el desplegable de Temas de Diseño.</p>
                                 </div>
 
                                 <div className="admin-form-group">

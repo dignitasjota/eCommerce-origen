@@ -11,30 +11,48 @@ export async function updateSettings(formData: FormData) {
 
         const uploadDir = join(process.cwd(), 'public', 'uploads');
         await mkdir(uploadDir, { recursive: true }).catch(() => { }); // Ensure exists
+        const themesDir = join(process.cwd(), 'public', 'themes');
+        await mkdir(themesDir, { recursive: true }).catch(() => { });
 
         for (const [key, value] of formData.entries()) {
-            if (typeof value === 'string' && !key.startsWith('carousel_images_') && key !== 'home_carousel_images') {
+            if (typeof value === 'string' && !key.startsWith('carousel_images_') && key !== 'home_carousel_images' && key !== 'theme_file') {
                 settingsToUpdate.push({
                     key,
                     value,
                     type: value === 'true' || value === 'false' ? 'boolean' : 'string',
                 });
-            } else if (value instanceof File && value.size > 0 && (key === 'site_logo' || key === 'site_favicon')) {
-                // Extract extension
-                const ext = value.name.split('.').pop() || 'png';
-                const filename = `${key}_${Date.now()}.${ext}`;
-                const filepath = join(uploadDir, filename);
+            } else if (value instanceof File && value.size > 0) {
+                if (key === 'site_logo' || key === 'site_favicon') {
+                    // Extract extension
+                    const ext = value.name.split('.').pop() || 'png';
+                    const filename = `${key}_${Date.now()}.${ext}`;
+                    const filepath = join(uploadDir, filename);
 
-                // Write file to public/uploads
-                const buffer = Buffer.from(await value.arrayBuffer());
-                await writeFile(filepath, buffer);
+                    // Write file to public/uploads
+                    const buffer = Buffer.from(await value.arrayBuffer());
+                    await writeFile(filepath, buffer);
 
-                // Add to database update array
-                settingsToUpdate.push({
-                    key,
-                    value: `/uploads/${filename}`,
-                    type: 'string',
-                });
+                    // Add to database update array
+                    settingsToUpdate.push({
+                        key,
+                        value: `/uploads/${filename}`,
+                        type: 'string',
+                    });
+                } else if (key === 'theme_file') {
+                    // It's a theme file, save it to public/themes
+                    let themeName = value.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+                    if (!themeName.endsWith('.css')) themeName += '.css';
+                    const filepath = join(themesDir, themeName);
+                    const buffer = Buffer.from(await value.arrayBuffer());
+                    await writeFile(filepath, buffer);
+
+                    // Also automatically set this as the active theme
+                    settingsToUpdate.push({
+                        key: 'storefront_theme',
+                        value: themeName.replace('.css', ''),
+                        type: 'string'
+                    });
+                }
             }
         }
 

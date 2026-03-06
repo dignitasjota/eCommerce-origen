@@ -67,11 +67,14 @@ export default async function LocaleLayout({ children, params }: Props) {
         where: { key: 'storefront_theme' }
     });
     const theme = themeSetting?.value || 'default';
+    const internalThemes = ['default', 'elegant-dark', 'eco-nature', 'vibrant-tech', 'pastel-breeze'];
+    const isCustomTheme = !internalThemes.includes(theme);
 
     return (
         <html lang={locale} data-theme={theme}>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
+                {isCustomTheme && <link rel="stylesheet" href={`/themes/${theme}.css`} />}
             </head>
             <body>
                 <NextIntlClientProvider messages={messages}>
