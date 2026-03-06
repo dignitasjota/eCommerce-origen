@@ -29,9 +29,11 @@ interface HeaderClientProps {
         contact?: boolean;
     };
     menuItems: MenuItem[];
+    siteName?: string;
+    siteLogo?: string;
 }
 
-export default function HeaderClient({ categories, features, menuItems }: HeaderClientProps) {
+export default function HeaderClient({ categories, features, menuItems, siteName = 'eShop', siteLogo = '' }: HeaderClientProps) {
     const t = useTranslations('nav');
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
@@ -56,7 +58,11 @@ export default function HeaderClient({ categories, features, menuItems }: Header
             <div className={`container ${styles.headerInner}`}>
                 {/* Logo */}
                 <Link href="/" className={styles.logo}>
-                    <span className={styles.logoText}>eShop</span>
+                    {siteLogo ? (
+                        <img src={siteLogo} alt={siteName} style={{ maxHeight: '40px', objectFit: 'contain' }} />
+                    ) : (
+                        <span className={styles.logoText}>{siteName}</span>
+                    )}
                 </Link>
 
                 {/* Desktop Navigation */}

@@ -19,7 +19,7 @@ export default async function Footer() {
             }
         }),
         prisma.siteSetting.findMany({
-            where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_contact_enabled'] } }
+            where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_contact_enabled', 'site_name', 'site_logo'] } }
         })
     ]);
 
@@ -33,6 +33,8 @@ export default async function Footer() {
         wishlist: isFeatureEnabled('feature_wishlist_enabled'),
         contact: isFeatureEnabled('feature_contact_enabled')
     };
+    const siteName = dbSettings.find(s => s.key === 'site_name')?.value || 'eShop';
+    const siteLogo = dbSettings.find(s => s.key === 'site_logo')?.value || '';
 
     return (
         <footer className={styles.footer}>
@@ -40,7 +42,11 @@ export default async function Footer() {
                 {/* Brand */}
                 <div className={styles.footerSection}>
                     <Link href="/" className={styles.footerLogo}>
-                        <span className={styles.logoText}>eShop</span>
+                        {siteLogo ? (
+                            <img src={siteLogo} alt={siteName} style={{ maxHeight: '40px', objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.9 }} />
+                        ) : (
+                            <span className={styles.logoText}>{siteName}</span>
+                        )}
                     </Link>
                     <p className={styles.footerDescription}>
                         {t('aboutUs')}

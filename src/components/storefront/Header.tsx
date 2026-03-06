@@ -29,7 +29,7 @@ export default async function Header() {
     // Fase 11: Feature Flags
     // Fase 11: Feature Flags
     const settings = await prisma.siteSetting.findMany({
-        where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_contact_enabled', 'main_menu'] } }
+        where: { key: { in: ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_contact_enabled', 'main_menu', 'site_name', 'site_logo'] } }
     });
 
     const isFeatureEnabled = (key: string) => {
@@ -62,7 +62,10 @@ export default async function Header() {
         }
     }
 
+    const siteName = settings.find(s => s.key === 'site_name')?.value || 'eShop';
+    const siteLogo = settings.find(s => s.key === 'site_logo')?.value || '';
+
     return (
-        <HeaderClient categories={categories} features={features} menuItems={mainMenu} />
+        <HeaderClient categories={categories} features={features} menuItems={mainMenu} siteName={siteName} siteLogo={siteLogo} />
     );
 }
