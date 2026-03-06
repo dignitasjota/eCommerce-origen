@@ -37,12 +37,43 @@
     --color-input-border: #334155;
 }
 
+/* ─── Tailwind Overrides for Dark Theme ────────────── */
+:root[data-admin-theme="dark"] .bg-white {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-primary);
+}
+
+:root[data-admin-theme="dark"] .text-black,
+:root[data-admin-theme="dark"] .text-gray-900,
+:root[data-admin-theme="dark"] .text-gray-800,
+:root[data-admin-theme="dark"] .text-gray-700 {
+    color: var(--color-text-primary) !important;
+}
+
+:root[data-admin-theme="dark"] .text-gray-600,
+:root[data-admin-theme="dark"] .text-gray-500 {
+    color: var(--color-text-secondary) !important;
+}
+
+:root[data-admin-theme="dark"] .bg-gray-50,
+:root[data-admin-theme="dark"] .bg-gray-100,
+:root[data-admin-theme="dark"] .bg-gray-200 {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--color-border) !important;
+}
+
+:root[data-admin-theme="dark"] .border-gray-200,
+:root[data-admin-theme="dark"] .border-gray-300 {
+    border-color: var(--color-border) !important;
+}
+
 /* ─── Layout ─────────────────────────────────────── */
 
 .admin-layout {
     display: flex;
     min-height: 100vh;
     background: var(--color-background);
+    color: var(--color-text-primary);
 }
 
 .admin-content {
@@ -74,6 +105,10 @@
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     transition: transform 0.3s ease;
     overflow-y: auto;
+}
+
+:root[data-admin-theme="dark"] .admin-sidebar {
+    background: #000000;
 }
 
 .admin-sidebar-logo {
@@ -812,11 +847,13 @@
         transform: translateY(10px);
     }
 }
+
 /* Fix for DaisyUI tabs padding */
 .tabs .tab {
     padding-left: 2rem !important;
     padding-right: 2rem !important;
 }
+
 .tab[aria-label]::after {
     padding: 0 1rem;
 }
