@@ -67,6 +67,43 @@
     border-color: var(--color-border) !important;
 }
 
+/* ─── DaisyUI Overrides for Dark Theme ────────────── */
+:root[data-admin-theme="dark"] .bg-base-100 {
+    background-color: var(--color-surface) !important;
+    color: var(--color-text-primary) !important;
+}
+
+:root[data-admin-theme="dark"] .border-base-300 {
+    border-color: var(--color-border) !important;
+}
+
+:root[data-admin-theme="dark"] .tab-content {
+    background-color: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text-primary) !important;
+}
+
+:root[data-admin-theme="dark"] .tabs-lift>.tab {
+    color: var(--color-text-secondary);
+}
+
+:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked),
+:root[data-admin-theme="dark"] .tabs-lift>.tab.tab-active {
+    background-color: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    border-bottom-color: transparent !important;
+    color: var(--color-text-primary) !important;
+    --tab-bg: var(--color-surface);
+    --tab-border-color: var(--color-border);
+}
+
+:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked):before,
+:root[data-admin-theme="dark"] .tabs-lift>.tab:is(input:checked):after {
+    --fallback-b1: #1e2128;
+    /* --color-surface fallback */
+}
+
+
 /* ─── Layout ─────────────────────────────────────── */
 
 .admin-layout {
