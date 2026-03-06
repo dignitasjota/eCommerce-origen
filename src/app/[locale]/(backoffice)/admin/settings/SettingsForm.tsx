@@ -117,7 +117,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="w-full">
+        <form onSubmit={handleSubmit} className="w-full max-w-5xl">
             {message && (
                 <div className={`p-4 mb-6 rounded-md ${message.isError ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
                     {message.text}
@@ -136,7 +136,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'general'}
                     onChange={() => setActiveTab('general')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'general' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -196,7 +196,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'modules'}
                     onChange={() => setActiveTab('modules')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'modules' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -280,7 +280,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'menu'}
                     onChange={() => setActiveTab('menu')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'menu' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -371,7 +371,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'carousel'}
                     onChange={() => setActiveTab('carousel')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'carousel' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -431,7 +431,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'seo'}
                     onChange={() => setActiveTab('seo')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'seo' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
@@ -477,7 +477,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                     checked={activeTab === 'email'}
                     onChange={() => setActiveTab('email')}
                 />
-                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm" style={{ maxWidth: '1000px' }}>
+                <div role="tabpanel" className="tab-content bg-base-100 border-base-300 rounded-box p-6 shadow-sm">
                     {activeTab === 'email' && (
                         <div className="space-y-4 animate-fadeIn">
                             <div className="border-b pb-2 mb-4">
