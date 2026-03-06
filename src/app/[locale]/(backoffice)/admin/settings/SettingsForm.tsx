@@ -163,7 +163,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">Logotipo del Backoffice / Sitio</label>
                                     {settingsMap['site_logo'] && (
-                                        <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                        <div className="mb-2 p-2 admin-table-container rounded-md inline-block">
                                             <img src={settingsMap['site_logo']} alt="Logo" style={{ maxHeight: '40px', objectFit: 'contain' }} />
                                         </div>
                                     )}
@@ -173,7 +173,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">Favicon (Icono de pestaña)</label>
                                     {settingsMap['site_favicon'] && (
-                                        <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
+                                        <div className="mb-2 p-2 admin-table-container rounded-md inline-block">
                                             <img src={settingsMap['site_favicon']} alt="Favicon" style={{ maxHeight: '32px', objectFit: 'contain' }} />
                                         </div>
                                     )}
@@ -206,7 +206,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Feature: Blog */}
-                                <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex flex-col p-5 admin-table-container !rounded-xl !border-[var(--color-border)] hover:shadow-md transition-shadow relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg dark:bg-indigo-900/30 dark:text-indigo-400">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
@@ -221,7 +221,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 </div>
 
                                 {/* Feature: Wishlist */}
-                                <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex flex-col p-5 admin-table-container !rounded-xl !border-[var(--color-border)] hover:shadow-md transition-shadow relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="p-2 bg-rose-50 text-rose-600 rounded-lg dark:bg-rose-900/30 dark:text-rose-400">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
@@ -236,7 +236,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 </div>
 
                                 {/* Feature: Reviews */}
-                                <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex flex-col p-5 admin-table-container !rounded-xl !border-[var(--color-border)] hover:shadow-md transition-shadow relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="p-2 bg-amber-50 text-amber-600 rounded-lg dark:bg-amber-900/30 dark:text-amber-400">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -251,7 +251,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 </div>
 
                                 {/* Feature: Contact */}
-                                <div className="flex flex-col p-5 border rounded-xl bg-[var(--color-surface)] shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex flex-col p-5 admin-table-container !rounded-xl !border-[var(--color-border)] hover:shadow-md transition-shadow relative overflow-hidden">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg dark:bg-emerald-900/30 dark:text-emerald-400">
                                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
@@ -301,13 +301,13 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
 
                             <div className="space-y-3">
                                 {menuItems.map((item, index) => (
-                                    <div key={item.id} className="flex gap-4 items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
+                                    <div key={item.id} className="flex gap-4 items-center admin-table-container !p-5 !overflow-visible !rounded-xl !mb-2 relative w-full">
                                         <div className="flex flex-col gap-1">
                                             <button type="button" onClick={() => moveMenuItem(index, 'up')} disabled={index === 0} className="p-1 text-gray-400 hover:text-[var(--color-primary)] disabled:opacity-30">▲</button>
                                             <button type="button" onClick={() => moveMenuItem(index, 'down')} disabled={index === menuItems.length - 1} className="p-1 text-gray-400 hover:text-[var(--color-primary)] disabled:opacity-30">▼</button>
                                         </div>
 
-                                        <div className="flex-1 grid grid-cols-2 gap-4">
+                                        <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6">
                                             <div className="admin-form-group mb-0">
                                                 <label className="text-xs font-semibold text-gray-500 block mb-1">Etiqueta</label>
                                                 <input
@@ -333,7 +333,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                                     <div className="bg-[var(--color-primary)]/10 text-[var(--color-primary)] px-3 py-1.5 rounded-lg text-sm font-medium w-fit">
                                                         [Módulo Dinámico: Categorías de Tienda]
                                                     </div>
-                                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-gray-700">
+                                                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-[var(--color-text-primary)]">
                                                         <input
                                                             type="checkbox"
                                                             checked={item.showAllCategories || false}
@@ -399,7 +399,7 @@ export default function SettingsForm({ initialSettings }: SettingsFormProps) {
                                 ) : (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                                         {carouselImages.map((src, idx) => (
-                                            <div key={idx} className="relative aspect-video bg-gray-100 rounded-md overflow-hidden border">
+                                            <div key={idx} className="relative aspect-video admin-table-container rounded-md overflow-hidden">
                                                 <img src={src} alt="Carrusel" className="w-full h-full object-cover" />
                                                 <button
                                                     type="button"
