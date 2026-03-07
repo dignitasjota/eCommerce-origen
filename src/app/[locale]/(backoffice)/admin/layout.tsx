@@ -1,5 +1,13 @@
 import AdminLayoutClient from '@/components/backoffice/AdminLayoutClient';
 import prisma from '@/lib/db';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: { template: '%s | Backoffice', default: 'Backoffice' },
+    icons: {
+        icon: '/favicon.ico', // Force default favicon for backoffice
+    }
+};
 
 export default async function AdminLayout({
     children,
