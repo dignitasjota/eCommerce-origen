@@ -41,3 +41,25 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# scratch / outputs sueltos en raíz (rompen el build de Plesk)
+/test_*.ts
+/test_*.tsx
+/test_*.js
+/test_*.mjs
+/check-*.mjs
+/create-*.mjs
+/fix_*.js
+/fix_*.py
+/query_*.mjs
+/seed_*.js
+/curl_output.*
+/dev_output.*
+/build_output.*
+/build.log
+/*.log
+
+# Playwright
+/playwright-report
+/test-results
+/playwright/.cache
