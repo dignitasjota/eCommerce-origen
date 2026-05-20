@@ -4,6 +4,9 @@ import createNextIntlPlugin from 'next-intl/plugin';
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  // Salida standalone: la build incluye sólo lo necesario para `node server.js`,
+  // sin node_modules completo. Reduce la imagen Docker de ~1.2GB a ~250MB.
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
