@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from '@/i18n/navigation';
+import type { AdminUser } from '@/types/admin';
 import { createUser, updateUser, deleteUser } from './actions';
 
-export default function UsersManager({ initialUsers }: { initialUsers: any[] }) {
+export default function UsersManager({ initialUsers }: { initialUsers: AdminUser[] }) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'customers' | 'system'>('customers');
     const [users, setUsers] = useState(initialUsers);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingUser, setEditingUser] = useState<any>(null);
+    const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
 
@@ -50,7 +53,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
     const roleLabels: Record<string, string> = { ADMIN: 'Administrador', ORDER_MANAGER: 'Gestor (Pedidos)', CUSTOMER: 'Cliente normal' };
     const roleColors: Record<string, string> = { ADMIN: 'purple', ORDER_MANAGER: 'blue', CUSTOMER: '' };
 
-    const openModal = (user: any = null) => {
+    const openModal = (user: AdminUser | null = null) => {
         setEditingUser(user);
         if (user) {
             setName(user.name || '');
@@ -137,7 +140,8 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
             } else {
                 await createUser(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al guardar el usuario');
@@ -155,7 +159,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: any[] }) 
         setIsLoading(true);
         try {
             await deleteUser(itemToDelete.id);
-            window.location.reload();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');

@@ -1,5 +1,7 @@
+import { cache } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
@@ -7,20 +9,22 @@ import ProductGallery from '@/components/storefront/ProductGallery';
 import AddToCartForm from '@/components/storefront/AddToCartForm';
 import WishlistButton from '@/components/storefront/WishlistButton';
 import ReviewForm from '@/components/storefront/ReviewForm';
+import { sanitizeHtml } from '@/lib/sanitize';
+import { pushRecentSlug } from '@/lib/recently-viewed';
+import RecentlyViewed from '@/components/storefront/RecentlyViewed';
 
 type Props = {
     params: Promise<{ locale: string; slug: string }>;
 };
 
-export default async function ProductPage({ params }: Props) {
-    const { locale, slug } = await params;
-    setRequestLocale(locale);
-    const t = await getTranslations('product');
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-    // Fetch the product with all its details including approved reviews
-    const product = await prisma.product.findUnique({
+/**
+ * Carga el producto con todos los joins necesarios. Está envuelta en `cache()`
+ * de React para que `generateMetadata` y `ProductPage` compartan el mismo
+ * resultado dentro de la misma request HTTP — evita un segundo viaje a DB con
+ * idénticos parámetros.
+ */
+const getProduct = cache(async (slug: string, locale: string) => {
+    return prisma.product.findUnique({
         where: { slug },
         include: {
             product_translations: { where: { locale } },
@@ -66,52 +70,60 @@ export default async function ProductPage({ params }: Props) {
             }
         }
     });
+});
+
+export default async function ProductPage({ params }: Props) {
+    const { locale, slug } = await params;
+    setRequestLocale(locale);
+    const t = await getTranslations('product');
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    // Carga producto + sesión en paralelo. `getProduct` está cacheado por React
+    // a nivel de request, así que `generateMetadata` reutiliza el mismo fetch.
+    const [product, session] = await Promise.all([
+        getProduct(slug, locale),
+        auth()
+    ]);
 
     if (!product || !product.is_active) {
         notFound();
     }
 
-    const session = await auth();
+    // Registrar la visita en la cookie "Productos vistos recientemente".
+    // No bloquea el render — si la API de cookies es read-only (build-time
+    // o edge), el helper falla en silencio.
+    await pushRecentSlug(product.slug);
+
+    // Si hay sesión, las tres consultas dependientes del usuario son
+    // independientes entre sí: las paralelizamos para ahorrar 2 round-trips.
     let isFavorited = false;
     let canReview = false;
     let hasReviewed = false;
 
     if (session?.user?.id) {
-        // Check wishlist
-        const wishlistItem = await prisma.wishlistItem.findUnique({
-            where: {
-                user_id_product_id: {
-                    user_id: session.user.id,
-                    product_id: product.id
-                }
-            }
-        });
-        isFavorited = !!wishlistItem;
-
-        // Check verification for Review (user purchased this specific product)
-        const userHasPurchased = await prisma.order.findFirst({
-            where: {
-                user_id: session.user.id,
-                order_items: { some: { product_id: product.id } }
-            }
-        });
-
-        if (userHasPurchased) {
-            // Check if user already reviewed
-            const userReview = await prisma.review.findUnique({
+        const userId = session.user.id;
+        const [wishlistItem, userHasPurchased, userReview] = await Promise.all([
+            prisma.wishlistItem.findUnique({
+                where: { user_id_product_id: { user_id: userId, product_id: product.id } }
+            }),
+            prisma.order.findFirst({
                 where: {
-                    user_id_product_id: {
-                        user_id: session.user.id,
-                        product_id: product.id
-                    }
-                }
-            });
+                    user_id: userId,
+                    order_items: { some: { product_id: product.id } }
+                },
+                select: { id: true }
+            }),
+            prisma.review.findUnique({
+                where: { user_id_product_id: { user_id: userId, product_id: product.id } },
+                select: { id: true }
+            })
+        ]);
 
-            if (userReview) {
-                hasReviewed = true;
-            } else {
-                canReview = true;
-            }
+        isFavorited = !!wishlistItem;
+        if (userHasPurchased) {
+            hasReviewed = !!userReview;
+            canReview = !userReview;
         }
     }
 
@@ -167,7 +179,7 @@ export default async function ProductPage({ params }: Props) {
         return (
             <div style={{ display: 'flex', gap: '0.1rem' }}>
                 {[1, 2, 3, 4, 5].map(star => (
-                    <svg key={star} width="16" height="16" viewBox="0 0 24 24" fill={rating >= star ? '#FFD700' : 'none'} stroke={rating >= star ? '#FFD700' : 'var(--color-text-tertiary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg aria-hidden="true" focusable="false" key={star} width="16" height="16" viewBox="0 0 24 24" fill={rating >= star ? '#FFD700' : 'none'} stroke={rating >= star ? '#FFD700' : 'var(--color-text-tertiary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                     </svg>
                 ))}
@@ -243,7 +255,7 @@ export default async function ProductPage({ params }: Props) {
                         </h3>
                         <div
                             style={{ lineHeight: '1.6', color: 'var(--color-text-secondary)' }}
-                            dangerouslySetInnerHTML={{ __html: description }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
                         />
                     </div>
 
@@ -288,7 +300,7 @@ export default async function ProductPage({ params }: Props) {
                                             </p>
                                         )}
                                         <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--color-success)', fontWeight: '600' }}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                                            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
                                             Compra verificada
                                         </div>
                                     </div>
@@ -315,7 +327,7 @@ export default async function ProductPage({ params }: Props) {
                         ) : (
                             <div style={{ padding: '2rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
                                 <div style={{ display: 'inline-block', padding: '1rem', backgroundColor: 'var(--color-background-soft)', borderRadius: '50%', marginBottom: '1rem' }}>
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                                    <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                                 </div>
                                 <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Solo Compradores</h3>
                                 <p style={{ color: 'var(--color-text-secondary)' }}>Para garantizar la autenticidad, solo los clientes que han adquirido este artículo pueden publicar reseñas.</p>
@@ -342,7 +354,13 @@ export default async function ProductPage({ params }: Props) {
                                     >
                                         <div style={{ aspectRatio: '1/1', backgroundColor: 'var(--color-background-soft)', position: 'relative' }}>
                                             {img ? (
-                                                <img src={img} alt={tTranslation?.name || relProd.slug} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <Image
+                                                    src={img}
+                                                    alt={tTranslation?.name || relProd.slug}
+                                                    fill
+                                                    sizes="(max-width: 768px) 50vw, 280px"
+                                                    style={{ objectFit: 'cover' }}
+                                                />
                                             ) : (
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>📷</div>
                                             )}
@@ -372,6 +390,52 @@ export default async function ProductPage({ params }: Props) {
                     </div>
                 )}
             </div>
+
+            {/* Vistos recientemente, excluyendo el producto actual. */}
+            <RecentlyViewed locale={locale} excludeSlug={product.slug} />
+
+            {/* JSON-LD: Breadcrumb */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                        "@context": "https://schema.org",
+                        "@type": "BreadcrumbList",
+                        itemListElement: [
+                            {
+                                "@type": "ListItem",
+                                position: 1,
+                                name: "Inicio",
+                                item: locale === 'es' ? `${appUrl}/` : `${appUrl}/${locale}/`
+                            },
+                            {
+                                "@type": "ListItem",
+                                position: 2,
+                                name: "Productos",
+                                item: locale === 'es' ? `${appUrl}/products` : `${appUrl}/${locale}/products`
+                            },
+                            ...(primaryCategory
+                                ? [{
+                                      "@type": "ListItem",
+                                      position: 3,
+                                      name: catName,
+                                      item: locale === 'es'
+                                          ? `${appUrl}/category/${primaryCategory.slug}`
+                                          : `${appUrl}/${locale}/category/${primaryCategory.slug}`
+                                  }]
+                                : []),
+                            {
+                                "@type": "ListItem",
+                                position: primaryCategory ? 4 : 3,
+                                name,
+                                item: locale === 'es'
+                                    ? `${appUrl}/product/${product.slug}`
+                                    : `${appUrl}/${locale}/product/${product.slug}`
+                            }
+                        ]
+                    })
+                }}
+            />
 
             {/* JSON-LD Schema de Producto */}
             <script
@@ -410,22 +474,10 @@ export default async function ProductPage({ params }: Props) {
 export async function generateMetadata({ params }: Props) {
     const { locale, slug } = await params;
 
-    // Traemos el producto y la configuración global de SEO
+    // `getProduct` está cacheado por React: si la página ya disparó la query,
+    // aquí no hay segundo round-trip a DB.
     const [product, settingsList] = await Promise.all([
-        prisma.product.findUnique({
-            where: { slug },
-            include: {
-                product_translations: { where: { locale } },
-                product_categories: {
-                    include: {
-                        categories: {
-                            include: { category_translations: { where: { locale } } }
-                        }
-                    }
-                },
-                product_images: { take: 1, orderBy: { sort_order: 'asc' } }
-            }
-        }),
+        getProduct(slug, locale),
         prisma.siteSetting.findMany({
             where: { key: { in: ['site_name', 'seo_twitter_handle'] } }
         })
@@ -444,9 +496,9 @@ export async function generateMetadata({ params }: Props) {
     const name = tData?.name || product.slug;
     const desc = tData?.meta_description || tData?.short_description || `Comprar ${name} en ${siteName}`;
     const imgUrl = product.product_images[0]?.url || '/placeholder.png';
-    const primaryCat = product.product_categories[0]?.categories?.category_translations[0]?.name || '';
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const canonicalPath = locale === 'es' ? `/product/${slug}` : `/${locale}/product/${slug}`;
 
     return {
         title: `${name} | ${siteName}`,
@@ -454,7 +506,7 @@ export async function generateMetadata({ params }: Props) {
         openGraph: {
             title: `${name} | ${siteName}`,
             description: desc,
-            url: `${appUrl}/${locale}/product/${slug}`,
+            url: `${appUrl}${canonicalPath}`,
             siteName: siteName,
             images: [
                 {
@@ -476,7 +528,12 @@ export async function generateMetadata({ params }: Props) {
             images: [`${appUrl}${imgUrl}`],
         },
         alternates: {
-            canonical: `${appUrl}/${locale}/product/${slug}`,
+            canonical: `${appUrl}${canonicalPath}`,
+            languages: {
+                es: `${appUrl}/product/${slug}`,
+                en: `${appUrl}/en/product/${slug}`,
+                'x-default': `${appUrl}/product/${slug}`
+            }
         }
     };
 }

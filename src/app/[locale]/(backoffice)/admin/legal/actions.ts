@@ -2,11 +2,14 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/auth';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 export async function createLegalPage(formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
-    const content = formData.get('content') as string;
+    const content = sanitizeHtml(formData.get('content') as string);
 
     await prisma.legalPage.create({
         data: {
@@ -26,9 +29,10 @@ export async function createLegalPage(formData: FormData) {
 }
 
 export async function updateLegalPage(id: string, formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
-    const content = formData.get('content') as string;
+    const content = sanitizeHtml(formData.get('content') as string);
 
     // We fetch original to purge cache of old slug if it changed
     const original = await prisma.legalPage.findUnique({ where: { id } });
@@ -69,6 +73,7 @@ export async function updateLegalPage(id: string, formData: FormData) {
 }
 
 export async function deleteLegalPage(id: string) {
+    await requireAdmin(['ADMIN']);
     // Find the slug first to revalidate path correctly
     const page = await prisma.legalPage.findUnique({
         where: { id }

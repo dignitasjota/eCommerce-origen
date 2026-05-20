@@ -71,7 +71,7 @@ export default function WishlistButton({ productId, initialIsFavorited = false, 
             aria-label={isFavorited ? 'Quitar de la lista de deseos' : 'Añadir a la lista de deseos'}
             title={isFavorited ? 'Quitar de la lista de deseos' : 'Añadir a la lista de deseos'}
         >
-            <svg
+            <svg aria-hidden="true" focusable="false"
                 width="24"
                 height="24"
                 viewBox="0 0 24 24"

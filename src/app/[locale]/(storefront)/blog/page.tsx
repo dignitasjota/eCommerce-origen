@@ -2,6 +2,11 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
+import {
+    parseCursorParams,
+    buildPrismaCursorArgs,
+    buildCursorPage
+} from '@/lib/pagination';
 
 export const metadata = {
     title: 'Blog | eShop',
@@ -10,11 +15,13 @@ export const metadata = {
 
 type Props = {
     params: Promise<{ locale: string }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function BlogPage({ params }: Props) {
+export default async function BlogPage({ params, searchParams }: Props) {
     const { locale } = await params;
     setRequestLocale(locale);
+    const sp = await searchParams;
     const t = await getTranslations('nav');
 
     // Fase 11: Feature Flags Server-Side Protection
@@ -25,18 +32,21 @@ export default async function BlogPage({ params }: Props) {
         notFound();
     }
 
-    // Fetch published blog posts
-    const posts = await prisma.blogPost.findMany({
+    // Cursor pagination — el blog puede crecer indefinidamente. Offset
+    // sería ineficiente para los buscadores que crawlearan páginas profundas.
+    const cursorParams = parseCursorParams(sp);
+    const currentCursor = typeof sp.cursor === 'string' ? sp.cursor : undefined;
+    const cursorArgs = buildPrismaCursorArgs(cursorParams);
+
+    const rows = await prisma.blogPost.findMany({
         where: { is_published: true },
         include: {
-            blog_post_translations: {
-                where: { locale }
-            }
+            blog_post_translations: { where: { locale } }
         },
-        orderBy: {
-            published_at: 'desc'
-        }
+        orderBy: { id: 'desc' },
+        ...cursorArgs
     });
+    const { items: posts, nextCursor } = buildCursorPage(rows, cursorParams.take);
 
     const formattedPosts = posts.map(post => {
         const translation = post.blog_post_translations[0];
@@ -78,7 +88,7 @@ export default async function BlogPage({ params }: Props) {
                                     />
                                 ) : (
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                                             <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                                             <circle cx="9" cy="9" r="2" />
                                             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -98,7 +108,7 @@ export default async function BlogPage({ params }: Props) {
                                 </p>
                                 <span style={{ color: 'var(--color-primary)', fontWeight: '600', fontSize: '0.9rem', marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                                     Leer artículo
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+                                    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
                                 </span>
                             </div>
                         </Link>
@@ -109,6 +119,30 @@ export default async function BlogPage({ params }: Props) {
                     <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>No hay artículos publicados</h2>
                     <p style={{ color: 'var(--color-text-secondary)' }}>Vuelve pronto para leer nuestras novedades.</p>
                 </div>
+            )}
+
+            {/* Paginación cursor — sin "página N", sólo "siguiente" / "inicio". */}
+            {(currentCursor || nextCursor) && (
+                <nav aria-label="Paginación del blog" style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                    <div>
+                        {currentCursor && (
+                            <Link href="/blog" className="btn btn-outline">
+                                ← Inicio del blog
+                            </Link>
+                        )}
+                    </div>
+                    <div>
+                        {nextCursor ? (
+                            <Link href={`/blog?cursor=${nextCursor}`} className="btn btn-primary">
+                                Más artículos →
+                            </Link>
+                        ) : (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)' }}>
+                                Has llegado al final
+                            </span>
+                        )}
+                    </div>
+                </nav>
             )}
         </div>
     );

@@ -2,11 +2,14 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/auth';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 export async function createPage(formData: FormData) {
+    await requireAdmin();
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
-    const content = formData.get('content') as string;
+    const content = sanitizeHtml(formData.get('content') as string);
 
     await prisma.page.create({
         data: {
@@ -25,9 +28,10 @@ export async function createPage(formData: FormData) {
 }
 
 export async function updatePage(id: string, formData: FormData) {
+    await requireAdmin();
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
-    const content = formData.get('content') as string;
+    const content = sanitizeHtml(formData.get('content') as string);
 
     const original = await prisma.page.findUnique({ where: { id } });
 
@@ -63,6 +67,7 @@ export async function updatePage(id: string, formData: FormData) {
 }
 
 export async function deletePage(id: string) {
+    await requireAdmin();
     const page = await prisma.page.findUnique({
         where: { id }
     });

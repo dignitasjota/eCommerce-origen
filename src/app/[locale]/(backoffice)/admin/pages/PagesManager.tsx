@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createPage, updatePage, deletePage } from './actions';
+import RichTextEditor from '@/components/backoffice/RichTextEditor';
 
 export default function PagesManager({ initialPages, pagesPrefix, categories }: { initialPages: any[], pagesPrefix: string, categories: any[] }) {
+    const router = useRouter();
     const [pages, setPages] = useState(initialPages);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<any>(null);
@@ -49,7 +52,8 @@ export default function PagesManager({ initialPages, pagesPrefix, categories }: 
             } else {
                 await createPage(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al guardar la página');
@@ -67,7 +71,7 @@ export default function PagesManager({ initialPages, pagesPrefix, categories }: 
         setIsLoading(true);
         try {
             await deletePage(itemToDelete.id);
-            window.location.reload();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');
@@ -199,14 +203,15 @@ export default function PagesManager({ initialPages, pagesPrefix, categories }: 
                                         </button>
                                     </div>
                                 </div>
-                                <textarea
-                                    className="admin-form-input"
-                                    style={{ minHeight: '30vh', resize: 'vertical' }}
+                                <RichTextEditor
                                     value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    required
-                                    placeholder="<p>Escribe aquí el contenido de la página...</p>"
+                                    onChange={setContent}
+                                    placeholder="Escribe aquí el contenido de la página…"
+                                    minHeight="30vh"
                                 />
+                                <p style={{ fontSize: '0.75rem', color: 'gray', marginTop: '0.25rem' }}>
+                                    Los shortcodes <code>{'{{category_id:slug}}'}</code> se conservan en el HTML y se renderizan en el storefront.
+                                </p>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>

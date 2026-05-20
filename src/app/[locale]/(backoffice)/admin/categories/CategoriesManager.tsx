@@ -1,12 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
+import type { AdminCategory } from '@/types/admin';
 import { updateCategory, createCategory, deleteCategory } from './actions';
+import ImageUploader from '@/components/backoffice/ImageUploader';
 
-export default function CategoriesManager({ initialCategories, allParentCategories }: { initialCategories: any[], allParentCategories: any[] }) {
+export default function CategoriesManager({ initialCategories, allParentCategories }: { initialCategories: AdminCategory[], allParentCategories: AdminCategory[] }) {
+    const router = useRouter();
     const [categories, setCategories] = useState(initialCategories);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<any>(null);
+    const [editingCategory, setEditingCategory] = useState<AdminCategory | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -16,7 +20,7 @@ export default function CategoriesManager({ initialCategories, allParentCategori
     const [parentId, setParentId] = useState('');
     const [isActive, setIsActive] = useState(true);
 
-    const openModal = (category: any = null) => {
+    const openModal = (category: AdminCategory | null = null) => {
         setEditingCategory(category);
         if (category) {
             setName(category.category_translations[0]?.name || '');
@@ -54,8 +58,8 @@ export default function CategoriesManager({ initialCategories, allParentCategori
             } else {
                 await createCategory(formData);
             }
-            // Temporarily reload to get new categories from DB until using router.refresh
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al guardar la categoría');
@@ -73,7 +77,7 @@ export default function CategoriesManager({ initialCategories, allParentCategori
         setIsLoading(true);
         try {
             await deleteCategory(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar la categoría');
@@ -258,18 +262,16 @@ export default function CategoriesManager({ initialCategories, allParentCategori
                             </div>
 
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Imagen Destacada</label>
-                                {editingCategory?.image && (
-                                    <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
-                                        <img src={editingCategory.image} alt="Main" style={{ maxHeight: '40px', objectFit: 'contain' }} />
-                                        <p className="text-xs text-gray-500 mt-1">Sube una nueva si quieres reemplazarla.</p>
-                                    </div>
-                                )}
-                                <input
-                                    type="file"
+                                <ImageUploader
+                                    label="Imagen destacada"
                                     name="image"
-                                    accept="image/*"
-                                    className="admin-form-input p-2"
+                                    orderFieldName="images_order"
+                                    multiple={false}
+                                    existingImages={
+                                        editingCategory?.image
+                                            ? [{ id: 'current', url: editingCategory.image, sort_order: 0 }]
+                                            : []
+                                    }
                                 />
                             </div>
 

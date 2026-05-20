@@ -116,7 +116,19 @@ interface CartContextProps {
 
 const CartContext = createContext<CartContextProps | undefined>(undefined);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface CartProviderProps {
+    children: React.ReactNode;
+    /**
+     * Pasado desde el server layout. Cuando cambia de undefined a string, el
+     * provider llama a `/api/storefront/cart/merge` para fusionar el localStorage
+     * con `cart_items` del usuario y reemplaza el state con el resultado.
+     */
+    userId?: string;
+}
+
+const MERGE_FLAG_KEY = 'eshop_cart_merged_for';
+
+export const CartProvider: React.FC<CartProviderProps> = ({ children, userId }) => {
     const [state, dispatch] = useReducer(cartReducer, initialState);
 
     // Initialize cart from LocalStorage on mount (client side only)
@@ -136,6 +148,49 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch({ type: 'SET_CART', payload: [] });
         }
     }, []);
+
+    // Fusión carrito anónimo ↔ usuario al iniciar sesión.
+    // Se dispara una sola vez por usuario y sesión: marcamos un flag en
+    // localStorage con el `userId` para no repetir el merge al navegar.
+    useEffect(() => {
+        if (!userId || !state.isInitialized) return;
+        let cancelled = false;
+
+        const last = (() => {
+            try { return localStorage.getItem(MERGE_FLAG_KEY); } catch { return null; }
+        })();
+        if (last === userId) return;
+
+        const itemsToSend = state.items.map((i) => ({
+            product_id: i.product_id,
+            variant_id: i.variant_id ?? null,
+            quantity: i.quantity
+        }));
+
+        (async () => {
+            try {
+                const res = await fetch('/api/storefront/cart/merge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items: itemsToSend })
+                });
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                if (Array.isArray(data.items)) {
+                    dispatch({ type: 'SET_CART', payload: data.items });
+                }
+                try { localStorage.setItem(MERGE_FLAG_KEY, userId); } catch { /* ignore */ }
+            } catch (e) {
+                console.error('[cart] merge falló:', e);
+            }
+        })();
+
+        return () => { cancelled = true; };
+        // No dependemos de `state.items` para evitar bucles: la fusión se hace
+        // sólo cuando el usuario cambia (login/cambio de cuenta) y el carrito
+        // está ya hidratado desde localStorage.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId, state.isInitialized]);
 
     const addItem = (item: CartItem) => dispatch({ type: 'ADD_ITEM', payload: item });
     const removeItem = (id: string) => dispatch({ type: 'REMOVE_ITEM', payload: id });

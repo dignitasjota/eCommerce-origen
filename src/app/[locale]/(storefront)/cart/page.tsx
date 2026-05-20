@@ -1,21 +1,20 @@
 'use client';
 
+import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { Link } from '@/i18n/navigation';
-import { useEffect, useState } from 'react';
 
 export default function CartPage() {
     const { state, removeItem, updateQuantity } = useCart();
-    const [mounted, setMounted] = useState(false);
 
-    // Prevent hydration mismatch for localStorage dependent states
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    if (!mounted) return null;
-
-    const SHIPPING_COST = 4.99; // Envío estático por defecto (cambiará en el checkout real)
+    // Nota: el carrito vive en localStorage (punto #22 del roadmap migrará a
+    // server). El estado inicial del provider es `[]`, así que la primera
+    // render — tanto en SSR como en hidratación cliente — es siempre el carrito
+    // vacío. La hidratación de localStorage ocurre dentro de un useEffect del
+    // provider, lo que provoca un único re-render cliente sin mismatch de HTML.
+    // Esto evita el `return null` de antes (que producía CLS y rompía SSR/SEO)
+    // a costa de un breve flash "vacío → con items" si el usuario tenía cesta.
+    const SHIPPING_COST = 4.99;
     const FREE_SHIPPING_THRESHOLD = 50;
 
     const shipping = state.subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
@@ -28,7 +27,7 @@ export default function CartPage() {
             <div className="container" style={{ padding: '6rem 1rem', textAlign: 'center' }}>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Tu Carrito</h1>
                 <div style={{ backgroundColor: 'var(--color-background-soft)', padding: '4rem 2rem', borderRadius: 'var(--radius-lg)', maxWidth: '600px', margin: '0 auto' }}>
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1.5rem', opacity: 0.3 }}>
+                    <svg aria-hidden="true" focusable="false" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1.5rem', opacity: 0.3 }}>
                         <circle cx="8" cy="21" r="1" />
                         <circle cx="19" cy="21" r="1" />
                         <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
@@ -64,12 +63,18 @@ export default function CartPage() {
 
                                     {/* Product Details Columns */}
                                     <td style={{ padding: '1.5rem 0', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                                        <div style={{ width: '100px', height: '100px', backgroundColor: 'var(--color-background-soft)', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
+                                        <div style={{ position: 'relative', width: '100px', height: '100px', backgroundColor: 'var(--color-background-soft)', borderRadius: 'var(--radius-md)', overflow: 'hidden', flexShrink: 0 }}>
                                             {item.image ? (
-                                                <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <Image
+                                                    src={item.image}
+                                                    alt={item.name}
+                                                    fill
+                                                    sizes="100px"
+                                                    style={{ objectFit: 'cover' }}
+                                                />
                                             ) : (
                                                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.2 }}>
-                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /></svg>
+                                                    <svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /></svg>
                                                 </div>
                                             )}
                                         </div>
@@ -162,14 +167,14 @@ export default function CartPage() {
 
                     <Link href="/checkout" className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                         Proceder al Pago
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                        <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
                     </Link>
 
                     {/* Trust badges */}
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginTop: '2rem', opacity: 0.5 }}>
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect width="20" height="14" x="2" y="5" rx="2" /><circle cx="12" cy="12" r="2" /></svg>
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                        <svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect width="20" height="14" x="2" y="5" rx="2" /><line x1="2" x2="22" y1="10" y2="10" /></svg>
+                        <svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect width="20" height="14" x="2" y="5" rx="2" /><circle cx="12" cy="12" r="2" /></svg>
+                        <svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
                     </div>
                 </div>
             </div>

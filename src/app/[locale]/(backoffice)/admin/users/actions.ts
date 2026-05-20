@@ -3,8 +3,11 @@
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
+import { requireAdmin } from '@/lib/auth';
+import { auditLog } from '@/lib/audit';
 
 export async function createUser(formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
@@ -28,7 +31,7 @@ export async function createUser(formData: FormData) {
     } : null;
 
     try {
-        await prisma.user.create({
+        const created = await prisma.user.create({
             data: {
                 name,
                 email,
@@ -45,6 +48,12 @@ export async function createUser(formData: FormData) {
                 } : {})
             }
         });
+        await auditLog({
+            action: 'user.create',
+            entity_type: 'User',
+            entity_id: created.id,
+            metadata: { email, role }
+        });
         revalidatePath('/es/admin/users');
     } catch (error: any) {
         if (error.code === 'P2002') {
@@ -55,6 +64,7 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: string, formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
@@ -112,6 +122,12 @@ export async function updateUser(id: string, formData: FormData) {
             }
         }
 
+        await auditLog({
+            action: 'user.update',
+            entity_type: 'User',
+            entity_id: id,
+            metadata: { email, role, password_changed: !!password }
+        });
         revalidatePath('/es/admin/users');
     } catch (error: any) {
         if (error.code === 'P2002') {
@@ -122,9 +138,18 @@ export async function updateUser(id: string, formData: FormData) {
 }
 
 export async function deleteUser(id: string) {
+    const session = await requireAdmin(['ADMIN']);
+    if (session.user.id === id) {
+        throw new Error('No puedes eliminar tu propia cuenta.');
+    }
     try {
         await prisma.user.delete({
             where: { id }
+        });
+        await auditLog({
+            action: 'user.delete',
+            entity_type: 'User',
+            entity_id: id
         });
         revalidatePath('/es/admin/users');
     } catch (error: any) {

@@ -550,6 +550,166 @@ export default function SettingsForm({ initialSettings, customThemes = [] }: Set
                     )}
                 </div>
 
+                {/* ── TAB: Pasarelas de pago (Stripe) ─────────────────────── */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Pagos (Stripe)  "
+                    checked={activeTab === 'payments'}
+                    onChange={() => setActiveTab('payments')}
+                />
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
+                    {activeTab === 'payments' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Pasarela Stripe</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Las claves se obtienen en <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] underline">dashboard.stripe.com</a>.
+                                    El webhook se registra en Developers → Webhooks apuntando a <code>{`${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/stripe`}</code>.
+                                    Los cambios se aplican en ≤ 60 segundos (cache TTL); para que tomen efecto inmediato, reinicia el contenedor.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Secret Key</label>
+                                    <input
+                                        type="password"
+                                        name="stripe_secret_key"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['stripe_secret_key'] || ''}
+                                        placeholder="sk_live_… o sk_test_…"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Clave secreta de Stripe. Usa <code>sk_test_…</code> en pruebas y <code>sk_live_…</code> en producción.</p>
+                                </div>
+
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Webhook Signing Secret</label>
+                                    <input
+                                        type="password"
+                                        name="stripe_webhook_secret"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['stripe_webhook_secret'] || ''}
+                                        placeholder="whsec_…"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Firma del endpoint webhook. Verifica que las notificaciones vienen realmente de Stripe.</p>
+                                </div>
+
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Publishable Key (opcional)</label>
+                                    <input
+                                        type="text"
+                                        name="stripe_publishable_key"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['stripe_publishable_key'] || ''}
+                                        placeholder="pk_live_… o pk_test_…"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Sólo necesaria si en el futuro se integran Stripe Elements en el cliente.</p>
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-4 mt-6">
+                                <h4 className="text-sm font-semibold mb-2">Datos para facturas</h4>
+                                <p className="text-xs text-gray-500 mb-3">Aparecen como vendedor en los PDF generados al confirmar pago. La numeración es <strong>correlativa estricta</strong> por (serie, año natural) — requisito fiscal AEAT/UE.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="admin-form-group">
+                                        <label className="admin-form-label">Serie de facturación</label>
+                                        <input
+                                            name="invoice_series"
+                                            className="admin-form-input"
+                                            defaultValue={settingsMap['invoice_series'] || 'A'}
+                                            placeholder="A"
+                                            maxLength={10}
+                                            pattern="[A-Za-z0-9]+"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Alfanumérico (ej. A, B, EXP). Cambiar mid-año inicia un nuevo contador. <strong>No tocar sin asesoría fiscal.</strong></p>
+                                    </div>
+                                    <div className="admin-form-group">
+                                        <label className="admin-form-label">CIF / Tax ID</label>
+                                        <input name="invoice_seller_tax_id" className="admin-form-input" defaultValue={settingsMap['invoice_seller_tax_id'] || ''} placeholder="B12345678" />
+                                    </div>
+                                    <div className="admin-form-group">
+                                        <label className="admin-form-label">Email de contacto</label>
+                                        <input name="invoice_seller_email" className="admin-form-input" defaultValue={settingsMap['invoice_seller_email'] || ''} placeholder="hola@tutienda.com" />
+                                    </div>
+                                    <div className="admin-form-group md:col-span-2">
+                                        <label className="admin-form-label">Dirección fiscal</label>
+                                        <input name="invoice_seller_address" className="admin-form-input" defaultValue={settingsMap['invoice_seller_address'] || ''} placeholder="C/ Mayor 1, 28001 Madrid, España" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── TAB: Analítica & Cookies (RGPD) ──────────────────────── */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Analítica & Cookies  "
+                    checked={activeTab === 'analytics'}
+                    onChange={() => setActiveTab('analytics')}
+                />
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
+                    {activeTab === 'analytics' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Analítica & Cookies (RGPD)</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Las plataformas de analítica/marketing <strong>sólo se cargan si el usuario da consent</strong> desde el banner de cookies. Si dejas los IDs vacíos, no se carga nada.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Google Analytics 4 — Measurement ID</label>
+                                    <input
+                                        name="analytics_ga4_id"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['analytics_ga4_id'] || ''}
+                                        placeholder="G-XXXXXXXXXX"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Se carga sólo si el usuario acepta cookies de "Analítica".</p>
+                                </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Meta Pixel — ID</label>
+                                    <input
+                                        name="analytics_meta_pixel_id"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['analytics_meta_pixel_id'] || ''}
+                                        placeholder="123456789012345"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Se carga sólo si el usuario acepta cookies de "Marketing".</p>
+                                </div>
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">URL de la política de cookies</label>
+                                    <input
+                                        name="cookies_policy_url"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['cookies_policy_url'] || '/cookies'}
+                                        placeholder="/cookies"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Aparece como "Más información" en el banner. Crear la página en <code>/admin/legal</code> con slug <code>cookies</code>.</p>
+                                </div>
+                            </div>
+                            <div className="border-t pt-4 mt-6 bg-yellow-50 border border-yellow-200 rounded p-3">
+                                <p className="text-xs text-yellow-800">
+                                    <strong>⚠️ RGPD:</strong> tienes obligación de publicar una política de cookies que detalle qué cookies usa la tienda, su propósito y duración. La AEPD exige también que el banner permita rechazar tan fácilmente como aceptar (esta plantilla cumple — botón "Sólo necesarias" al mismo nivel que "Aceptar todo").
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
             </div>
 
             {/* Botón Flotante / Fijo abajo para guardar sea cual sea la pestaña */}

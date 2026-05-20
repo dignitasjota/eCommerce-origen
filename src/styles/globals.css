@@ -1,6 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
-@plugin "daisyui";
+
+/*
+  Antes este archivo cargaba @plugin "daisyui" para tener `stats` y `tabs`.
+  Las primitivas equivalentes están más abajo (sección DaisyUI replacements).
+  Se purgó DaisyUI porque sólo se usaban 2 componentes de su catálogo y el
+  bundle pesaba ~70KB para nada. Ver ROADMAP §29.
+*/
 
 /* ═══════════════════════════════════════════════════════
    eCommerce — Global Styles & Theme System
@@ -327,6 +333,35 @@ h6 {
   outline: none;
   border-color: var(--color-secondary);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ── Accesibilidad ──────────────────────────────────────────────────────
+   Focus visible global para navegación por teclado. No afectamos los
+   click-focus de mouse: `:focus-visible` sólo se activa cuando el browser
+   detecta que el foco viene del teclado. */
+:focus-visible {
+  outline: 2px solid var(--color-primary, #6366f1);
+  outline-offset: 2px;
+}
+
+/* "Skip to content" — oculto hasta recibir focus por Tab. */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  z-index: 1000;
+  padding: 0.6rem 1rem;
+  background: var(--color-primary, #6366f1);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 6px 0;
+  transition: top 0.15s ease-in-out;
+}
+.skip-to-content:focus {
+  top: 0;
+  outline: 2px solid white;
+  outline-offset: -4px;
 }
 
 .form-input::placeholder {
@@ -696,4 +731,104 @@ h6 {
   --color-text-secondary: #8d8d8d;
   --color-text-tertiary: #b0b0b0;
   --color-text-inverse: #ffffff;
+}
+
+/* ─── DaisyUI replacements ──────────────────────────────────────────────
+   Las dos únicas primitivas de DaisyUI que el proyecto usaba en realidad:
+   `stats` (cuadrícula KPIs del dashboard) y `tabs` (pestañas radio del
+   panel /admin/settings). Reescritas con CSS vainilla para purgar la
+   dependencia y evitar ~70KB de bundle inútil. */
+
+/* Stats (KPIs en grid) — usado en /admin/dashboard. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.stats > .stat:not(:last-child) {
+  border-right: 1px solid var(--color-border);
+}
+.stat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem 1.5rem;
+  min-width: 0;
+}
+.stat-figure {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  opacity: 0.7;
+}
+.stat-title {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.stat-desc {
+  font-size: 0.75rem;
+  color: var(--color-text-tertiary);
+}
+
+/* Utilidades de color de texto que el dashboard usaba (text-info, text-success, etc.).
+   Las definimos aquí para no depender de DaisyUI tampoco para colores. */
+.text-info    { color: #3b82f6; }
+.text-success { color: var(--color-success, #10b981); }
+.text-warning { color: #f59e0b; }
+.text-secondary { color: var(--color-secondary, #8b5cf6); }
+
+/* Tabs (radio-based pattern) — usado en /admin/settings.
+   El patrón es: <input type="radio" class="tab"> + <div class="tab-content">.
+   Sólo el `tab-content` que sigue al radio chequeado se muestra. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0;
+}
+.tab {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab::before {
+  content: attr(aria-label);
+}
+.tab:hover {
+  color: var(--color-text-primary);
+}
+.tab:checked {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+.tab-content {
+  display: none;
+  width: 100%;
+  padding: 1rem 0;
+}
+/* Mostrar el tab-content que sigue inmediatamente al radio chequeado.
+   Como el patrón es `<input class="tab"> <div class="tab-content">`, basta
+   con `:checked + .tab-content`. */
+.tab:checked + .tab-content {
+  display: block;
 }

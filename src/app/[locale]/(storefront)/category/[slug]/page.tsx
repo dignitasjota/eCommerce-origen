@@ -1,8 +1,18 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
+import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
+
+const VALID_SORTS = ['newest', 'price-asc', 'price-desc', 'featured'] as const;
+function asNonNegativeFloat(v: string | string[] | undefined): string | undefined {
+    if (typeof v !== 'string' || !v.trim()) return undefined;
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n >= 0 ? v : undefined;
+}
 
 type Props = {
     params: Promise<{ locale: string; slug: string }>;
@@ -35,26 +45,39 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     const categoryName = category.category_translations[0]?.name || category.slug;
     const categoryDescription = category.category_translations[0]?.description;
 
-    const page = typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page) : 1;
+    const pageRaw = typeof resolvedSearchParams.page === 'string' ? parseInt(resolvedSearchParams.page) : 1;
+    const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
     const limit = 12;
     const skip = (page - 1) * limit;
 
-    // Fetch products in this category
-    const whereClause = {
+    // Filtros (sin el de categoría: la categoría la fija el path).
+    const minPrice = asNonNegativeFloat(resolvedSearchParams.minPrice);
+    const maxPrice = asNonNegativeFloat(resolvedSearchParams.maxPrice);
+    const sortRaw = typeof resolvedSearchParams.sort === 'string' ? resolvedSearchParams.sort : 'newest';
+    const sort: SortKey = (VALID_SORTS as readonly string[]).includes(sortRaw) ? (sortRaw as SortKey) : 'newest';
+
+    const whereClause: Prisma.ProductWhereInput = {
         is_active: true,
-        product_categories: {
-            some: {
-                category_id: category.id
-            }
-        }
+        product_categories: { some: { category_id: category.id } }
     };
+    if (minPrice !== undefined || maxPrice !== undefined) {
+        whereClause.price = {};
+        if (minPrice !== undefined) (whereClause.price as Prisma.DecimalFilter).gte = minPrice;
+        if (maxPrice !== undefined) (whereClause.price as Prisma.DecimalFilter).lte = maxPrice;
+    }
+
+    const orderBy: Prisma.ProductOrderByWithRelationInput | Prisma.ProductOrderByWithRelationInput[] =
+        sort === 'price-asc' ? { price: 'asc' } :
+        sort === 'price-desc' ? { price: 'desc' } :
+        sort === 'featured' ? [{ is_featured: 'desc' }, { created_at: 'desc' }] :
+        { created_at: 'desc' };
 
     const [dbProducts, totalProducts] = await Promise.all([
         prisma.product.findMany({
             where: whereClause,
             skip,
             take: limit,
-            orderBy: { created_at: 'desc' },
+            orderBy,
             include: {
                 product_translations: { where: { locale } },
                 product_images: { take: 1, orderBy: { sort_order: 'asc' } }
@@ -109,6 +132,13 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 </div>
             )}
 
+            <ProductFilters
+                sort={sort}
+                minPrice={minPrice}
+                maxPrice={maxPrice}
+                hideCategory
+            />
+
             {formattedProducts.length > 0 ? (
                 <div className="product-grid" style={{ marginBottom: '3rem' }}>
                     {formattedProducts.map((product, index) => (
@@ -117,12 +147,18 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                             href={`/product/${product.slug}`}
                             className={`card product-card animate-fade-in-up stagger-${(index % limit) + 1}`}
                         >
-                            <div className="card-image" style={{ aspectRatio: '1 / 1', backgroundColor: 'var(--color-background-soft)' }}>
+                            <div className="card-image" style={{ position: 'relative', aspectRatio: '1 / 1', backgroundColor: 'var(--color-background-soft)' }}>
                                 {product.image ? (
-                                    <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <Image
+                                        src={product.image}
+                                        alt={product.name}
+                                        fill
+                                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                                        style={{ objectFit: 'cover' }}
+                                    />
                                 ) : (
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>
-                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
                                             <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                                             <circle cx="9" cy="9" r="2" />
                                             <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -146,23 +182,27 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                 </div>
             )}
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls — preserva sort y precio. */}
             {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '3rem' }}>
+                <nav aria-label="Paginación" style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '3rem', flexWrap: 'wrap' }}>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
                         const url = new URLSearchParams();
+                        if (sort !== 'newest') url.set('sort', sort);
+                        if (minPrice) url.set('minPrice', minPrice);
+                        if (maxPrice) url.set('maxPrice', maxPrice);
                         url.set('page', p.toString());
                         return (
                             <Link
                                 key={p}
                                 href={`/category/${slug}?${url.toString()}`}
                                 className={`btn ${page === p ? 'btn-primary' : 'btn-outline'}`}
+                                aria-current={page === p ? 'page' : undefined}
                             >
                                 {p}
                             </Link>
                         );
                     })}
-                </div>
+                </nav>
             )}
 
             {/* JSON-LD Schema de Migas de Pan */}
@@ -225,6 +265,8 @@ export async function generateMetadata({ params }: Props) {
 
     const name = category.category_translations[0]?.name || category.slug;
     const desc = category.category_translations[0]?.meta_description || category.category_translations[0]?.description || `Explora todos los productos de la categoría ${name} en ${siteName}`;
+    const canonicalPath = locale === 'es' ? `/category/${category.slug}` : `/${locale}/category/${category.slug}`;
+    const ogImage = category.image ? `${appUrl}${category.image}` : undefined;
 
     return {
         title: `${name} | ${siteName}`,
@@ -232,20 +274,27 @@ export async function generateMetadata({ params }: Props) {
         openGraph: {
             title: `${name} | ${siteName}`,
             description: desc,
-            url: `${appUrl}/${locale}/category/${category.slug}`,
+            url: `${appUrl}${canonicalPath}`,
             siteName: siteName,
             type: 'website',
             locale: locale,
+            images: ogImage ? [{ url: ogImage, alt: name }] : undefined,
         },
         twitter: {
-            card: 'summary',
+            card: ogImage ? 'summary_large_image' : 'summary',
             title: `${name} | ${siteName}`,
             description: desc,
             siteId: settings['seo_twitter_handle'],
             creator: settings['seo_twitter_handle'],
+            images: ogImage ? [ogImage] : undefined,
         },
         alternates: {
-            canonical: `${appUrl}/${locale}/category/${category.slug}`,
+            canonical: `${appUrl}${canonicalPath}`,
+            languages: {
+                es: `${appUrl}/category/${category.slug}`,
+                en: `${appUrl}/en/category/${category.slug}`,
+                'x-default': `${appUrl}/category/${category.slug}`
+            }
         }
     };
 }

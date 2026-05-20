@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
+import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { useRouter } from '@/i18n/navigation';
 
@@ -56,9 +57,15 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
     const [selectedShippingMethodId, setSelectedShippingMethodId] = useState<string>(
         shippingMethods.length > 0 ? shippingMethods[0].id : ''
     );
-    const [paymentMethod, setPaymentMethod] = useState<'COD' | 'TRANSFER'>('COD');
+    const [paymentMethod, setPaymentMethod] = useState<'STRIPE' | 'COD' | 'TRANSFER'>('STRIPE');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Cupón
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+    const [couponError, setCouponError] = useState<string | null>(null);
+    const [couponLoading, setCouponLoading] = useState(false);
 
     // Calcular Envío dinámico
     const selectedMethod = shippingMethods.find(m => m.id === selectedShippingMethodId);
@@ -69,7 +76,74 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
         shippingCost = 0;
     }
 
-    const total = state.subtotal + shippingCost;
+    const discount = appliedCoupon?.discount ?? 0;
+    const total = Math.max(0, state.subtotal - discount + shippingCost);
+
+    // Si cambia el subtotal (añadir/quitar items) el descuento puede dejar de
+    // ser válido por el min_purchase. Re-validamos contra el endpoint para
+    // refrescar el descuento o invalidarlo.
+    const applyCoupon = async (codeToApply?: string) => {
+        const code = (codeToApply ?? couponInput).trim();
+        if (!code) return;
+        setCouponError(null);
+        setCouponLoading(true);
+        try {
+            const res = await fetch('/api/storefront/coupon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, subtotal: state.subtotal })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setAppliedCoupon(null);
+                setCouponError(data.error || 'Cupón no válido.');
+                return;
+            }
+            setAppliedCoupon({ code: data.code, discount: data.discount });
+            setCouponInput('');
+        } catch {
+            setCouponError('No se pudo validar el cupón. Inténtalo de nuevo.');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const removeCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponError(null);
+    };
+
+    // Si el subtotal cambia con un cupón aplicado, re-validamos contra el
+    // backend: el descuento puede haber dejado de cumplir min_purchase, o ser
+    // ahora distinto si es porcentual.
+    useEffect(() => {
+        if (!appliedCoupon) return;
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const res = await fetch('/api/storefront/coupon', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: appliedCoupon.code, subtotal: state.subtotal })
+                });
+                const data = await res.json();
+                if (cancelled) return;
+                if (!res.ok) {
+                    setAppliedCoupon(null);
+                    setCouponError(data.error || 'Cupón ya no válido para este carrito.');
+                } else if (data.discount !== appliedCoupon.discount) {
+                    setAppliedCoupon({ code: data.code, discount: data.discount });
+                }
+            } catch {
+                /* fallo de red: mantener el descuento; el checkout final re-valida */
+            }
+        })();
+
+        return () => { cancelled = true; };
+        // Sólo re-validamos cuando cambia el subtotal o el cupón vigente.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state.subtotal, appliedCoupon?.code]);
 
     const handleNextStep = (e: FormEvent) => {
         e.preventDefault();
@@ -92,7 +166,8 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
                 address,
                 shippingMethodId: selectedShippingMethodId,
                 paymentMethod,
-                items: state.items
+                items: state.items,
+                couponCode: appliedCoupon?.code ?? null
             };
 
             const response = await fetch('/api/storefront/checkout', {
@@ -107,7 +182,16 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
                 throw new Error(data.error || 'Ocurrió un error al procesar el pedido');
             }
 
-            // Éxito
+            // Si la orden requiere pago con pasarela externa (Stripe), el
+            // backend devuelve `checkoutUrl` y NO debemos limpiar el carrito
+            // todavía: el cliente podría cancelar y volver. La confirmación
+            // definitiva la hará el webhook al recibir el pago.
+            if (data.checkoutUrl) {
+                window.location.href = data.checkoutUrl;
+                return;
+            }
+
+            // COD/TRANSFER: confirmación inmediata.
             clearCart();
             router.push(`/checkout/success/${data.orderId}`);
 
@@ -259,6 +343,19 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Método de Pago</h2>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '3rem' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: paymentMethod === 'STRIPE' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', backgroundColor: paymentMethod === 'STRIPE' ? 'var(--color-background-soft)' : 'transparent' }}>
+                                <input
+                                    type="radio"
+                                    value="STRIPE"
+                                    checked={paymentMethod === 'STRIPE'}
+                                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                                />
+                                <div>
+                                    <div style={{ fontWeight: 'bold' }}>Tarjeta de crédito/débito</div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>Pago seguro con Stripe. Visa, Mastercard, Apple Pay y Google Pay.</div>
+                                </div>
+                            </label>
+
                             <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: paymentMethod === 'COD' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', backgroundColor: paymentMethod === 'COD' ? 'var(--color-background-soft)' : 'transparent' }}>
                                 <input
                                     type="radio"
@@ -311,7 +408,15 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
                     {state.items.map(item => (
                         <div key={item.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                             <div style={{ width: '60px', height: '60px', backgroundColor: 'var(--color-background)', borderRadius: 'var(--radius-md)', overflow: 'hidden', position: 'relative' }}>
-                                {item.image && <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                                {item.image && (
+                                    <Image
+                                        src={item.image}
+                                        alt={item.name}
+                                        fill
+                                        sizes="60px"
+                                        style={{ objectFit: 'cover' }}
+                                    />
+                                )}
                                 <span style={{ position: 'absolute', top: '-5px', right: '-5px', backgroundColor: 'var(--color-text-secondary)', color: 'white', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
                                     {item.quantity}
                                 </span>
@@ -338,6 +443,66 @@ export default function CheckoutClient({ shippingMethods, initialEmail, initialN
                         <span>Envío</span>
                         <span>{shippingCost === 0 ? 'Gratis' : `${shippingCost.toFixed(2)} €`}</span>
                     </div>
+
+                    {/* Cupón */}
+                    {appliedCoupon ? (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--color-success)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                Cupón <code style={{ fontWeight: 'bold' }}>{appliedCoupon.code}</code>
+                                <button
+                                    type="button"
+                                    onClick={removeCoupon}
+                                    aria-label={`Quitar cupón ${appliedCoupon.code}`}
+                                    style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: '0.85rem', textDecoration: 'underline', padding: 0 }}
+                                >
+                                    quitar
+                                </button>
+                            </span>
+                            <span>−{appliedCoupon.discount.toFixed(2)} €</span>
+                        </div>
+                    ) : (
+                        <div style={{ marginTop: '0.25rem' }}>
+                            <label htmlFor="coupon-code" style={{ display: 'block', fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginBottom: '0.4rem' }}>
+                                ¿Tienes un código de descuento?
+                            </label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    id="coupon-code"
+                                    type="text"
+                                    value={couponInput}
+                                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            applyCoupon();
+                                        }
+                                    }}
+                                    placeholder="CÓDIGO"
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    aria-invalid={!!couponError}
+                                    aria-describedby={couponError ? 'coupon-error' : undefined}
+                                    className="form-input"
+                                    style={{ flex: 1, textTransform: 'uppercase' }}
+                                    disabled={couponLoading}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => applyCoupon()}
+                                    disabled={couponLoading || !couponInput.trim()}
+                                    className="btn btn-outline"
+                                    style={{ whiteSpace: 'nowrap' }}
+                                >
+                                    {couponLoading ? '…' : 'Aplicar'}
+                                </button>
+                            </div>
+                            {couponError && (
+                                <p id="coupon-error" role="alert" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--color-danger)' }}>
+                                    {couponError}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', fontSize: '1.5rem', fontWeight: 'bold' }}>
                         <span>Total a pagar</span>

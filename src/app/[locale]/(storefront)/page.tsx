@@ -1,7 +1,10 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import HomeCarousel from '@/components/storefront/HomeCarousel';
+import NewsletterForm from '@/components/storefront/NewsletterForm';
+import RecentlyViewed from '@/components/storefront/RecentlyViewed';
 import styles from './page.module.css';
 
 type Props = {
@@ -91,7 +94,7 @@ async function HomePageContent({ locale }: { locale: string }) {
                         <h2 className={styles.sectionTitle}>{t('categoriesTitle')}</h2>
                         <Link href="/categories" className={styles.sectionLink}>
                             {tNav('categories')}
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="m9 18 6-6-6-6" />
                             </svg>
                         </Link>
@@ -103,12 +106,18 @@ async function HomePageContent({ locale }: { locale: string }) {
                                 href={`/category/${category.slug}`}
                                 className={`${styles.categoryCard} animate-fade-in-up stagger-${index + 1}`}
                             >
-                                <div className={styles.categoryImage}>
+                                <div className={styles.categoryImage} style={{ position: 'relative' }}>
                                     {category.image ? (
-                                        <img src={category.image} alt={category.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <Image
+                                            src={category.image}
+                                            alt={category.name}
+                                            fill
+                                            sizes="(max-width: 768px) 50vw, 25vw"
+                                            style={{ objectFit: 'cover' }}
+                                        />
                                     ) : (
                                         <div className={styles.categoryPlaceholder}>
-                                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3">
+                                            <svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.3">
                                                 <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                                                 <circle cx="9" cy="9" r="2" />
                                                 <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -130,7 +139,7 @@ async function HomePageContent({ locale }: { locale: string }) {
                         <h2 className={styles.sectionTitle}>{t('featuredTitle')}</h2>
                         <Link href="/products" className={styles.sectionLink}>
                             {t('heroButton')}
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="m9 18 6-6-6-6" />
                             </svg>
                         </Link>
@@ -143,12 +152,18 @@ async function HomePageContent({ locale }: { locale: string }) {
                                     href={`/product/${product.slug}`}
                                     className={`card product-card animate-fade-in-up stagger-${index + 1}`}
                                 >
-                                    <div className="card-image">
+                                    <div className="card-image" style={{ position: 'relative' }}>
                                         {product.image ? (
-                                            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <Image
+                                                src={product.image}
+                                                alt={product.name}
+                                                fill
+                                                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                                                style={{ objectFit: 'cover' }}
+                                            />
                                         ) : (
                                             <div className={styles.productPlaceholder}>
-                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.2">
+                                                <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.2">
                                                     <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                                                     <circle cx="9" cy="9" r="2" />
                                                     <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -178,22 +193,19 @@ async function HomePageContent({ locale }: { locale: string }) {
                 </div>
             </section>
 
+            {/* Vistos recientemente (sólo si el usuario tiene historial). */}
+            <RecentlyViewed locale={locale} />
+
             {/* Newsletter / CTA Section */}
             <section className={styles.ctaSection}>
                 <div className="container">
                     <div className={styles.ctaContent}>
                         <h2 className={styles.ctaTitle}>Únete a nuestra comunidad</h2>
                         <p className={styles.ctaSubtitle}>Recibe las últimas novedades y ofertas exclusivas</p>
-                        <form className={styles.ctaForm}>
-                            <input
-                                type="email"
-                                placeholder="tu@email.com"
-                                className={styles.ctaInput}
-                            />
-                            <button type="button" className="btn btn-primary btn-lg">
-                                Suscribirse
-                            </button>
-                        </form>
+                        <NewsletterForm
+                            inputClassName={styles.ctaInput}
+                            buttonClassName="btn btn-primary btn-lg"
+                        />
                     </div>
                 </div>
             </section>

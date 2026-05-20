@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createPaymentMethod, updatePaymentMethod, deletePaymentMethod } from './actions';
 
 export default function PaymentsManager({ methods }: { methods: any[] }) {
+    const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMethod, setEditingMethod] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +55,8 @@ export default function PaymentsManager({ methods }: { methods: any[] }) {
             } else {
                 await createPaymentMethod(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al guardar el método de pago');
@@ -72,7 +75,7 @@ export default function PaymentsManager({ methods }: { methods: any[] }) {
         setIsLoading(true);
         try {
             await deletePaymentMethod(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar');

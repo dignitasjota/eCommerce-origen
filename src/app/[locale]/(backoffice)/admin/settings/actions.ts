@@ -4,9 +4,12 @@ import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { requireAdmin, AuthorizationError } from '@/lib/auth';
+import { auditLog } from '@/lib/audit';
 
 export async function updateSettings(formData: FormData) {
     try {
+        await requireAdmin(['ADMIN']);
         const settingsToUpdate = [];
 
         const uploadDir = join(process.cwd(), 'public', 'uploads');
@@ -107,8 +110,19 @@ export async function updateSettings(formData: FormData) {
         revalidatePath('/[locale]/admin/settings', 'page');
         revalidatePath('/[locale]', 'layout');
 
+        // Auditoría: log con las claves modificadas (no los valores: pueden ser
+        // secretos como stripe_secret_key).
+        await auditLog({
+            action: 'settings.update',
+            entity_type: 'SiteSettings',
+            metadata: { keys: settingsToUpdate.map((s) => s.key) }
+        });
+
         return { success: true, message: 'Ajustes guardados correctamente.' };
     } catch (error: any) {
+        if (error instanceof AuthorizationError) {
+            return { success: false, error: error.message };
+        }
         console.error('Error updating settings:', error);
         return { success: false, error: error.message || 'Error al guardar los ajustes.' };
     }

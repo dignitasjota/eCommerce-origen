@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { getPasswordResetEmailHtml } from '@/lib/emails/password-reset';
+import { rateLimit } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 // Utilidad simple para firmar tokens JWT-like sin dependencias externas
@@ -14,6 +15,14 @@ function signToken(payload: object) {
 
 export async function POST(req: Request) {
     try {
+        const limit = rateLimit(req, { bucket: 'forgot-password', max: 3, windowMs: 15 * 60_000 });
+        if (!limit.ok) {
+            return NextResponse.json(
+                { error: 'Demasiados intentos. Inténtalo más tarde.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
         const { email } = await req.json();
 
         if (!email) {

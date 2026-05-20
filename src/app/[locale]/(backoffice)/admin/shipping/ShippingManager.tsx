@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createShippingMethod, updateShippingMethod, deleteShippingMethod } from './actions';
 
 export default function ShippingManager({ initialMethods }: { initialMethods: any[] }) {
+    const router = useRouter();
     const [methods, setMethods] = useState(initialMethods);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMethod, setEditingMethod] = useState<any>(null);
@@ -65,7 +67,8 @@ export default function ShippingManager({ initialMethods }: { initialMethods: an
             } else {
                 await createShippingMethod(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al guardar el método de envío');
@@ -83,7 +86,7 @@ export default function ShippingManager({ initialMethods }: { initialMethods: an
         setIsLoading(true);
         try {
             await deleteShippingMethod(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');

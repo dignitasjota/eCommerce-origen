@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation';
 import { getLocale } from 'next-intl/server';
 import { Metadata } from 'next';
+import Image from 'next/image';
 import prisma from '@/lib/db';
+import { sanitizeHtml } from '@/lib/sanitize';
+import { parseShortcodes } from '@/lib/shortcodes';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,7 +100,13 @@ async function CategoryBlock({ categorySlug, locale }: { categorySlug: string; l
                         >
                             <figure className="aspect-[4/5] overflow-hidden bg-[var(--color-background)] relative group">
                                 {image ? (
-                                    <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    <Image
+                                        src={image}
+                                        alt={name}
+                                        fill
+                                        sizes="(max-width: 768px) 50vw, 25vw"
+                                        style={{ objectFit: 'cover' }}
+                                    />
                                 ) : (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f0f0', color: '#999' }}>
                                         Sin imagen
@@ -147,7 +156,7 @@ export default async function DynamicPageView({ params }: Props) {
                         </header>
                         <div
                             className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]"
-                            dangerouslySetInnerHTML={{ __html: translation.content }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(translation.content) }}
                         />
                     </div>
                 </div>
@@ -163,7 +172,7 @@ export default async function DynamicPageView({ params }: Props) {
             || page.page_translations[0];
 
         const { title, content } = translation;
-        const contentParts = content.split(/(\{\{category_id:[a-zA-Z0-9-]+\}\})/g);
+        const nodes = parseShortcodes(content);
 
         return (
             <div className="container py-12 md:py-16">
@@ -172,12 +181,20 @@ export default async function DynamicPageView({ params }: Props) {
                         <h1 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-4">{title}</h1>
                     </header>
                     <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:font-bold prose-headings:text-[var(--color-text)] prose-a:text-[var(--color-primary)] hover:prose-a:text-[var(--color-primary-dark)] text-[var(--color-text-secondary)]">
-                        {contentParts.map((part: string, index: number) => {
-                            if (part.startsWith('{{category_id:')) {
-                                const slug = part.replace('{{category_id:', '').replace('}}', '');
-                                return <CategoryBlock key={index} categorySlug={slug} locale={locale} />;
+                        {nodes.map((node, index) => {
+                            if (node.type === 'shortcode' && node.name === 'category_id') {
+                                return <CategoryBlock key={index} categorySlug={node.arg} locale={locale} />;
                             }
-                            return <div key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                            // node.type === 'html' — el contenido ya pasó por
+                            // sanitizeHtml() al guardar (Sprint 1 §5). Volvemos
+                            // a sanitizar como defensa-en-profundidad por si la
+                            // página tiene contenido legacy pre-sanitización.
+                            return (
+                                <div
+                                    key={index}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml((node as { content: string }).content) }}
+                                />
+                            );
                         })}
                     </div>
                 </div>

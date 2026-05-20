@@ -1,9 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createBlogPost, updateBlogPost, deleteBlogPost } from './actions';
+import ImageUploader from '@/components/backoffice/ImageUploader';
+import RichTextEditor from '@/components/backoffice/RichTextEditor';
 
 export default function BlogManager({ posts }: { posts: any[] }) {
+    const router = useRouter();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -39,16 +43,20 @@ export default function BlogManager({ posts }: { posts: any[] }) {
         setEditingPost(null);
     };
 
-    const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setIsLoading(true);
 
-        const formData = new FormData();
-        formData.append('title', title);
-        formData.append('slug', slug);
-        formData.append('excerpt', excerpt);
-        formData.append('content', content);
-        formData.append('is_published', isPublished ? 'true' : 'false');
+        // Recogemos los inputs declarativamente del propio <form> para incluir
+        // el archivo de imagen del ImageUploader y `images_order`. El resto
+        // (title/slug/excerpt/content/is_published) los seteamos a partir del
+        // estado React para no depender de inputs hidden adicionales.
+        const formData = new FormData(e.currentTarget);
+        formData.set('title', title);
+        formData.set('slug', slug);
+        formData.set('excerpt', excerpt);
+        formData.set('content', content);
+        formData.set('is_published', isPublished ? 'true' : 'false');
 
         try {
             if (editingPost) {
@@ -56,7 +64,8 @@ export default function BlogManager({ posts }: { posts: any[] }) {
             } else {
                 await createBlogPost(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al guardar el artículo');
@@ -74,7 +83,7 @@ export default function BlogManager({ posts }: { posts: any[] }) {
         setIsLoading(true);
         try {
             await deleteBlogPost(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar el artículo');
@@ -201,17 +210,31 @@ export default function BlogManager({ posts }: { posts: any[] }) {
                                     onChange={(e) => setExcerpt(e.target.value)}
                                     required
                                 />
+                                <p className="text-xs text-gray-500 mt-1">Texto plano. Aparece en la lista del blog y como meta descripción.</p>
                             </div>
 
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Contenido completo (HTML o Texto)</label>
-                                <textarea
-                                    className="admin-form-input"
-                                    rows={10}
-                                    style={{ fontFamily: 'monospace', fontSize: '14px' }}
+                                <label className="admin-form-label">Contenido completo</label>
+                                <RichTextEditor
                                     value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    required
+                                    onChange={setContent}
+                                    placeholder="Escribe el contenido del artículo…"
+                                    minHeight="320px"
+                                />
+                            </div>
+
+                            <div className="admin-form-group">
+                                <ImageUploader
+                                    label="Imagen de portada"
+                                    name="image"
+                                    orderFieldName="images_order"
+                                    multiple={false}
+                                    aspectRatio={16 / 9}
+                                    existingImages={
+                                        editingPost?.image
+                                            ? [{ id: 'current', url: editingPost.image, sort_order: 0 }]
+                                            : []
+                                    }
                                 />
                             </div>
 

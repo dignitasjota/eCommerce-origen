@@ -26,6 +26,16 @@ declare module '@auth/core/jwt' {
     }
 }
 
+export const ADMIN_ROLES = ['ADMIN', 'ORDER_MANAGER'] as const;
+export type AdminRole = (typeof ADMIN_ROLES)[number];
+
+export class AuthorizationError extends Error {
+    constructor(message = 'No autorizado') {
+        super(message);
+        this.name = 'AuthorizationError';
+    }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
     adapter: PrismaAdapter(prisma) as any,
     session: { strategy: 'jwt' },
@@ -93,8 +103,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             if (isAdminRoute) {
                 if (!isLoggedIn) return false;
-                const userRole = auth?.user?.role;
-                if (userRole !== 'ADMIN' && userRole !== 'ORDER_MANAGER') {
+                const userRole = auth?.user?.role as AdminRole | undefined;
+                if (!userRole || !ADMIN_ROLES.includes(userRole)) {
                     return false;
                 }
             }
@@ -103,3 +113,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
     },
 });
+
+/**
+ * Garantiza que la sesión actual pertenece a un usuario con permisos de admin.
+ * Lanzar AuthorizationError aquí evita exponer detalles del error al cliente
+ * y permite a Next.js convertirlo en un fallo controlado de la server action.
+ *
+ * @param allowedRoles roles aceptados; por defecto cualquier admin (ADMIN | ORDER_MANAGER).
+ * @returns la sesión validada con `user.id` y `user.role` no nulos.
+ */
+export async function requireAdmin(allowedRoles: readonly AdminRole[] = ADMIN_ROLES) {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+        throw new AuthorizationError('Sesión no válida');
+    }
+
+    const role = session.user.role as AdminRole | undefined;
+    if (!role || !allowedRoles.includes(role)) {
+        throw new AuthorizationError('Permisos insuficientes');
+    }
+
+    return session as typeof session & {
+        user: { id: string; email: string; role: AdminRole; name: string | null; image: string | null };
+    };
+}

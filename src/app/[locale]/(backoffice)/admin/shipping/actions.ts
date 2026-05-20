@@ -2,8 +2,10 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { requireAdmin } from '@/lib/auth';
 
 export async function createShippingMethod(formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
     const price = parseFloat(formData.get('price') as string);
     const freeAboveRaw = formData.get('free_above') as string;
@@ -37,6 +39,7 @@ export async function createShippingMethod(formData: FormData) {
 }
 
 export async function updateShippingMethod(id: string, formData: FormData) {
+    await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
     const price = parseFloat(formData.get('price') as string);
     const freeAboveRaw = formData.get('free_above') as string;
@@ -83,6 +86,7 @@ export async function updateShippingMethod(id: string, formData: FormData) {
 }
 
 export async function deleteShippingMethod(id: string) {
+    await requireAdmin(['ADMIN']);
     try {
         await prisma.shippingMethod.delete({
             where: { id }

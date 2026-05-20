@@ -15,6 +15,8 @@ model User {
   phone          String?        @db.VarChar(50)
   role           Role           @default(CUSTOMER)
   image          String?        @db.VarChar(500)
+  is_active      Boolean        @default(true)
+  last_login_at  DateTime?
   created_at     DateTime       @default(now())
   updated_at     DateTime       @default(now())
   accounts       Account[]
@@ -24,6 +26,7 @@ model User {
   reviews        Review[]
   sessions       Session[]
   wishlist_items WishlistItem[]
+  returns        Return[]
 
   @@map("users")
 }
@@ -81,6 +84,7 @@ model Address {
   postal_code                                  String   @db.VarChar(20)
   country                                      String   @db.VarChar(100)
   phone                                        String?  @db.VarChar(50)
+  tax_id                                       String?  @db.VarChar(32)
   is_default                                   Boolean  @default(false)
   created_at                                   DateTime @default(now())
   updated_at                                   DateTime @default(now())
@@ -129,8 +133,12 @@ model Product {
   id                   String               @id @default(uuid()) @db.VarChar(36)
   slug                 String               @unique(map: "slug") @db.VarChar(255)
   sku                  String               @unique(map: "sku") @db.VarChar(100)
+  barcode              String?              @db.VarChar(50)
   price                Decimal              @db.Decimal(10, 2)
   compare_at_price     Decimal?             @db.Decimal(10, 2)
+  weight               Decimal?             @db.Decimal(8, 3)
+  /// Dimensiones en cm como JSON `{w,h,d}`. `null` = no aplicable.
+  dimensions           String?              @db.VarChar(100)
   is_active            Boolean              @default(true)
   is_featured          Boolean              @default(false)
   unlimited_stock      Boolean              @default(true)
@@ -284,6 +292,76 @@ model CartItem {
   @@map("cart_items")
 }
 
+enum ReturnStatus {
+  REQUESTED   // cliente solicita devolución, espera aprobación admin
+  APPROVED    // admin aprueba: cliente envía mercancía, espera recepción
+  REJECTED    // admin rechaza la solicitud
+  RECEIVED    // mercancía recibida, pendiente de reembolso
+  REFUNDED    // dinero devuelto al cliente, fin del flujo
+  CANCELLED   // cliente cancela su solicitud antes de aprobar
+}
+
+enum ReturnItemCondition {
+  UNOPENED
+  OPENED
+  DAMAGED
+  USED
+}
+
+model Return {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  /// Número público no enumerable: RMA-YYYYMM-XXXXXXXX.
+  return_number  String       @unique(map: "uq_return_number") @db.VarChar(50)
+  order_id       String       @db.VarChar(36)
+  user_id        String?      @db.VarChar(36)
+  status         ReturnStatus @default(REQUESTED)
+  /// Razón global de la devolución (campo libre + categoría).
+  reason         String       @db.Text
+  /// Notas internas del admin (rejection reason, condición observada, etc.).
+  admin_notes    String?      @db.Text
+  /// Importe efectivamente reembolsado (puede ser parcial).
+  refund_amount  Decimal?     @db.Decimal(10, 2)
+  /// ID del refund en Stripe (`re_…`) si aplica.
+  stripe_refund_id String?    @db.VarChar(255)
+  /// Tracking del envío de retorno (transportista del cliente).
+  tracking_number String?     @db.VarChar(255)
+  requested_at   DateTime     @default(now())
+  approved_at    DateTime?
+  received_at    DateTime?
+  refunded_at    DateTime?
+  cancelled_at   DateTime?
+  rejected_at    DateTime?
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @default(now()) @updatedAt
+
+  orders        Order         @relation(fields: [order_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_1")
+  users         User?         @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_2")
+  return_items  ReturnItem[]
+
+  @@index([order_id], map: "idx_returns_order")
+  @@index([user_id], map: "idx_returns_user")
+  @@index([status], map: "idx_returns_status")
+  @@map("returns")
+}
+
+model ReturnItem {
+  id             String              @id @default(uuid()) @db.VarChar(36)
+  return_id      String              @db.VarChar(36)
+  /// Referencia al OrderItem original. Permite saber qué se devuelve.
+  order_item_id  String               @db.VarChar(36)
+  quantity       Int
+  condition      ReturnItemCondition  @default(UNOPENED)
+  /// Razón específica de este item (puede diferir del motivo global).
+  reason         String?              @db.Text
+
+  returns        Return               @relation(fields: [return_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "return_items_ibfk_1")
+  order_items    OrderItem            @relation(fields: [order_item_id], references: [id], onUpdate: Restrict, map: "return_items_ibfk_2")
+
+  @@index([return_id], map: "idx_return_items_return")
+  @@index([order_item_id], map: "idx_return_items_order_item")
+  @@map("return_items")
+}
+
 model Order {
   id                                              String                @id @default(uuid()) @db.VarChar(36)
   order_number                                    String                @unique(map: "order_number") @db.VarChar(50)
@@ -294,6 +372,13 @@ model Order {
   payment_status                                  orders_payment_status @default(PENDING)
   payment_method                                  String?               @db.VarChar(50)
   payment_id                                      String?               @db.VarChar(255)
+  payment_intent_id                               String?               @unique(map: "uq_payment_intent_id") @db.VarChar(255)
+  invoice_number                                  String?               @unique(map: "uq_invoice_number") @db.VarChar(50)
+  invoice_url                                     String?               @db.VarChar(500)
+  /// Estado logístico del pedido (preparación → empaquetado → enviado → entregado).
+  /// Se separa de `status` (estado comercial) para que el equipo de almacén pueda
+  /// avanzar el flujo de fulfillment sin pisar el del cliente.
+  fulfillment_status                              FulfillmentStatus     @default(UNFULFILLED)
   subtotal                                        Decimal               @db.Decimal(10, 2)
   shipping_cost                                   Decimal               @default(0.00) @db.Decimal(10, 2)
   discount                                        Decimal               @default(0.00) @db.Decimal(10, 2)
@@ -314,6 +399,7 @@ model Order {
   addresses_orders_shipping_address_idToaddresses Address?              @relation("orders_shipping_address_idToaddresses", fields: [shipping_address_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_3")
   addresses_orders_billing_address_idToaddresses  Address?              @relation("orders_billing_address_idToaddresses", fields: [billing_address_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_4")
   shipping_methods                                ShippingMethod?       @relation(fields: [shipping_method_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_5")
+  returns                                         Return[]
 
   @@index([billing_address_id], map: "billing_address_id")
   @@index([coupon_id], map: "coupon_id")
@@ -338,6 +424,7 @@ model OrderItem {
   orders           Order           @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
   products         Product?        @relation(fields: [product_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_2")
   product_variants ProductVariant? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
+  return_items     ReturnItem[]
 
   @@index([order_id], map: "order_id")
   @@index([product_id], map: "product_id")
@@ -418,15 +505,20 @@ model PaymentMethodTranslation {
 }
 
 model Review {
-  id          String   @id @default(uuid()) @db.VarChar(36)
-  user_id     String   @db.VarChar(36)
-  product_id  String   @db.VarChar(36)
-  rating      Int
-  title       String?  @db.VarChar(255)
-  comment     String?  @db.Text
-  is_approved Boolean  @default(false)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @default(now())
+  id                   String   @id @default(uuid()) @db.VarChar(36)
+  user_id              String   @db.VarChar(36)
+  product_id           String   @db.VarChar(36)
+  rating               Int
+  title                String?  @db.VarChar(255)
+  comment              String?  @db.Text
+  /// JSON array de URLs de imágenes adjuntas a la reseña.
+  images               String?  @db.Text
+  is_approved          Boolean  @default(false)
+  /// Marcado a `true` automáticamente si el usuario tiene un OrderItem PAID
+  /// con ese product_id antes de crear la reseña.
+  is_verified_purchase Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @default(now())
   users       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_1")
   products    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_2")
 
@@ -546,6 +638,19 @@ enum OrderStatus {
   DELIVERED
   CANCELLED
   REFUNDED
+  /// Añadido en Sprint 2 (Stripe). Va al final del enum a propósito: en
+  /// MariaDB cambiar el orden de un ENUM ya en uso recodifica los índices
+  /// de TODAS las filas existentes. Ponerlo al final es un ALTER barato.
+  PENDING_PAYMENT
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PICKING
+  PACKED
+  SHIPPED
+  DELIVERED
+  RETURNED
 }
 
 enum coupons_discount_type {
@@ -563,6 +668,103 @@ enum orders_payment_status {
 enum RelationType {
   CROSS_SELL
   UP_SELL
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  user_id     String?  @db.VarChar(36)
+  /// Acción ejecutada: "product.create", "order.update_status", etc.
+  action      String   @db.VarChar(100)
+  /// Tipo de entidad afectada ("Product", "Order", ...).
+  entity_type String   @db.VarChar(50)
+  entity_id   String?  @db.VarChar(36)
+  /// JSON con detalles relevantes (campos cambiados, antes/después).
+  metadata    String?  @db.LongText
+  ip_address  String?  @db.VarChar(45)
+  created_at  DateTime @default(now())
+
+  @@index([user_id], map: "idx_audit_user")
+  @@index([entity_type, entity_id], map: "idx_audit_entity")
+  @@index([created_at], map: "idx_audit_created")
+  @@map("audit_logs")
+}
+
+model StockMovement {
+  id           String              @id @default(uuid()) @db.VarChar(36)
+  variant_id   String              @db.VarChar(36)
+  /// Cantidad: positiva (entrada) o negativa (salida).
+  quantity     Int
+  /// Razón del movimiento — útil para auditar discrepancias de stock.
+  reason       StockMovementReason
+  /// Referencia opcional al pedido / devolución / ajuste origen.
+  reference_id String?             @db.VarChar(36)
+  note         String?             @db.VarChar(255)
+  user_id      String?             @db.VarChar(36)
+  created_at   DateTime            @default(now())
+
+  @@index([variant_id], map: "idx_stock_variant")
+  @@index([reason], map: "idx_stock_reason")
+  @@index([created_at], map: "idx_stock_created")
+  @@map("stock_movements")
+}
+
+enum StockMovementReason {
+  PURCHASE
+  REFUND
+  ADJUSTMENT
+  RESTOCK
+  RESERVATION_RELEASE
+}
+
+model Subscriber {
+  id           String    @id @default(uuid()) @db.VarChar(36)
+  email        String    @unique(map: "uq_subscriber_email") @db.VarChar(255)
+  locale       String    @default("es") @db.VarChar(5)
+  /// Token HMAC para confirmar la suscripción (doble opt-in). Se invalida al confirmar.
+  confirm_token String?  @unique(map: "uq_subscriber_token") @db.VarChar(255)
+  confirmed_at DateTime?
+  unsubscribed_at DateTime?
+  created_at   DateTime  @default(now())
+
+  @@index([confirmed_at], map: "idx_subscribers_confirmed")
+  @@map("subscribers")
+}
+
+/// Contador correlativo de facturación por (serie, año).
+/// Garantiza numeración estrictamente secuencial sin huecos — requisito
+/// fiscal en España (AEAT/Veri*Factu) y otras jurisdicciones UE.
+///
+/// Patrón de uso: UPSERT atómico que devuelve el siguiente número:
+///   const counter = await tx.invoiceCounter.upsert({
+///     where: { series_year: { series, year } },
+///     update: { last_number: { increment: 1 } },
+///     create: { series, year, last_number: 1 }
+///   });
+///   const invoiceNumber = `${series}-${year}-${String(counter.last_number).padStart(7, '0')}`;
+///
+/// La serie por defecto se configura en SiteSetting `invoice_series` (ej. 'A').
+/// Tiendas multi-sociedad pueden usar series distintas (A, B, EXP...) según
+/// criterio fiscal.
+model InvoiceCounter {
+  id          String @id @default(uuid()) @db.VarChar(36)
+  series      String @db.VarChar(10)
+  year        Int
+  last_number Int    @default(0)
+
+  @@unique([series, year], map: "uq_invoice_series_year")
+  @@map("invoice_counters")
+}
+
+model WebhookEvent {
+  id           String   @id @default(uuid()) @db.VarChar(36)
+  provider     String   @db.VarChar(50)
+  event_id     String   @db.VarChar(255)
+  event_type   String?  @db.VarChar(100)
+  processed_at DateTime @default(now())
+
+  @@unique([provider, event_id], map: "uq_webhook_provider_event")
+  @@index([provider], map: "idx_webhook_provider")
+  @@map("webhook_events")
 }
 
 model RelatedProduct {

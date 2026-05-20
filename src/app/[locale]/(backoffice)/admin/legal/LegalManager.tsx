@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createLegalPage, updateLegalPage, deleteLegalPage } from './actions';
+import RichTextEditor from '@/components/backoffice/RichTextEditor';
 
 export default function LegalManager({ initialPages }: { initialPages: any[] }) {
+    const router = useRouter();
     const [pages, setPages] = useState(initialPages);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPage, setEditingPage] = useState<any>(null);
@@ -49,7 +52,8 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
             } else {
                 await createLegalPage(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al guardar la página');
@@ -67,7 +71,7 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
         setIsLoading(true);
         try {
             await deleteLegalPage(itemToDelete.id);
-            window.location.reload();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al eliminar');
@@ -178,14 +182,12 @@ export default function LegalManager({ initialPages }: { initialPages: any[] }) 
                             </div>
 
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Contenido HTML</label>
-                                <textarea
-                                    className="admin-form-input"
-                                    style={{ minHeight: '30vh', resize: 'vertical' }}
+                                <label className="admin-form-label">Contenido</label>
+                                <RichTextEditor
                                     value={content}
-                                    onChange={(e) => setContent(e.target.value)}
-                                    required
-                                    placeholder="<p>Escribe aquí el contenido legal de la página...</p>"
+                                    onChange={setContent}
+                                    placeholder="Escribe aquí el contenido legal de la página…"
+                                    minHeight="30vh"
                                 />
                             </div>
 

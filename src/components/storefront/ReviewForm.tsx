@@ -42,7 +42,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
     if (success) {
         return (
             <div style={{ padding: '2rem', backgroundColor: 'var(--color-background-soft)', borderRadius: 'var(--radius-lg)', textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem' }}>
+                <svg aria-hidden="true" focusable="false" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem' }}>
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                     <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
@@ -72,7 +72,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
                             onClick={() => setRating(star)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill={rating >= star ? '#FFD700' : 'none'} stroke={rating >= star ? '#FFD700' : 'var(--color-text-tertiary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <svg aria-hidden="true" focusable="false" width="32" height="32" viewBox="0 0 24 24" fill={rating >= star ? '#FFD700' : 'none'} stroke={rating >= star ? '#FFD700' : 'var(--color-text-tertiary)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                             </svg>
                         </button>

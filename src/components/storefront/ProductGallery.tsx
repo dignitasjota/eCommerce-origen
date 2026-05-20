@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 
 interface ProductGalleryProps {
     images: string[];
@@ -24,17 +25,21 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                     overflow: 'hidden',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    position: 'relative'
                 }}
             >
                 {mainImage ? (
-                    <img
+                    <Image
                         src={mainImage}
                         alt={`${productName} - Vista ampliada`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        priority
+                        style={{ objectFit: 'cover' }}
                     />
                 ) : (
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.2">
+                    <svg aria-hidden="true" focusable="false" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.2">
                         <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                         <circle cx="9" cy="9" r="2" />
                         <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
@@ -61,7 +66,14 @@ export default function ProductGallery({ images, productName }: ProductGalleryPr
                                 backgroundColor: 'var(--color-background-soft)'
                             }}
                         >
-                            <img src={img} alt={`${productName} - Vista alternativa ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <Image
+                                src={img}
+                                alt={`${productName} - Vista alternativa ${index + 1}`}
+                                width={80}
+                                height={80}
+                                sizes="80px"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
                         </button>
                     ))}
                 </div>

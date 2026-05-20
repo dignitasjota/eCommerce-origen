@@ -28,8 +28,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }
 
     const statusLabels: Record<string, string> = {
-        PENDING: 'Pendiente', CONFIRMED: 'Confirmado', PROCESSING: 'Procesando',
-        SHIPPED: 'Enviado', DELIVERED: 'Entregado', CANCELLED: 'Cancelado', REFUNDED: 'Reembolsado',
+        PENDING_PAYMENT: 'Esperando pago', PENDING: 'Pendiente', CONFIRMED: 'Confirmado',
+        PROCESSING: 'Procesando', SHIPPED: 'Enviado', DELIVERED: 'Entregado',
+        CANCELLED: 'Cancelado', REFUNDED: 'Reembolsado',
     };
 
     const paymentLabels: Record<string, string> = {

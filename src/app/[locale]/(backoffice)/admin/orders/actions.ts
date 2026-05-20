@@ -2,11 +2,13 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { sendEmail } from '@/lib/email';
-import { getOrderStatusUpdateEmailHtml } from '@/lib/emails/order-status-update';
+import { sendOrderStatusEmail } from '@/lib/emails/notify';
+import { requireAdmin, AuthorizationError } from '@/lib/auth';
+import { auditLog } from '@/lib/audit';
 
 export async function updateOrderFullStatus(formData: FormData) {
     try {
+        await requireAdmin();
         const id = formData.get('orderId') as string;
         const newStatus = formData.get('status') as string;
         const newPaymentStatus = formData.get('paymentStatus') as string;
@@ -15,40 +17,39 @@ export async function updateOrderFullStatus(formData: FormData) {
             return { success: false, error: 'Datos incompletos' };
         }
 
-        // Obtener el estado anterior para saber si ha cambiado
         const order = await prisma.order.findUnique({
             where: { id },
             include: { users: true }
         });
-
         if (!order) return { success: false, error: 'Pedido no encontrado' };
 
-        // Actualizar en base de datos
-        await prisma.order.update({
+        const updated = await prisma.order.update({
             where: { id },
             data: {
                 status: newStatus as any,
                 payment_status: newPaymentStatus as any
-            }
+            },
+            include: { users: true }
         });
 
-        // 📧 Enviar Email al Cliente SOLO si el estado global del pedido ha cambiado
-        if (newStatus !== order.status) {
-            try {
-                const customerEmail = order.users?.email || order.guest_email;
-                const customerName = order.users?.name || order.guest_name || 'Cliente';
+        // El helper notifica sólo si hubo cambio efectivo y el estado lo permite.
+        await sendOrderStatusEmail(updated, {
+            previousStatus: order.status,
+            previousPaymentStatus: order.payment_status
+        });
 
-                if (customerEmail) {
-                    await sendEmail({
-                        to: customerEmail,
-                        subject: `Actualización de tu Pedido #${order.order_number}`,
-                        html: getOrderStatusUpdateEmailHtml(order.order_number || '', customerName, newStatus)
-                    });
-                }
-            } catch (emailError) {
-                console.error('Error al enviar email de actualización de estado:', emailError);
+        await auditLog({
+            action: 'order.update_status',
+            entity_type: 'Order',
+            entity_id: id,
+            metadata: {
+                order_number: order.order_number,
+                from_status: order.status,
+                to_status: newStatus,
+                from_payment: order.payment_status,
+                to_payment: newPaymentStatus
             }
-        }
+        });
 
         revalidatePath(`/es/admin/orders/${id}`);
         revalidatePath(`/en/admin/orders/${id}`);
@@ -57,6 +58,9 @@ export async function updateOrderFullStatus(formData: FormData) {
 
         return { success: true };
     } catch (error: any) {
+        if (error instanceof AuthorizationError) {
+            return { success: false, error: error.message };
+        }
         console.error("Error updating order status:", error);
         return { success: false, error: 'Fallo interno del servidor.' };
     }

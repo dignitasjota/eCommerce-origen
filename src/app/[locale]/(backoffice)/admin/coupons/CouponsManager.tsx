@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from '@/i18n/navigation';
 import { createCoupon, updateCoupon, deleteCoupon } from './actions';
 
 export default function CouponsManager({ initialCoupons }: { initialCoupons: any[] }) {
+    const router = useRouter();
     const [coupons, setCoupons] = useState(initialCoupons);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCoupon, setEditingCoupon] = useState<any>(null);
@@ -75,7 +77,8 @@ export default function CouponsManager({ initialCoupons }: { initialCoupons: any
             } else {
                 await createCoupon(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error: any) {
             console.error(error);
             alert(error.message || 'Error al guardar el cupón');
@@ -93,7 +96,7 @@ export default function CouponsManager({ initialCoupons }: { initialCoupons: any
         setIsLoading(true);
         try {
             await deleteCoupon(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar el cupón');

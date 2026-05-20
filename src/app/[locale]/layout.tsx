@@ -19,8 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
     const title = settings['seo_default_title'] || siteName;
     const description = settings['seo_default_description'] || 'Bienvenido a nuestra tienda online.';
     const twitterHandle = settings['seo_twitter_handle'] || '@eshop';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
 
     return {
+        metadataBase: appUrl ? new URL(appUrl) : undefined,
         title: {
             template: `%s | ${siteName}`,
             default: title
@@ -40,7 +42,19 @@ export async function generateMetadata(): Promise<Metadata> {
         },
         icons: {
             icon: settings['site_favicon'] || '/favicon.ico',
-        }
+        },
+        // hreflang global para evitar duplicados es/en. Cada página puede
+        // sobrescribir `alternates` con paths específicos del recurso.
+        alternates: appUrl
+            ? {
+                  canonical: appUrl,
+                  languages: {
+                      es: `${appUrl}/`,
+                      en: `${appUrl}/en/`,
+                      'x-default': `${appUrl}/`
+                  }
+              }
+            : undefined
     };
 }
 

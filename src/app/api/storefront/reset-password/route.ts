@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { rateLimit } from '@/lib/rate-limit';
 
 // Verificador criptográfico pareado con forgot-password/route.ts
 function verifyToken(token: string) {
@@ -24,6 +25,14 @@ function verifyToken(token: string) {
 
 export async function POST(req: Request) {
     try {
+        const limit = rateLimit(req, { bucket: 'reset-password', max: 5, windowMs: 15 * 60_000 });
+        if (!limit.ok) {
+            return NextResponse.json(
+                { error: 'Demasiados intentos. Inténtalo más tarde.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
         const { token, password } = await req.json();
 
         if (!token || !password || password.length < 6) {

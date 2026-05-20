@@ -2,13 +2,18 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from '@/i18n/navigation';
+import type { AdminProduct } from '@/types/admin';
 import { createProduct, updateProduct, deleteProduct, updateProductRelations } from './actions';
+import ImageUploader from '@/components/backoffice/ImageUploader';
+import RichTextEditor from '@/components/backoffice/RichTextEditor';
 
-export default function ProductsManager({ products }: { products: any[] }) {
+export default function ProductsManager({ products }: { products: AdminProduct[] }) {
+    const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
     // ---- Product Core Edit Modal States ----
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -23,13 +28,13 @@ export default function ProductsManager({ products }: { products: any[] }) {
 
     // ---- Relations Edit Modal States ----
     const [isRelationsModalOpen, setIsRelationsModalOpen] = useState(false);
-    const [relationsProduct, setRelationsProduct] = useState<any>(null);
+    const [relationsProduct, setRelationsProduct] = useState<AdminProduct | null>(null);
     const [crossSells, setCrossSells] = useState<string[]>([]);
     const [upSells, setUpSells] = useState<string[]>([]);
     const [isRelationsLoading, setIsRelationsLoading] = useState(false);
 
     // --- Core Edit Functions ---
-    const openModal = (product: any = null) => {
+    const openModal = (product: AdminProduct | null = null) => {
         setEditingProduct(product);
         if (product) {
             setName(product.product_translations[0]?.name || '');
@@ -74,7 +79,8 @@ export default function ProductsManager({ products }: { products: any[] }) {
             } else {
                 await createProduct(formData);
             }
-            window.location.reload();
+            closeModal();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al guardar el producto');
@@ -92,7 +98,7 @@ export default function ProductsManager({ products }: { products: any[] }) {
         setIsLoading(true);
         try {
             await deleteProduct(itemToDelete);
-            window.location.reload();
+            router.refresh();
         } catch (error) {
             console.error(error);
             alert('Error al eliminar el producto');
@@ -103,12 +109,12 @@ export default function ProductsManager({ products }: { products: any[] }) {
     };
 
     // --- Relations Edit Functions ---
-    const openRelationsModal = (product: any) => {
+    const openRelationsModal = (product: AdminProduct) => {
         setRelationsProduct(product);
 
         const existingRelations = product.related_to || [];
-        const initialCrossSells = existingRelations.filter((r: any) => r.relation_type === 'CROSS_SELL').map((r: any) => r.related_product_id);
-        const initialUpSells = existingRelations.filter((r: any) => r.relation_type === 'UP_SELL').map((r: any) => r.related_product_id);
+        const initialCrossSells = existingRelations.filter((r) => r.relation_type === 'CROSS_SELL').map((r) => r.related_product_id);
+        const initialUpSells = existingRelations.filter((r) => r.relation_type === 'UP_SELL').map((r) => r.related_product_id);
 
         setCrossSells(initialCrossSells);
         setUpSells(initialUpSells);
@@ -137,7 +143,8 @@ export default function ProductsManager({ products }: { products: any[] }) {
 
         if (result.success) {
             alert('Relaciones actualizadas exitosamente');
-            window.location.reload();
+            closeRelationsModal();
+            router.refresh();
         } else {
             alert(result.error);
         }
@@ -363,50 +370,30 @@ export default function ProductsManager({ products }: { products: any[] }) {
                             </div>
 
                             <div className="admin-form-group">
-                                <label className="admin-form-label">Descripción HTML / Texto</label>
-                                <textarea
-                                    className="admin-form-input"
-                                    name="description"
-                                    rows={5}
-                                    style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                                <label className="admin-form-label">Descripción</label>
+                                <RichTextEditor
                                     value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
+                                    onChange={setDescription}
+                                    placeholder="Describe el producto…"
+                                    minHeight="180px"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Escribe aquí todo sobre tu producto, admite etiquetas HTML básicas para enriquecer el texto.</p>
+                                {/* Hidden input para que `new FormData(form)` recoja la descripción. */}
+                                <input type="hidden" name="description" value={description} />
+                                <p className="text-xs text-gray-500 mt-1">Soporta shortcodes <code>{'{{category_id:slug}}'}</code> en el HTML.</p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="admin-form-group">
-                                    <label className="admin-form-label">Imagen Principal</label>
-                                    {editingProduct?.product_images?.[0] && (
-                                        <div className="mb-2 p-2 bg-gray-100 rounded-md inline-block">
-                                            <img src={editingProduct.product_images[0].url} alt="Main" style={{ maxHeight: '40px', objectFit: 'contain' }} />
-                                            <p className="text-xs text-gray-500 mt-1">Sube una nueva si quieres reemplazarla.</p>
-                                        </div>
-                                    )}
-                                    <input
-                                        type="file"
-                                        name="main_image"
-                                        accept="image/*"
-                                        className="admin-form-input p-2"
-                                    />
-                                </div>
-
-                                <div className="admin-form-group">
-                                    <label className="admin-form-label">Añadir Fotos Secundarias</label>
-                                    {editingProduct?.product_images?.length > 1 && (
-                                        <div className="mb-2 p-2 bg-gray-100 rounded-md">
-                                            <p className="text-xs text-gray-500 mb-1">Ya hay {editingProduct.product_images.length - 1} foto/s en galería. Puedes subir más para añadirlas:</p>
-                                        </div>
-                                    )}
-                                    <input
-                                        type="file"
-                                        name="gallery_images"
-                                        accept="image/*"
-                                        multiple
-                                        className="admin-form-input p-2"
-                                    />
-                                </div>
+                            <div className="admin-form-group">
+                                <ImageUploader
+                                    label="Galería del producto"
+                                    name="gallery_images"
+                                    orderFieldName="images_order"
+                                    multiple
+                                    existingImages={(editingProduct?.product_images ?? []).map((img) => ({
+                                        id: img.id,
+                                        url: img.url,
+                                        sort_order: img.sort_order
+                                    }))}
+                                />
                             </div>
 
                             <div className="admin-form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
