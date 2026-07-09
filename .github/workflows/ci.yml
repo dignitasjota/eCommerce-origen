@@ -13,6 +13,26 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    # ─── Escaneo de secretos ─────────────────────────────────────────────
+    # Evita que vuelvan a colarse credenciales en el repo (ver incidente de
+    # credenciales de BD hardcodeadas en scripts/dev/). Escanea los commits
+    # nuevos de cada push/PR; no bloquea por secretos ya existentes en el
+    # historial (ésos se remedian rotando la credencial + purgando historia).
+    secret-scan:
+        name: Secret scan (gitleaks)
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+            - name: Run gitleaks
+              uses: gitleaks/gitleaks-action@v2
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     # ─── Typecheck + Lint ────────────────────────────────────────────────
     quality:
         name: Quality (typecheck + lint)
