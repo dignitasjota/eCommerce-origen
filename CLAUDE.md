@@ -667,3 +667,13 @@ Auditoría del código completo (4 agentes en paralelo, cada uno sobre una porci
 - El formulario de registro (`/auth/register`) no tenía atributos `name` en los `<input>` (sólo `id`) — funcionaba en el navegador (React controla el estado por `value`/`onChange`), pero rompía autofill/tests. Añadidos.
 
 **Metodología de verificación** (no sólo lectura de código): Node 22 vía `nvm`, contenedor MariaDB 10.11 efímero, `prisma db push` + `seed-bootstrap.mjs` con admin determinista, `npm run build` completo, y la suite Playwright e2e de principio a fin — que de paso reveló 4 bugs preexistentes sin relación con esta sesión (nunca antes detectados porque el job `e2e` de CI llevaba roto desde el fallo de `--skip-generate` descrito arriba): el test de `robots.txt` esperaba minúsculas donde Next.js emite mayúsculas (cosmético, se corrigió el test), y los otros 3 quedaron resueltos como parte de los fixes de arriba (login por rol, atributos `name` del registro). Resultado final: `tsc --noEmit` limpio, build sin errores, **19 passed / 1 skipped / 0 failed**.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
