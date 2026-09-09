@@ -55,9 +55,13 @@ export async function POST(req: Request) {
         const token = randomBytes(32).toString('hex');
 
         if (existing) {
+            // `created_at` se reutiliza como "cuándo se emitió el token
+            // pendiente" para el TTL de confirm/route.ts — al reenviar hay que
+            // refrescarlo, si no un resuscribe días después seguiría dando un
+            // token que expira inmediatamente por la fecha de la fila original.
             await prisma.subscriber.update({
                 where: { id: existing.id },
-                data: { confirm_token: token, locale, unsubscribed_at: null }
+                data: { confirm_token: token, locale, unsubscribed_at: null, created_at: new Date() }
             });
         } else {
             await prisma.subscriber.create({

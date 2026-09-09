@@ -141,6 +141,13 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        // Redondeo a céntimos: sumar floats (price * quantity) por cada item
+        // puede arrastrar epsilon binario (19.990000000000002). El resto del
+        // pipeline (descuento del cupón, total para Stripe) ya redondea —
+        // sin esto, `subtotal` podía diferir en 1 céntimo del valor que
+        // finalmente persiste `Order.total` (DECIMAL(10,2) trunca al guardar).
+        subtotal = Math.round(subtotal * 100) / 100;
+
         // ── 3. Coste de envío ─────────────────────────────────────────────
         let shippingCost = Number(shippingMethod.price);
         if (shippingMethod.free_above && subtotal >= Number(shippingMethod.free_above)) {

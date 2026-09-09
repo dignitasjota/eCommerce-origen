@@ -1,35 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rate-limit';
-
-// Verificador criptográfico pareado con forgot-password/route.ts
-function verifyToken(token: string) {
-    const secret = process.env.NEXTAUTH_SECRET || 'fallback_development_secret_only';
-    const [payloadStr, signature] = token.split('.');
-    if (!payloadStr || !signature) return null;
-
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
-
-    // Comparación timing-safe real: `!==` sobre strings compara byte a byte y
-    // aborta en el primer carácter distinto, filtrando por temporización
-    // cuánto de la firma acertó el atacante. `timingSafeEqual` exige buffers
-    // de igual longitud, así que comprobamos eso primero (con longitudes
-    // distintas no hay nada que comparar de forma segura ni insegura).
-    const signatureBuf = Buffer.from(signature);
-    const expectedBuf = Buffer.from(expectedSignature);
-    if (signatureBuf.length !== expectedBuf.length) return null;
-    if (!crypto.timingSafeEqual(signatureBuf, expectedBuf)) return null;
-
-    try {
-        const payload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
-        if (payload.exp && Date.now() > payload.exp) return null;
-        return payload;
-    } catch {
-        return null;
-    }
-}
+import { verifyResetToken } from '@/lib/password-reset-token';
 
 export async function POST(req: Request) {
     try {
@@ -47,7 +20,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Token inválido o la contraseña es demasiado corta (min. 6)' }, { status: 400 });
         }
 
-        const payload = verifyToken(token);
+        const payload = verifyResetToken(token);
         if (!payload || !payload.id || !payload.email) {
             return NextResponse.json({ error: 'El enlace es inválido, ha expirado o está corrompido.' }, { status: 400 });
         }

@@ -1,3 +1,5 @@
+import { sanitizeText } from '@/lib/sanitize';
+
 interface StatusInfo {
     label: string;
     color: string;
@@ -44,8 +46,11 @@ export const getReturnStatusEmailHtml = (
     extras?: { adminNotes?: string | null; refundAmount?: number | null }
 ) => {
     const info = STATUS[newStatus] || STATUS.REQUESTED;
-    const safeNum = (returnNumber || '').replace(/[<>]/g, '');
-    const safeName = (customerName || 'Cliente').replace(/[<>]/g, '');
+    // sanitizeText() (DOMPurify sin tags permitidos) en vez de un regex propio
+    // [<>] — mismo estándar que el resto del proyecto usa para texto plano
+    // ("sanitización al guardar Y al renderizar", §7.1 de CLAUDE.md).
+    const safeNum = sanitizeText(returnNumber) || '';
+    const safeName = sanitizeText(customerName) || 'Cliente';
     const refundLine =
         newStatus === 'REFUNDED' && extras?.refundAmount
             ? `<p style="text-align:center;font-size:18px;font-weight:bold;color:#047857;">Importe reembolsado: ${extras.refundAmount.toFixed(2)} €</p>`
@@ -53,7 +58,7 @@ export const getReturnStatusEmailHtml = (
     const notesBlock =
         (newStatus === 'REJECTED' || newStatus === 'APPROVED') && extras?.adminNotes
             ? `<div style="margin:20px 0;padding:12px;background:#f9fafb;border-left:4px solid ${info.color};border-radius:4px;">
-                <strong>Notas:</strong><br>${extras.adminNotes.replace(/[<>]/g, '').replace(/\n/g, '<br>')}
+                <strong>Notas:</strong><br>${sanitizeText(extras.adminNotes).replace(/\n/g, '<br>')}
                </div>`
             : '';
     return `

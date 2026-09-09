@@ -222,6 +222,21 @@ export async function refundReturn(returnId: string, formData: FormData) {
             return { success: false, error: `No se puede reembolsar desde ${ret.status}` };
         }
 
+        // El importe nunca puede superar lo que vale esta devolución (suma de
+        // price×quantity de sus return_items) — antes era un input libre sin
+        // tope, y para COD/TRANSFER (sin API de Stripe que lo rechace) el
+        // admin podía teclear cualquier cifra sin ningún control.
+        const maxRefundable = ret.return_items.reduce(
+            (sum, ri) => sum + Number(ri.order_items?.price ?? 0) * ri.quantity,
+            0
+        );
+        if (refundAmount > maxRefundable + 0.01) {
+            return {
+                success: false,
+                error: `El importe (${refundAmount.toFixed(2)} €) supera el máximo reembolsable de esta devolución (${maxRefundable.toFixed(2)} €)`
+            };
+        }
+
         // Reservamos la transición de estado ANTES de llamar a Stripe: si dos
         // peticiones llegan casi a la vez (doble clic, dos pestañas), sólo una
         // gana este guard atómico — la otra ve `count !== 1` y aborta sin

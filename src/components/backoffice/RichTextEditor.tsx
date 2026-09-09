@@ -82,10 +82,15 @@ export default function RichTextEditor({
     });
 
     // Sincronizar contenido externo si el padre lo cambia (p. ej. al abrir el
-    // modal con un post distinto). Sólo aplica si difiere para no perder
-    // selección durante typing.
+    // modal con un post distinto). `editor.isFocused` evita interrumpir al
+    // usuario mientras escribe: Tiptap serializa el HTML (getHTML()) de forma
+    // ligeramente distinta a como puede volver `value` tras un
+    // guardar+recargar (sanitizeHtml server-side reordena/normaliza
+    // atributos), así que sin este guard un re-render durante el typing con
+    // el mismo contenido "semántico" podía disparar `setContent` y resetear
+    // cursor/historial de undo.
     useEffect(() => {
-        if (!editor) return;
+        if (!editor || editor.isFocused) return;
         const current = editor.getHTML();
         if (value !== current) {
             editor.commands.setContent(value || '', false);

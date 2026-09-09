@@ -3,15 +3,7 @@ import prisma from '@/lib/db';
 import { sendEmail } from '@/lib/email';
 import { getPasswordResetEmailHtml } from '@/lib/emails/password-reset';
 import { rateLimit } from '@/lib/rate-limit';
-import crypto from 'crypto';
-
-// Utilidad simple para firmar tokens JWT-like sin dependencias externas
-function signToken(payload: object) {
-    const secret = process.env.NEXTAUTH_SECRET || 'fallback_development_secret_only';
-    const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
-    return `${payloadStr}.${signature}`;
-}
+import { signResetToken } from '@/lib/password-reset-token';
 
 export async function POST(req: Request) {
     try {
@@ -47,7 +39,7 @@ export async function POST(req: Request) {
             exp: Date.now() + 3600000 // +1 hora
         };
 
-        const token = signToken(tokenPayload);
+        const token = signResetToken(tokenPayload);
 
         // Construir URL Base
         const protocol = req.headers.get('x-forwarded-proto') || 'http';

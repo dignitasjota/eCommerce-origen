@@ -61,6 +61,20 @@ export async function POST(req: Request) {
         take: MAX_BATCH
     });
 
+    // Precios: releer todos los productos distintos en un único findMany en
+    // vez de un findUnique por item dentro del bucle (N+1 — hasta MAX_BATCH
+    // queries individuales antes de este fix).
+    const productSlugs = Array.from(
+        new Set(items.map((it) => it.products?.slug).filter((s): s is string => !!s))
+    );
+    const products = productSlugs.length
+        ? await prisma.product.findMany({
+              where: { slug: { in: productSlugs } },
+              select: { slug: true, price: true }
+          })
+        : [];
+    const priceBySlug = new Map(products.map((p) => [p.slug, Number(p.price)]));
+
     // Agrupar por user_id.
     const byUser = new Map<
         string,
@@ -77,11 +91,7 @@ export async function POST(req: Request) {
             byUser.set(it.users.id, { email: it.users.email, name: it.users.name, items: [] });
         }
         const product = it.products;
-        // Necesitamos el precio para el email. CartItem no lo guarda; lo
-        // releemos del producto (el carrito de DB no tiene precio congelado).
-        const price = await prisma.product
-            .findUnique({ where: { slug: product?.slug }, select: { price: true } })
-            .then((p) => (p ? Number(p.price) : 0));
+        const price = product?.slug ? (priceBySlug.get(product.slug) ?? 0) : 0;
 
         byUser.get(it.users.id)!.items.push({
             name: product?.product_translations[0]?.name || product?.slug || 'Producto',
@@ -90,6 +100,12 @@ export async function POST(req: Request) {
             image: product?.product_images[0]?.url || null
         });
     }
+
+    // Total de candidatos ANTES de excluir por orden reciente — se usa abajo
+    // para reportar `candidates`/`skipped` correctamente (antes, `candidates`
+    // se calculaba después de borrar de `byUser`, y `skipped` contaba filas
+    // de `recentlyOrdered` en vez de usuarios únicos excluidos).
+    const totalCandidates = byUser.size;
 
     // Excluir usuarios que han hecho una orden reciente.
     const userIds = Array.from(byUser.keys());
@@ -145,9 +161,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
         ok: true,
-        candidates: byUser.size + recentlyOrdered.length,
+        candidates: totalCandidates,
         sent,
-        skipped: recentlyOrdered.length,
+        skipped: totalCandidates - byUser.size,
         failures
     });
 }

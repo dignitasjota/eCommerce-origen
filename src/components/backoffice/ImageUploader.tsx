@@ -78,11 +78,22 @@ export default function ImageUploader({
     const dragSrcIdx = useRef<number | null>(null);
 
     // Limpieza: revocar object URLs al desmontar para no leakear memoria.
+    // OJO: el cleanup debe correr SÓLO al desmontar, no en cada cambio de
+    // `newFiles` — con `[newFiles]` como dep, el cleanup de un render corre
+    // cuando `newFiles` cambia (p. ej. al añadir un archivo más en modo
+    // `multiple`), revocando también las previewUrl de los archivos ya
+    // existentes que se mantienen en el array nuevo (misma cadena, mismo
+    // blob) y rompiendo esas miniaturas ya renderizadas. Por eso usamos un
+    // ref para leer el valor más reciente sólo en el cleanup final.
+    const newFilesRef = useRef(newFiles);
+    useEffect(() => {
+        newFilesRef.current = newFiles;
+    }, [newFiles]);
     useEffect(() => {
         return () => {
-            newFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+            newFilesRef.current.forEach((f) => URL.revokeObjectURL(f.previewUrl));
         };
-    }, [newFiles]);
+    }, []);
 
     const acceptFiles = useCallback(
         (files: FileList | File[]) => {
@@ -104,9 +115,22 @@ export default function ImageUploader({
             }
 
             if (!multiple && valid.length > 0) {
-                // Reemplazar por el último seleccionado.
-                newFiles.forEach((f) => URL.revokeObjectURL(f.previewUrl));
-                setNewFiles([valid[valid.length - 1]]);
+                // Reemplazar por el último seleccionado. Revocar los demás
+                // candidatos de ESTE mismo lote que no se usan (si se
+                // soltaron varios archivos en modo single, sólo nos quedamos
+                // con el último) y, dentro del updater funcional, el `prev`
+                // real en vez del `newFiles` cerrado por closure — si
+                // `acceptFiles` se invoca dos veces seguidas antes de un
+                // re-render (paste + drop casi simultáneos), cada llamada
+                // revoca el `prev` que React tiene en cola en ese momento, no
+                // una foto fija potencialmente obsoleta, así que ningún blob
+                // queda huérfano sin revocar.
+                valid.slice(0, -1).forEach((f) => URL.revokeObjectURL(f.previewUrl));
+                const lastValid = valid[valid.length - 1];
+                setNewFiles((prev) => {
+                    prev.forEach((f) => URL.revokeObjectURL(f.previewUrl));
+                    return [lastValid];
+                });
             } else if (valid.length > 0) {
                 setNewFiles((prev) => [...prev, ...valid]);
             }
@@ -118,7 +142,7 @@ export default function ImageUploader({
             // accesible y los previews salen de la lectura del input.
             // Siguiente render: sincronizar input file con el array.
         },
-        [newFiles, maxSizeMB, multiple]
+        [maxSizeMB, multiple]
     );
 
     // Sync de los archivos seleccionados al input file mediante DataTransfer.

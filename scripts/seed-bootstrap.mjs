@@ -13,6 +13,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 
 const url = (process.env.DATABASE_URL || '').replace(/^mysql:\/\//, 'mariadb://');
 if (!url) {
@@ -79,7 +80,9 @@ async function ensureAdmin() {
     }
 
     const email = (process.env.ADMIN_EMAIL || 'admin@example.com').toLowerCase();
-    const plainPassword = process.env.ADMIN_PASSWORD || 'changeme-' + Math.random().toString(36).slice(2, 10);
+    // Math.random() no es un PRNG criptográfico (potencialmente predecible) —
+    // usamos randomBytes para la password autogenerada.
+    const plainPassword = process.env.ADMIN_PASSWORD || 'changeme-' + randomBytes(9).toString('base64url');
     const passwordHash = await bcrypt.hash(plainPassword, 10);
 
     await prisma.user.create({
