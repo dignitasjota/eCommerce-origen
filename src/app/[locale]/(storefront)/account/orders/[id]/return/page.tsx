@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
-import { RETURN_WINDOW_DAYS, getRemainingReturnableQty } from '@/lib/returns';
+import { RETURN_WINDOW_DAYS, getRemainingReturnableQty, isWithinReturnWindow } from '@/lib/returns';
 import ReturnRequestForm from './ReturnRequestForm';
 
 export const dynamic = 'force-dynamic';
@@ -29,10 +29,10 @@ export default async function NewReturnPage({ params }: Props) {
     });
     if (!order || order.user_id !== session.user.id) notFound();
 
-    // Validaciones de elegibilidad (delivered + ventana).
+    // Validaciones de elegibilidad (delivered + ventana). Mismo criterio que
+    // assertOrderEligibleForReturn en lib/returns.ts.
     const eligible = order.status === 'DELIVERED' && order.payment_status === 'PAID';
-    const ageDays = (Date.now() - order.updated_at.getTime()) / 86_400_000;
-    const inWindow = ageDays <= RETURN_WINDOW_DAYS;
+    const inWindow = isWithinReturnWindow(order.delivered_at, order.updated_at);
 
     // Calcular cuánto queda devolvible por cada item.
     const remainingByItem = await Promise.all(

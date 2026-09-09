@@ -8,8 +8,11 @@ export default async function AddressesPage() {
         return null;
     }
 
+    // `select` explícito: evita traer `password_hash` a memoria del Server
+    // Component cuando sólo hace falta el id.
     const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
+        select: { id: true }
     });
 
     if (!user) {

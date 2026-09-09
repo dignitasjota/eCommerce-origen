@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
-import { RETURN_WINDOW_DAYS } from '@/lib/returns';
+import { RETURN_WINDOW_DAYS, isWithinReturnWindow } from '@/lib/returns';
 
 const RETURN_STATUS_LABELS: Record<string, string> = {
     REQUESTED: 'Solicitada',
@@ -23,7 +23,12 @@ export default async function OrdersPage({ searchParams }: Props) {
     const sp = await searchParams;
     const justRequestedRMA = sp.return;
 
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    // `select` explícito: evita traer `password_hash` a memoria del Server
+    // Component cuando sólo hace falta el id.
+    const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true }
+    });
     if (!user) return <div>Usuario no encontrado</div>;
 
     const orders = await prisma.order.findMany({
@@ -54,11 +59,10 @@ export default async function OrdersPage({ searchParams }: Props) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {orders.map((order) => {
                         // Elegibilidad para devolución (mismo criterio que el endpoint).
-                        const ageDays = (Date.now() - order.updated_at.getTime()) / 86_400_000;
                         const canReturn =
                             order.status === 'DELIVERED' &&
                             order.payment_status === 'PAID' &&
-                            ageDays <= RETURN_WINDOW_DAYS;
+                            isWithinReturnWindow(order.delivered_at, order.updated_at);
 
                         return (
                             <div key={order.id} style={{ backgroundColor: 'var(--color-background-soft)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>

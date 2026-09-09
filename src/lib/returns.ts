@@ -26,6 +26,25 @@ import prisma from '@/lib/db';
 export const RETURN_WINDOW_DAYS = 14;
 
 /**
+ * ¿Sigue un pedido dentro de la ventana de devolución? Mismo criterio que
+ * `assertOrderEligibleForReturn` (delivered_at si existe, fallback a
+ * updated_at para pedidos ya DELIVERED antes de que ese campo existiera).
+ * Expuesta aparte para que las vistas de cliente (listado de pedidos,
+ * formulario de devolución) puedan decidir si mostrar el CTA sin duplicar
+ * el cálculo — la validación real de la solicitud sigue viviendo en
+ * `assertOrderEligibleForReturn`, ésta es sólo para UI.
+ *
+ * Función pura en un módulo no-React a propósito: si este cálculo con
+ * `Date.now()` viviera dentro del cuerpo de un Server Component, ESLint
+ * (react-hooks/purity) lo marca como función impura durante el render.
+ */
+export function isWithinReturnWindow(deliveredAt: Date | null, updatedAt: Date): boolean {
+    const reference = deliveredAt ?? updatedAt;
+    const ageDays = (Date.now() - reference.getTime()) / 86_400_000;
+    return ageDays <= RETURN_WINDOW_DAYS;
+}
+
+/**
  * Genera un return_number no enumerable: `RMA-YYYYMM-XXXXXXXX`.
  */
 export function generateReturnNumber(): string {

@@ -10,8 +10,11 @@ export default async function ProfilePage() {
         return null; // Layout ya redirige, esto es por si acaso para TS
     }
 
+    // `select` explícito: evita traer `password_hash` a memoria del Server
+    // Component cuando sólo hacen falta name/email.
     const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+        where: { email: session.user.email },
+        select: { name: true, email: true }
     });
 
     if (!user) {
