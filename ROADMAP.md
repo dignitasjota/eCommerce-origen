@@ -1,12 +1,12 @@
 # Roadmap eCommerce
 
-> Plan derivado de la auditoría del **2026-04-30** y ejecutado en los Sprints 1–5 + tareas continuas (cierre el **2026-05-02**).
+> Plan derivado de la auditoría del **2026-04-30** y ejecutado en los Sprints 1–5 + tareas continuas (cierre el **2026-05-02**). Auditoría de seguridad adicional en profundidad cerrada el **2026-09-10** (ver bloque dedicado más abajo).
 >
 > Detalle de cada implementación en [`CLAUDE.md`](./CLAUDE.md). Este documento es el resumen accionable: qué está hecho, qué queda pendiente y qué hay en backlog.
 
 ---
 
-## Estado global (2026-05-02)
+## Estado global (2026-09-10)
 
 | Bloque | Estado | Notas |
 |---|---|---|
@@ -16,9 +16,10 @@
 | Sprint 4 — Conversión | ✅ Completado | 4/4 ítems · pendiente migración DB |
 | Sprint 5 — Backoffice | ✅ Completado | 6/7 ítems · WYSIWYG pospuesto |
 | Continuo — Deuda técnica | ✅ 8/8 | Todos completados |
+| Auditoría de seguridad (2026-09-10) | ✅ Completado | Todos los hallazgos corregidos y validados con e2e real |
 | Backlog premium | 🟢 Abierto | A planificar según prioridad de negocio |
 
-**Verificación final:** `npx tsc --noEmit` → exit 0 (sin errores).
+**Verificación final:** `npx tsc --noEmit` → exit 0 (sin errores) · `npm run build` sin errores · suite Playwright e2e completa: 19 passed / 1 skipped / 0 failed (contra MariaDB real).
 
 ---
 
@@ -178,6 +179,25 @@ Detalles paso a paso en [`docs/deploy-docker.md`](./docs/deploy-docker.md).
 
 ---
 
+## Auditoría de seguridad en profundidad (2026-09-10) 🔴
+
+Auditoría completa del código (4 agentes en paralelo sobre distintas porciones del sistema) seguida de corrección de **todos** los hallazgos y validación real contra Node 22 + MariaDB en Docker + build de producción + suite Playwright e2e completa — no sólo lectura de código. Detalle extendido en [`CLAUDE.md §9.9`](./CLAUDE.md#99-auditoría-de-seguridad-en-profundidad--validación-real-2026-09-10).
+
+- [x] **Middleware sin protección real en `/admin/*`** — el callback `authorized` de NextAuth era código muerto; cualquiera sin login veía `/admin/settings` (claves Stripe/SMTP) y `/admin/users` (PII). Ahora `src/middleware.ts` decodifica el JWT con `getToken()` y bloquea/redirige. ✅ 2026-09-10
+- [x] **Subida de imágenes sin validar en servidor** — extensión/tipo confiados del cliente, riesgo de XSS almacenado vía `.html`/`.svg`. Nuevo `src/lib/uploads.ts`: whitelist MIME + magic bytes + nombre generado en servidor. `bodySizeLimit` de Server Actions corregido (1MB→32MB). ✅ 2026-09-10
+- [x] **Arranque de Docker roto** — `docker-entrypoint.sh` y el job `e2e` de CI usaban un flag de Prisma (`--skip-generate`) que no existe en la versión instalada; con `set -e`, tumbaba el arranque del contenedor **en todo despliegue**. ✅ 2026-09-10
+- [x] **Webhook de Stripe: fugas de stock/cupón** — pagos fallidos/expirados/cancelados no revertían stock ni cupón y quedaban fuera del alcance del cron de limpieza. Reembolsos parciales se trataban como totales. Reembolsos vía RMA duplicaban la restitución de stock. Reescrito completo. ✅ 2026-09-10
+- [x] **RMA: doble reembolso por condición de carrera** — `refundReturn` llamaba a Stripe antes de reservar el estado. Ahora reserva primero (guard atómico) + `idempotencyKey`. ✅ 2026-09-10
+- [x] **RMA: ventana de devolución sobre `updated_at`** — se reiniciaba con cualquier edición de la orden. Nuevo campo `Order.delivered_at`. ✅ 2026-09-10
+- [x] **`sendEmail()` fingía éxito sin SMTP configurado** — ahora falla honestamente y reporta a Sentry si está activo. ✅ 2026-09-10
+- [x] **Paginación cursor rota** — asumía UUIDs ordenables; reescrita como keyset real sobre `(created_at, id)`. ✅ 2026-09-10
+- [x] **Checkout sin usar el schema Zod centralizado** — validación manual duplicada reemplazada por `checkoutSchema.safeParse()`. ✅ 2026-09-10
+- [x] **Rate-limit faltante en `reviews`/`wishlist`**, **timing-safe falso en `reset-password`**, **errores P2003 crudos al borrar productos/cupones con pedidos asociados**. ✅ 2026-09-10
+- [x] **`localePrefix: 'always'` inconsistente con sitemap/hreflang/rewrite** — corregido a `'as-needed'`; limpiados ~30 enlaces admin con `/es/` hardcodeado que habrían sufrido un redirect de más. ✅ 2026-09-10
+- [x] **Login sin redirección por rol** y **registro sin atributos `name`** en los inputs (bugs descubiertos probando, no parte de la auditoría original). ✅ 2026-09-10
+
+---
+
 ## Backlog premium 🟢 (#30)
 
 A planificar según prioridad de negocio. Los items con (✓ schema) ya tienen el campo persistente preparado:
@@ -211,5 +231,6 @@ Estimación original (auditoría 2026-04-30): 7–10 semanas a "producto vendibl
 | Sprint 4 | 1–2 sem | 2026-05-01 |
 | Sprint 5 | 2 sem | 2026-05-02 |
 | Continuo | transversal | 2026-05-02 |
+| Auditoría de seguridad | — (no estimada en el plan original) | 2026-09-10 |
 
-Próximo paso recomendado: `docker compose build` y `docker compose up -d` en un VPS de staging para validar el flujo completo (build OK → migración auto → seed → smoke test con tarjeta `4242…`).
+Próximo paso recomendado: dado que el arranque de Docker estaba roto hasta esta sesión (§ auditoría de seguridad, `--skip-generate`), **validar en un VPS de staging real es ahora más urgente que antes** — `docker compose build` y `docker compose up -d` para confirmar el flujo completo (build OK → migración auto → seed → smoke test con tarjeta `4242…`) con el fix aplicado.

@@ -1,6 +1,6 @@
 # Contexto del Proyecto eCommerce
 
-Documento de referencia del proyecto. Estado actualizado al **2026-05-02**, tras los Sprints 1–5, tareas continuas, dockerización, operativa, compliance, escala UI, pre-producción, **CI/CD, drag&drop de imágenes y editor WYSIWYG (Tiptap)**. Roadmap ejecutivo en [`ROADMAP.md`](./ROADMAP.md).
+Documento de referencia del proyecto. Estado actualizado al **2026-09-10**, tras los Sprints 1–5, tareas continuas, dockerización, operativa, compliance, escala UI, pre-producción, CI/CD, drag&drop de imágenes, editor WYSIWYG (Tiptap) y una **auditoría de seguridad en profundidad con corrección + validación real de todos los hallazgos** (ver §9.9). Roadmap ejecutivo en [`ROADMAP.md`](./ROADMAP.md).
 
 ---
 
@@ -165,6 +165,7 @@ src/
 │   └── messages/                        # es.json, en.json
 ├── lib/
 │   ├── auth.ts                          # NextAuth + requireAdmin() + AuthorizationError
+│   ├── auth-roles.ts                    # ADMIN_ROLES/AdminRole — sin deps de Prisma, para middleware.ts
 │   ├── db.ts                            # PrismaClient singleton
 │   ├── stripe.ts                        # getStripe() async (lee SiteSettings + cache 60s)
 │   ├── coupons.ts                       # resolveCoupon (puro) + consumeCoupon (atómico)
@@ -172,7 +173,8 @@ src/
 │   ├── rate-limit.ts                    # En memoria, por (bucket+IP)
 │   ├── shortcodes.ts                    # parseShortcodes() → AST plano (html|shortcode)
 │   ├── recently-viewed.ts               # cookie eshop_recent (12 slugs, 30d)
-│   ├── pagination.ts                    # cursor opaco (encode/decode/buildPrismaCursorArgs)
+│   ├── pagination.ts                    # keyset real (created_at+id) — CURSOR_ORDER_BY + buildCursorWhere
+│   ├── uploads.ts                       # saveUploadedImage(): whitelist MIME + magic bytes + nombre server-side
 │   ├── audit.ts                         # auditLog() + auditLogServer() best-effort
 │   ├── stock.ts                         # recordStockMovement() (acepta tx)
 │   ├── invoice.ts                       # generateInvoiceNumber + ensureInvoiceNumber
@@ -209,7 +211,7 @@ Internacionalización en BD con tablas hijas `*_translations` unidas por `locale
 - **`Product`** — `slug`, `sku` UNIQUE, `barcode`, `price`, `compare_at_price`, `weight` (Decimal 8,3), `dimensions` (JSON `{w,h,d}`), `is_active`, `is_featured`, `unlimited_stock`. Relaciona con `ProductTranslation`, `ProductImage`, `ProductCategory`, `ProductVariant`, `Review`, `RelatedProduct`.
 - **`ProductVariant`** — SKU UNIQUE, precio override (null = hereda), stock, `is_active`. Pivot con `VariantOption` vía `ProductVariantOption`. **Stock real por variante** desde Sprint 5 (CRUD plano en admin).
 - **`Category`** — `slug` UNIQUE, jerarquía con `parent_id`, traducciones independientes, `image`, `sort_order`, `is_active`.
-- **`Order`** — `order_number` UNIQUE (`ORD-YYYYMM-XXXXXXXX`, no enumerable), `status` (enum `OrderStatus` que incluye `PENDING_PAYMENT`), `payment_status`, `fulfillment_status` (enum `FulfillmentStatus` separado), `payment_method`, `payment_id`, `payment_intent_id` UNIQUE (Stripe), `invoice_number` UNIQUE, `invoice_url`, `subtotal/shipping_cost/discount/tax/total`, `coupon_id`, `tracking_number`, `locale`. Relaciones con `User`, `Address` (shipping/billing), `ShippingMethod`, `OrderItem`, `Coupon`.
+- **`Order`** — `order_number` UNIQUE (`ORD-YYYYMM-XXXXXXXX`, no enumerable), `status` (enum `OrderStatus` que incluye `PENDING_PAYMENT`), `payment_status`, `fulfillment_status` (enum `FulfillmentStatus` separado), `payment_method`, `payment_id`, `payment_intent_id` UNIQUE (Stripe), `invoice_number` UNIQUE, `invoice_url`, `subtotal/shipping_cost/discount/tax/total`, `coupon_id`, `tracking_number`, `locale`, `delivered_at` (nullable, 2026-09-10 — fijado sólo al entrar en `DELIVERED`, base de la ventana de devolución; ver §9.9). Relaciones con `User`, `Address` (shipping/billing), `ShippingMethod`, `OrderItem`, `Coupon`. Índice en `created_at` (usado por la paginación cursor de `/admin/orders` y por el cron `cleanup-pending-orders`).
 - **`Coupon`** — `code` UNIQUE, `discount_type` (PERCENTAGE/FIXED), `discount_value`, `min_purchase`, `max_uses`, `used_count`, `starts_at`, `expires_at`, `is_active`. Validación + consumo atómico con guardia de `used_count < max_uses`.
 - **`User`** — `email` UNIQUE, `password_hash`, `name`, `phone`, `role` (`ADMIN`/`ORDER_MANAGER`/`CUSTOMER`), `is_active`, `last_login_at`, `image`. Relaciones con `Address`, `Order`, `CartItem`, `Review`, `WishlistItem`, `Account`, `Session`.
 - **`Address`** — `tax_id` (NIF/CIF) añadido para facturación legal en España. Resto: `first_name`/`last_name`, `address1`/`address2`, `city`/`state`/`postal_code`/`country`, `phone`, `is_default`, `user_id` opcional (admite invitado).
@@ -247,7 +249,7 @@ En **updates** que afectan a tabla base + traducción → siempre dentro de `pri
 
 `POST /api/storefront/checkout` (rate-limit 10/min):
 
-1. **Valida formato** (Zod `checkoutSchema`): items ≤ 100, dirección con campos requeridos, email si no hay sesión.
+1. **Valida formato** con `checkoutSchema.safeParse()` (Zod, `src/lib/schemas/checkout.ts`) — hasta 2026-09-10 el endpoint reimplementaba la validación a mano (regex de email propia, campos de dirección uno a uno) ignorando el schema ya centralizado; `attributes` de cada item ahora está tipado como `Record<string,string>` (sin anidamiento posible) en vez de `JSON.stringify` sobre un objeto sin validar. Items ≤ 100, dirección con campos requeridos, email si no hay sesión.
 2. **Rehidrata catálogo desde DB**: por cada item lee `product` + `variant` con `is_active=true`, **ignora `name`/`price` del cliente**. Si `unlimited_stock=false`, valida stock; precio definitivo viene de variant ?? product.
 3. **Cupón** (opcional): `resolveCoupon(prisma, code, subtotal)` valida `is_active`/`starts_at`/`expires_at`/`max_uses`/`min_purchase` y devuelve descuento. Acotado a `[0, subtotal]` y redondeado a céntimos.
 4. **Transacción atómica** (`prisma.$transaction`):
@@ -268,10 +270,10 @@ Errores controlados: `409` para `Stock insuficiente` o `Cupón agotado`; `400` p
 1. **Cargar webhook secret** desde `SiteSettings` (con fallback a env). Si no hay → 500.
 2. **Verificar firma** con `stripe-signature` (lee `req.text()` raw).
 3. **Idempotencia**: insertar `WebhookEvent(provider='stripe', event_id)` — `P2002` ⇒ ya procesado, devolver 200.
-4. **Handlers**:
+4. **Handlers** (reescritos 2026-09-10, ver §9.9):
    - `checkout.session.completed`, `async_payment_succeeded` → orden `CONFIRMED + PAID` + `ensureInvoiceNumber()` + email confirmación.
-   - `async_payment_failed`, `expired` → `CANCELLED + FAILED`.
-   - `charge.refunded`, `payment_intent.canceled` → `REFUNDED + REFUNDED`, restituye stock con `+increment`, registra `StockMovement REFUND`, envía email refund.
+   - `async_payment_failed`, `expired`, **`payment_intent.canceled`** → `revertOrderReservation()`: restituye stock, revierte `coupon.used_count` (guard `gt: 0`) y marca `CANCELLED + FAILED`, todo en una transacción con guard atómico (`updateMany` + `count===1`) — mismo patrón que el cron `cleanup-pending-orders`. Antes dejaba la orden en `CANCELLED` sin revertir nada, fuera del alcance de ese cron (que sólo mira `PENDING_PAYMENT`) ⇒ fuga permanente de stock y cupón en todo pago Stripe fallido/expirado.
+   - `charge.refunded` → `handleChargeRefunded()`: distingue reembolso parcial de total comparando `amount_refunded` vs `amount`; consulta `stripe.refunds.list()` para detectar si el reembolso ya lo gestionó el flujo RMA (`refundReturn`, que restituye stock por ítem) y evitar duplicar la restitución; un reembolso total fuera del flujo RMA sigue el comportamiento legacy (restituye todo el stock, marca `REFUNDED`, revierte cupón); un parcial sin RMA no toca stock ni estado — sólo deja `AuditLog(order.partial_refund_unmanaged)` para revisión manual.
 
 ### 5.3. Carrito
 
@@ -290,8 +292,8 @@ Errores controlados: `409` para `Stock insuficiente` o `Cupón agotado`; `400` p
 
 ### 5.5. Autorización
 
-- **Rutas admin (URL):** middleware (`authorized` callback) bloquea `/admin/*` para usuarios sin rol `ADMIN`/`ORDER_MANAGER`.
-- **Server Actions admin:** TODAS las 31 actions invocan `requireAdmin([roles])` al inicio. Sin `auth()` válido lanza `AuthorizationError` que el catch convierte en `{ success:false, error }`. Roles granulares: `['ADMIN']` para settings/users/payments/coupons/shipping/legal/categories; default `[ADMIN, ORDER_MANAGER]` para products/orders/pages/blog. Un admin no puede borrarse a sí mismo.
+- **Rutas admin (URL):** `src/middleware.ts` decodifica el JWT de sesión con `getToken()` de `next-auth/jwt` (no pasa por `auth()`/`PrismaAdapter` para no arrastrar el driver de MariaDB al bundle del middleware) y bloquea/redirige a login cualquier request a `/admin/*` (con o sin prefijo de locale) sin rol `ADMIN`/`ORDER_MANAGER`. Fail-safe: sin `AUTH_SECRET`/`NEXTAUTH_SECRET` configurado, deniega siempre. **Nota histórica:** hasta el 2026-09-10 esta protección era código muerto — el callback `authorized` de NextAuth existía en `src/lib/auth.ts` pero `middleware.ts` nunca lo invocaba (sólo ejecutaba `next-intl`), dejando **todo** el panel admin (incluidas las claves de Stripe/SMTP en `/admin/settings`) visible sin login. Ver §9.9.
+- **Server Actions admin:** TODAS las server actions invocan `requireAdmin([roles])` al inicio. Sin `auth()` válido lanza `AuthorizationError` que el catch convierte en `{ success:false, error }`. Roles granulares: `['ADMIN']` para settings/users/payments/coupons/shipping/legal/categories; default `[ADMIN, ORDER_MANAGER]` para products/orders/pages/blog. Un admin no puede borrarse a sí mismo.
 - **Endpoints de cron:** `verifyCronAuth(req)` compara `x-cron-secret` con `CRON_SECRET` usando `timingSafeEqual`. Sin `CRON_SECRET` configurado, **rechaza todas las peticiones** (fail-safe) — los crons quedan deshabilitados hasta configurar la variable.
 
 ### 5.6. Crones de mantenimiento
@@ -357,17 +359,25 @@ Para añadir un audit nuevo: invocar `auditLog({...})` **DESPUÉS** de la operac
 ### 5.10. Subida y galería de imágenes (admin)
 
 `src/components/backoffice/ImageUploader.tsx` (cliente):
-- **Drop zone** con click/keyboard/paste desde portapapeles. Validación de tipo (`image/*`) y tamaño (default 8 MB) por archivo.
+- **Drop zone** con click/keyboard/paste desde portapapeles. Validación de tipo (`image/*`) y tamaño (default 8 MB) por archivo — **sólo UX**, no es la defensa real (ver abajo).
 - **Preview** con `URL.createObjectURL(file)` — revocado al desmontar para no leakear memoria.
 - **Reorder** de imágenes existentes con HTML5 native drag (sin librerías). La primera (`sort_order=0`) es la principal.
 - **Delete reversible** con toggle (×/↺); el cambio sólo se persiste al enviar el form.
 - **Sync con FormData**: un input file oculto se actualiza vía `DataTransfer` con los archivos seleccionados → `new FormData(form)` los recoge automáticamente. Un input hidden serializa el orden y deletes en JSON (`images_order`).
 
-Server actions consumidoras (`products`, `categories`, `blog`):
+**Validación real: `src/lib/uploads.ts` → `saveUploadedImage()`** (2026-09-10). Antes las server actions derivaban la extensión de `file.name.split('.').pop()` sin whitelist ni comprobación de tipo real — cualquier archivo (incl. `.html`/`.svg`, servidos luego como estático desde `/uploads/`, riesgo de XSS almacenado) pasaba. Ahora:
+1. Valida `file.type` contra whitelist (`image/jpeg|png|webp|gif`).
+2. Comprueba los **magic bytes reales** del contenido — el `file.type` declarado por el cliente no es de fiar.
+3. Límite de tamaño server-side (8 MB por defecto — antes sólo existía en cliente).
+4. Genera el nombre de archivo **íntegramente en el servidor** (prefijo + UUID) — nunca usa `file.name` del cliente, ni para el nombre ni para la extensión.
+
+Server actions consumidoras (`products`, `categories`, `blog`, `settings` — logo/favicon/carrusel):
 1. Parsean `images_order` (best-effort: si malformed, ignoran).
 2. Aplican deletes (con borrado físico de `/uploads/` si el archivo es nuestro).
 3. Aplican reorder con `updateMany` por id en transacción.
-4. Suben los archivos nuevos al final con `sort_order` consecutivo desde el `MAX` actual.
+4. Suben los archivos nuevos al final con `saveUploadedImage()`, `sort_order` consecutivo desde el `MAX` actual.
+
+`next.config.ts` fija `experimental.serverActions.bodySizeLimit: '32mb'` — el default de Next (1 MB) rompía cualquier subida por encima de eso pese a que el uploader promete hasta 8 MB por imagen y la galería permite subir varias a la vez.
 
 Casos de un solo archivo (categorías, blog cover): el ImageUploader se monta con `multiple={false}` y un `existingImages` sintético `[{id:'current', url, sort_order:0}]`. La server action interpreta `{id:'current', deleted:true}` como "borrar la actual sin reemplazo".
 
@@ -473,7 +483,7 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
 | Job | Disparador | Qué hace |
 |---|---|---|
 | `quality` | `push`/`pr` a `main`, manual | `npm ci --ignore-scripts` + `prisma generate` (con DATABASE_URL placeholder) + `tsc --noEmit` + `eslint`. Lint en `continue-on-error` hasta limpiar warnings legacy. |
-| `e2e` | `push`/`pr` a `main` | Levanta service `mariadb:10.11` efímero, instala browsers Playwright (chromium), `prisma db push --accept-data-loss=false --skip-generate` + `seed-bootstrap.mjs` con admin determinista (`ci-admin@example.com` / `CiTestPass123!`), build de Next y `npm run test:e2e`. Sube `playwright-report/` como artefacto si falla. |
+| `e2e` | `push`/`pr` a `main` | Levanta service `mariadb:10.11` efímero, instala browsers Playwright (chromium), `prisma db push --accept-data-loss=false` + `seed-bootstrap.mjs` con admin determinista (`ci-admin@example.com` / `CiTestPass123!`), build de Next y `npm run test:e2e`. Sube `playwright-report/` como artefacto si falla. |
 | `docker-build` | `push`/`pr` a `main` (depende de `quality`) | `docker buildx build` con cache `type=gha` y smoke test (`docker run --entrypoint node ... --version`). No publica. |
 | `docker-publish` | Sólo en tags `v*.*.*` (depende de `quality`+`docker-build`) | Login a `ghcr.io` con `GITHUB_TOKEN` y push de `ghcr.io/<repo>:latest` y `:vX.Y.Z`. |
 
@@ -546,6 +556,9 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
 - ❌ Scripts sueltos en raíz.
 - ❌ `dangerouslySetInnerHTML` sin pasar antes por `sanitizeHtml`.
 - ❌ Skip-link y `:focus-visible` ya están globales — no envolver botones con focus rings inline.
+- ❌ Confiar en `file.name`/`file.type` del cliente al guardar un upload — validar magic bytes y generar el nombre en servidor (`src/lib/uploads.ts`).
+- ❌ Añadir protección de rutas en middleware sin verificarla con una petición real sin sesión — un callback de NextAuth sin cablear (`authorized`) puede parecer una protección real y no ejecutarse nunca.
+- ❌ Cambiar `next.config.ts`/`prisma/schema.prisma`/flags de CLI sin volver a arrancar el contenedor o correr el comando exacto que usa el entrypoint — un flag inválido con `set -e` tumba el arranque entero.
 
 ---
 
@@ -566,6 +579,7 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
 | Pre-producción | 2026-05-02 | Robustez | **#18** Restock condicional al recibir RMA (sólo `UNOPENED`/`OPENED` reabastecen stock; `DAMAGED`/`USED` no tocan stock — el descarte queda en `AuditLog` con métricas `restocked`/`discarded`) · **#35** Backup automatizado: side-car `backup` opcional en compose con `mariadb-dump`+gzip, cron configurable (`BACKUP_CRON`/`BACKUP_KEEP_DAYS`), volumen `db-backups` separado · **#38** 6 specs Playwright E2E: cookie consent, browse storefront, checkout COD end-to-end, login admin con guards, listado pedidos + export CSV, registro cliente + rate-limit. Scripts `npm run test:e2e[:ui|:debug]` |
 | DX & Editorial | 2026-05-02 | CI + uploader + WYSIWYG | **#36** GitHub Actions con 4 jobs (`quality` typecheck+lint, `e2e` con MariaDB service + Playwright + bootstrap determinista, `docker-build` con cache GHA + smoke test, `docker-publish` a GHCR sólo en tags `vX.Y.Z`); concurrency cancela runs antiguos · **#18** `<ImageUploader>` cliente reutilizable con drag&drop, preview, reorder HTML5, delete reversible, paste desde portapapeles; sync con FormData vía DataTransfer; aplicado en ProductsManager (galería unificada, primera = principal), CategoriesManager (imagen única) y BlogManager (cover 16:9 — campo nuevo); server actions extendidas para procesar `images_order` (reorder + borrado físico) · **#1** `<RichTextEditor>` Tiptap con StarterKit + Link/Image/Placeholder/TextAlign; output HTML compatible con `sanitizeHtml` y shortcodes `{{category_id:slug}}`; `immediatelyRender:false` evita SSR mismatch; aplicado en ProductsManager (description), BlogManager (content), PagesManager y LegalManager (content) |
 | Observabilidad | 2026-05-02 | Monitorización + retención + Stripe E2E + Sentry | **`/api/health`** ampliado con `uptimeSeconds` y `startedAt` · **nuevo `/api/health/deep`** que valida configuración (DB writeable, admin user, SMTP, Stripe, NEXTAUTH_SECRET, CRON_SECRET) y devuelve `status: ok\|warning\|critical` · **doc `monitoring.md`** con setup UptimeRobot/BetterStack/cron-job.org · **nuevo cron `/api/admin/cron/retention`** (diario): purga `WebhookEvent` >90d, `AuditLog` >365d, `StockMovement` >730d (ventanas configurables vía SiteSettings); `auditLogServer` registra el propio job para detectar volúmenes anómalos · **nuevo spec `07-stripe-webhook.spec.ts`**: helper de firma Stripe con HMAC SHA256 (sin SDK) que valida el contrato del webhook (firma faltante → 400, firma inválida → 400, event nuevo procesa, event repetido devuelve `duplicated:true` por `WebhookEvent` UNIQUE); CI inyecta `STRIPE_WEBHOOK_SECRET` y `E2E_STRIPE_WEBHOOK_SECRET` con valor de test · **integración Sentry opcional**: `src/lib/sentry.ts` con guard `isSentryEnabled()`; `src/instrumentation.ts` y `src/instrumentation-client.ts` inicializan SDK sólo si hay `SENTRY_DSN`; `captureError` cableado en webhook Stripe y catch genérico de checkout (excluye 409 de stock/cupón); `app/global-error.tsx` reporta crashes del cliente; doc `observability.md` con setup, tuning y filtros |
+| Auditoría de seguridad | 2026-09-10 | Hardening + fixes validados con e2e real | **Crítico:** middleware sin protección real en `/admin/*` (código muerto) → `getToken()` + bloqueo real · path traversal / tipos arbitrarios en subida de imágenes → `lib/uploads.ts` (whitelist + magic bytes + nombre server-side) · `docker-entrypoint.sh`/CI usaban `prisma db push --skip-generate` (flag inexistente en Prisma 7.4.1) → **tumbaba el arranque de todo despliegue Docker**, corregido quitando el flag · **Pagos:** webhook revierte stock+cupón en pagos fallidos/expirados/cancelados (antes fuga permanente); reembolsos parciales ya no se tratan como totales; evita doble restitución de stock cuando el reembolso lo gestionó el flujo RMA · **RMA:** `refundReturn` reserva el estado antes de llamar a Stripe + `idempotencyKey` (evita doble reembolso); ventana de devolución sobre `delivered_at` en vez de `updated_at` · `sendEmail()` ya no finge éxito sin SMTP · paginación cursor reescrita como keyset real (`created_at`+`id`, antes asumía UUIDs ordenables) · checkout usa `checkoutSchema` de Zod en vez de validación manual · rate-limit en reviews/wishlist · timing-safe real en reset-password · mensajes de error específicos (P2003) al borrar productos/cupones con pedidos asociados · `localePrefix` corregido a `as-needed` (alineado con sitemap/hreflang/rewrite, que ya asumían "es sin prefijo") + ~30 enlaces admin con `/es/` hardcodeado limpiados · login redirige admins a `/admin` por rol · registro con atributos `name` en los inputs. Validado con `tsc --noEmit` limpio, `npm run build` y suite Playwright e2e completa (19 passed/1 skipped/0 failed) contra MariaDB real. Detalle completo en §9.9. |
 
 **Pospuestos por tradeoff** (siguen abiertos en `ROADMAP.md`):
 
@@ -607,6 +621,8 @@ Bloque añadido para que la plantilla cumpla los mínimos legales antes del prim
 - **#19 Facturación correlativa estricta:** la numeración aleatoria del bloque 9.5 (`INV-YYYY-XXXXXXXX`) NO cumple el requisito fiscal AEAT/UE de correlación sin huecos. Se sustituyó por `InvoiceCounter` con UNIQUE `(series, year)` y UPSERT atómico → formato `<SERIE>-YYYY-NNNNNNN` (7 dígitos). El claim ocurre dentro de la misma transacción que confirma `PAID` para que ningún rollback consuma número. Serie configurable en `/admin/settings` con default `'A'`. Nota: para Veri*Factu (envío en tiempo real a la AEAT, obligatorio en España desde 2026 para parte del tejido empresarial) hace falta integrar con un servicio externo de facturación electrónica.
 - **#20 Cookie consent banner (RGPD):** `<CookieConsent>` con granularidad `necessary/analytics/marketing` cumple la exigencia AEPD de "rechazar tan fácil como aceptar" (botón "Sólo necesarias" al mismo nivel que "Aceptar todo"). Persistencia en cookie 12 meses, con `version` para invalidar consents previos cuando cambies la política. `<AnalyticsScripts>` carga GA4/Meta Pixel sólo con consent y reactivamente vía evento custom `eshop:consent-changed`.
 - **#21 Flujo RMA:** schema `Return`+`ReturnItem` con enums (REQUESTED/APPROVED/REJECTED/RECEIVED/REFUNDED/CANCELLED) y máquina de estados validada por `canTransition()`. Endpoint cliente `POST /api/storefront/returns` con validación de elegibilidad (DELIVERED + PAID + ventana `RETURN_WINDOW_DAYS`). UI cliente en `/account/orders/[id]/return` con form selectivo por item. UI admin `/admin/returns` con listado paginado + detalle con panel de acciones contextual al estado. Server actions `approveReturn`/`rejectReturn`/`markReturnReceived`/`refundReturn`. **`refundReturn` integra con Stripe `refunds.create`** cuando hay `payment_intent_id`, devolviendo el dinero al cliente vía API. `markReturnReceived` restituye stock con `productVariant.update(increment)` + `StockMovement(REFUND)`. Email transaccional en cada transición. `AuditLog` en cada paso.
+  - **2026-09-10:** la ventana de devolución usaba `Order.updated_at` — se reiniciaba con cualquier edición posterior de la orden (tracking, notas...). Ahora usa `Order.delivered_at` (fijado sólo al entrar en `DELIVERED`), con fallback a `updated_at` sólo para órdenes ya `DELIVERED` antes de que el campo existiera.
+  - **2026-09-10:** `refundReturn` llamaba a `stripe.refunds.create()` **antes** de reservar el estado (`Return.status`), permitiendo doble reembolso con doble clic/dos pestañas. Ahora la transición se reserva con `updateMany({where:{status:'RECEIVED'}})` (guard atómico) **antes** de llamar a Stripe, más `idempotencyKey` en la llamada; si Stripe rechaza, se deshace la reserva.
 
 ### 9.7. Escala UI: cursor pagination + purga DaisyUI (2026-05-02)
 
@@ -621,3 +637,33 @@ Tres piezas que cierran la experiencia de admin y la pipeline de release:
 - **#36 CI/CD con GitHub Actions** — pipeline en `.github/workflows/ci.yml` con `quality` (typecheck + lint), `e2e` (services MariaDB + Playwright + bootstrap determinista con `ci-admin@example.com` / `CiTestPass123!`), `docker-build` (Buildx + cache GHA + smoke test) y `docker-publish` (push a `ghcr.io` sólo en tags `vX.Y.Z`). El `docker-build` no exige `e2e` como pre-requisito porque los tests pueden ser flaky en CI sin BD compartida; el typecheck sí bloquea. Cualquier developer ahora ve el estado del PR en el badge antes de merge.
 - **#18 Drag & drop imágenes (`<ImageUploader>`)** — el patrón clave para integrar con FormData es **sync vía `DataTransfer`**: el componente mantiene un input file oculto y, en cada cambio del estado interno, regenera `input.files` con los archivos del usuario. Así `new FormData(form)` los recoge sin que el padre tenga que tocar nada. El orden y los deletes viajan en un input hidden con JSON serializado (`images_order`). Esto permitió **unificar** la galería de productos (antes había dos campos separados `main_image`/`gallery_images`) en un solo uploader donde la primera imagen es la principal — más simple para el editor y para la server action. Para imagen única (categorías, blog cover) se monta con `multiple={false}` y un `existingImages` sintético `[{id:'current', ...}]`; el server action interpreta `{id:'current', deleted:true}` como "borrar sin reemplazo".
 - **#1 Editor WYSIWYG (Tiptap)** — la sanitización ya cubría XSS, así que el cambio es puramente UX. **Decisión clave: output HTML** (no JSON) para mantener compatibilidad con `sanitizeHtml` y con el procesado de shortcodes `{{category_id:slug}}` en `[...dynamicSlug]/page.tsx` y los managers, que asumen HTML. Tiptap preserva los shortcodes como texto plano dentro del HTML generado. **`immediatelyRender: false`** evita el SSR mismatch que tendría Tiptap por defecto en Next 16. Los managers (`Products/Blog/Pages/Legal`) pasan el HTML por `sanitizeHtml` server-side antes de persistir — el editor no es una fuente de confianza, sólo un input ergonómico.
+
+### 9.9. Auditoría de seguridad en profundidad + validación real (2026-09-10)
+
+Auditoría del código completo (4 agentes en paralelo, cada uno sobre una porción del sistema: pagos/stock, auth/seguridad, RMA/emails/crons, UI admin/schema) seguida de corrección de **todos** los hallazgos y validación contra un entorno real (Node 22 vía nvm — el proyecto necesita ≥22 para el CLI de Prisma 7.4.1, que en esta máquina de desarrollo corre en Node 20 por defecto —, MariaDB 10.11 en Docker, build de producción y la suite Playwright e2e completa). No se limitó a leer código: cada fix se probó contra una BD real antes de darlo por cerrado.
+
+**Hallazgos críticos:**
+
+- **Middleware sin protección real.** `src/middleware.ts` sólo ejecutaba `next-intl`; el callback `authorized` de NextAuth (que debía bloquear `/admin/*`) nunca se invocaba — quedó como código muerto desde que se escribió, probablemente por asumir erróneamente que `middleware.ts` lo usaba como wrapper de `auth()`. Resultado: cualquiera sin login que visitara `/admin/settings` veía `stripe_secret_key`, `stripe_webhook_secret` y credenciales SMTP en claro; `/admin/users` exponía PII de todos los clientes. Las *mutaciones* (server actions) sí estaban protegidas con `requireAdmin()` — sólo la lectura SSR estaba abierta. **Fix:** el middleware decodifica el JWT de sesión con `getToken()` de `next-auth/jwt` (deliberadamente sin pasar por `auth()`/`PrismaAdapter`, para no arrastrar el driver de MariaDB al bundle del middleware) y bloquea/redirige a login. El callback `authorized` muerto se eliminó de `src/lib/auth.ts` para no dejar la ilusión de una protección que no existía.
+- **Subida de imágenes sin validar en servidor.** La extensión salía de `file.name.split('.').pop()` sin whitelist; la validación de tipo/tamaño sólo existía en el cliente (`ImageUploader.tsx`). Un archivo `.html`/`.svg` subido como "imagen de producto" quedaba servible como estático desde `/uploads/`, con riesgo de XSS almacenado. **Fix:** `src/lib/uploads.ts` nuevo — whitelist de MIME, verificación de magic bytes reales (el `file.type` del cliente no es de fiar), límite de tamaño server-side, nombre de archivo generado íntegramente en el servidor (nunca desde `file.name`). Aplicado en products/categories/blog/settings (logo, favicon, carrusel). De paso, `next.config.ts` ganó `experimental.serverActions.bodySizeLimit: '32mb'` — el default de Next (1MB) rompía cualquier subida por encima de eso pese a que el uploader promete hasta 8MB.
+- **El arranque en Docker estaba roto.** `scripts/docker-entrypoint.sh` y el job `e2e` de CI invocaban `prisma db push --accept-data-loss=false --skip-generate`; `--skip-generate` no existe en el CLI de Prisma 7.4.1 (fijado en `package-lock.json`) y el comando fallaba con "unknown option". Con `set -e` activo en el entrypoint, esto **tumbaba el arranque del contenedor entero en todo despliegue Docker** — el método de despliegue documentado en este archivo llevaba tiempo sin funcionar. Fix: quitar el flag inexistente (verificado que `db push` sigue funcionando igual, sólo regenera el cliente en ~200-700ms extra).
+
+**Pagos y RMA:**
+
+- El webhook de Stripe dejaba la orden en `CANCELLED` sin revertir stock ni cupón ante pagos fallidos/expirados — y al quedar `CANCELLED`, quedaba fuera del alcance del cron `cleanup-pending-orders` (que sólo mira `PENDING_PAYMENT`) ⇒ fuga permanente. `payment_intent.canceled` compartía handler con `charge.refunded`, tratando un pago que nunca se cobró como un reembolso. Reembolsos parciales de Stripe se trataban como totales (restituía todo el stock, marcaba la orden entera `REFUNDED`). Cualquier reembolso vía el flujo RMA (`refundReturn`) hacía que el webhook **duplicara** la restitución de stock que `markReturnReceived` ya había hecho por ítem. Fix completo en §5.2.
+- `refundReturn` llamaba a `stripe.refunds.create()` antes de reservar el estado de la devolución — doble clic o dos pestañas podían disparar dos reembolsos reales. Fix en §9.6.
+- La ventana de devolución (`RETURN_WINDOW_DAYS`) se calculaba sobre `Order.updated_at`, que se pisa con cualquier edición posterior de la orden. Nuevo campo `Order.delivered_at`, fijado sólo al entrar en `DELIVERED`.
+
+**Otros:**
+
+- `sendEmail()` devolvía `{success:true}` aunque no hubiera SMTP configurado ("simulaba" el envío) — ahora devuelve `{success:false}` honesto y reporta a Sentry (si está activo), sin romper el contrato `nunca lanza` para los callers fire-and-forget.
+- `src/lib/pagination.ts` paginaba por `orderBy:{id:'desc'}` asumiendo UUIDs ordenables — Prisma genera UUID v4 aleatorio, así que "página siguiente" no era realmente cronológico. Reescrito como keyset real sobre `(created_at, id)`, con `CURSOR_ORDER_BY` e índices nuevos en `Order.created_at`/`BlogPost.created_at`.
+- El checkout reimplementaba a mano la validación que ya existía centralizada en `checkoutSchema` (Zod) — nunca se usaba.
+- `reviews` y `wishlist` eran los únicos endpoints públicos sin rate-limit.
+- `reset-password` comparaba firmas HMAC con `!==` (comentario decía "timing-safe", no lo era) — ahora usa `crypto.timingSafeEqual`.
+- Borrar un producto/cupón con pedidos asociados lanzaba un P2003 crudo de Prisma sin explicar nada al admin (o, en el caso de `deleteProduct`, ni siquiera estaba en un try/catch) — ahora hay mensajes específicos y los managers cliente los muestran (antes ignoraban `error.message` y mostraban un texto fijo).
+- `localePrefix: 'always'` en `src/i18n/navigation.ts` contradecía al resto del sistema (`next.config.ts` rewrite, `sitemap.ts`, hreflang de `layout.tsx`), que ya asumían "es sin prefijo, en con `/en/`" — con `'always'`, las URLs "canónicas" del sitemap en realidad redirigían (307). Corregido a `'as-needed'`. Efecto colateral: ~30 enlaces del panel admin (`AdminSidebar.tsx`, dashboard, listados) tenían `/es/` hardcodeado y habrían sufrido un redirect de más en cada navegación — limpiados (los `revalidatePath('/es/...')` NO se tocaron: operan sobre la ruta interna de Next, no la URL pública, y no les afecta este cambio).
+- El login (`/auth/login`) redirigía siempre a `/account` tras autenticarse, ignorando el rol — un admin que entrara directo (sin rebote desde una página protegida) no llegaba a `/admin`. Ahora consulta la sesión con `getSession()` y redirige por rol.
+- El formulario de registro (`/auth/register`) no tenía atributos `name` en los `<input>` (sólo `id`) — funcionaba en el navegador (React controla el estado por `value`/`onChange`), pero rompía autofill/tests. Añadidos.
+
+**Metodología de verificación** (no sólo lectura de código): Node 22 vía `nvm`, contenedor MariaDB 10.11 efímero, `prisma db push` + `seed-bootstrap.mjs` con admin determinista, `npm run build` completo, y la suite Playwright e2e de principio a fin — que de paso reveló 4 bugs preexistentes sin relación con esta sesión (nunca antes detectados porque el job `e2e` de CI llevaba roto desde el fallo de `--skip-generate` descrito arriba): el test de `robots.txt` esperaba minúsculas donde Next.js emite mayúsculas (cosmético, se corrigió el test), y los otros 3 quedaron resueltos como parte de los fixes de arriba (login por rol, atributos `name` del registro). Resultado final: `tsc --noEmit` limpio, build sin errores, **19 passed / 1 skipped / 0 failed**.
