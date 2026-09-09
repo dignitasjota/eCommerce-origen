@@ -14,7 +14,7 @@
 | Sprint 2 — Pagos reales | ✅ Completado | 4/4 ítems · pendiente migración DB + config Stripe |
 | Sprint 3 — Performance & SEO | ✅ Completado | 4/4 ítems · falta medir LCP en producción |
 | Sprint 4 — Conversión | ✅ Completado | 4/4 ítems · pendiente migración DB |
-| Sprint 5 — Backoffice | ✅ Completado | 6/7 ítems · WYSIWYG pospuesto |
+| Sprint 5 — Backoffice | ✅ Completado | 7/7 ítems · WYSIWYG añadido en bloque DX & Editorial |
 | Continuo — Deuda técnica | ✅ 8/8 | Todos completados |
 | Auditoría de seguridad (2026-09-10) | ✅ Completado | Todos los hallazgos corregidos y validados con e2e real |
 | Backlog premium | 🟢 Abierto | A planificar según prioridad de negocio |
@@ -88,7 +88,7 @@
 - [x] **Filtros + Export CSV en pedidos**: filtros server-side por búsqueda libre, estado, payment_status y rango de fechas. Form `method="GET"`. Endpoint `GET /api/admin/orders/export` (admin-only, BOM UTF-8, hasta 10k filas).
 - [x] **#16** Editor de variantes plano: server actions `createVariant`/`updateVariant`/`deleteVariant` con guard contra borrar la última y manejo de P2002/P2003. Variantes con precio vacío heredan del producto base. `<VariantsManager>` con CRUD inline.
 - [x] **#23** Tipos `Prisma.GetPayload<...>` con `satisfies` en `src/types/admin.ts`: `AdminProduct`, `AdminCategory`, `AdminUser`, `AdminOrderListItem`, `AdminBlogPost`. Aplicados en managers principales.
-- [ ] **WYSIWYG (Tiptap)** — pospuesto. La sanitización del Sprint 1 ya cubre XSS; mejora UX pura.
+- [x] **WYSIWYG (Tiptap)** — implementado en el bloque "DX & Editorial" (ver más abajo). ✅ 2026-05-02
 
 ---
 

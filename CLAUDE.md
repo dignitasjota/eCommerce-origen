@@ -224,8 +224,8 @@ Internacionalización en BD con tablas hijas `*_translations` unidas por `locale
 
 - **`WebhookEvent`** — `(provider, event_id)` UNIQUE → idempotencia de webhooks Stripe. Insertar el `event.id` antes de procesar; `P2002` ⇒ duplicado, devolver 200.
 - **`Subscriber`** — alta de newsletter con doble opt-in. `email` UNIQUE, `confirm_token` UNIQUE (256 bits hex), `confirmed_at`, `unsubscribed_at`, `locale`.
-- **`AuditLog`** — `(user_id, action, entity_type, entity_id, metadata JSON, ip_address, created_at)`. Índices por `user_id`, `(entity_type, entity_id)`, `created_at`. Pendiente cablearlo en server actions.
-- **`StockMovement`** — `(variant_id, quantity ±, reason, reference_id, note, user_id)`. Enum `StockMovementReason`: `PURCHASE | REFUND | ADJUSTMENT | RESTOCK | RESERVATION_RELEASE`. Pendiente cablearlo (futuro: cron de reservas + revert al cancelar `PENDING_PAYMENT`).
+- **`AuditLog`** — `(user_id, action, entity_type, entity_id, metadata JSON, ip_address, created_at)`. Índices por `user_id`, `(entity_type, entity_id)`, `created_at`. Cableado en server actions — ver §5.7.
+- **`StockMovement`** — `(variant_id, quantity ±, reason, reference_id, note, user_id)`. Enum `StockMovementReason`: `PURCHASE | REFUND | ADJUSTMENT | RESTOCK | RESERVATION_RELEASE`. Cableado — ver §5.8.
 
 ### Patrón "tablas de traducción"
 
