@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyResetToken } from '@/lib/password-reset-token';
+import { resetPasswordSchema } from '@/lib/schemas/auth';
 
 export async function POST(req: Request) {
     try {
@@ -14,11 +15,19 @@ export async function POST(req: Request) {
             );
         }
 
-        const { token, password } = await req.json();
-
-        if (!token || !password || password.length < 6) {
-            return NextResponse.json({ error: 'Token inválido o la contraseña es demasiado corta (min. 6)' }, { status: 400 });
+        const body = await req.json().catch(() => null);
+        // Antes este endpoint validaba a mano (`password.length < 6`) en vez
+        // de usar `resetPasswordSchema` (mínimo 8, igual que el registro) —
+        // permitía bajar la política de complejidad de una cuenta existente
+        // usando el flujo de "olvidé mi contraseña".
+        const parsed = resetPasswordSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: parsed.error.issues[0]?.message || 'Datos inválidos.' },
+                { status: 400 }
+            );
         }
+        const { token, password } = parsed.data;
 
         const payload = verifyResetToken(token);
         if (!payload || !payload.id || !payload.email) {

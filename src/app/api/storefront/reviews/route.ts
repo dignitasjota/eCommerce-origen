@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
+import { createReviewSchema } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
     try {
@@ -19,12 +20,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Debes iniciar sesión para publicar una reseña.' }, { status: 401 });
         }
 
-        const body = await request.json();
-        const { productId, rating, title, comment } = body;
-
-        if (!productId || rating === undefined || rating < 1 || rating > 5) {
-            return NextResponse.json({ error: 'Datos de la reseña inválidos o incompletos.' }, { status: 400 });
+        const body = await request.json().catch(() => null);
+        const parsed = createReviewSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: parsed.error.issues[0]?.message || 'Datos de la reseña inválidos o incompletos.' },
+                { status: 400 }
+            );
         }
+        const { productId, rating, title, comment } = parsed.data;
 
         // 1. Validar que el usuario realmente compró este producto alguna vez
         const userHasPurchased = await prisma.order.findFirst({
@@ -59,13 +63,14 @@ export async function POST(request: NextRequest) {
         }
 
         // 3. Crear la Reseña pendiente de aprobación
+        // title/comment ya vienen trim()eados (o null) por el schema Zod.
         const newReview = await prisma.review.create({
             data: {
                 user_id: session.user.id,
                 product_id: productId,
                 rating: Number(rating),
-                title: title.trim() || null,
-                comment: comment.trim() || null,
+                title: title || null,
+                comment: comment || null,
                 is_approved: false // Moderación activa por defecto
             }
         });

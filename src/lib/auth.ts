@@ -48,6 +48,11 @@ export class AuthorizationError extends Error {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     adapter: PrismaAdapter(prisma) as any,
+    // El despliegue documentado (CLAUDE.md §2) corre detrás de un reverse
+    // proxy externo (Traefik/Caddy/nginx-proxy-manager) que termina TLS y
+    // reenvía por HTTP interno con X-Forwarded-*. Sin trustHost, Auth.js v5
+    // puede lanzar UntrustedHost o inferir mal host/protocolo en producción.
+    trustHost: true,
     session: { strategy: 'jwt' },
     pages: {
         signIn: '/auth/login',

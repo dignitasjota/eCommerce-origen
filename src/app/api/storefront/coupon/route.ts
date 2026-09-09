@@ -14,7 +14,14 @@ import { couponDryRunSchema } from '@/lib/schemas';
  */
 export async function POST(req: Request) {
     try {
-        const limit = rateLimit(req, { bucket: 'coupon-validate', max: 20, windowMs: 60_000 });
+        // Los mensajes de resolveCoupon() distinguen "no existe/inactivo" de
+        // "aún no disponible"/"caducado"/"agotado"/"compra mínima" — útil
+        // para el cliente, pero también permite enumerar códigos promo
+        // reales probando strings al azar. Se mantienen los mensajes
+        // informativos (igual decisión que en /api/storefront/register: UX
+        // sobre anonimato estricto) pero con un límite más ajustado que
+        // antes (20/min) para encarecer la enumeración automatizada.
+        const limit = rateLimit(req, { bucket: 'coupon-validate', max: 10, windowMs: 60_000 });
         if (!limit.ok) {
             return NextResponse.json(
                 { error: 'Demasiados intentos. Inténtalo más tarde.' },
