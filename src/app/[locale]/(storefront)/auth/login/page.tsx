@@ -36,7 +36,11 @@ function LoginFormContent() {
             });
 
             if (res?.error) {
-                setError('Credenciales incorrectas. Por favor, inténtalo de nuevo.');
+                setError(
+                    res.code === 'too_many_attempts'
+                        ? 'Demasiados intentos. Espera unos minutos antes de volver a intentarlo.'
+                        : 'Credenciales incorrectas. Por favor, inténtalo de nuevo.'
+                );
                 setIsLoading(false);
             } else {
                 let destination = callbackUrl;

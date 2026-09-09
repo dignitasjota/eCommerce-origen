@@ -8,6 +8,12 @@ import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
 import { saveUploadedImage } from '@/lib/uploads';
 
+// El cliente nunca recibe el valor real de estas claves (ver page.tsx) — el
+// input llega vacío salvo que el admin teclee un valor nuevo. Si tratáramos
+// "vacío" como "borrar", cualquier guardado del formulario sin tocar estos
+// campos borraría las credenciales de Stripe/SMTP ya configuradas.
+const SENSITIVE_KEYS = new Set(['smtp_pass', 'stripe_secret_key', 'stripe_webhook_secret']);
+
 export async function updateSettings(formData: FormData) {
     try {
         await requireAdmin(['ADMIN']);
@@ -18,6 +24,9 @@ export async function updateSettings(formData: FormData) {
 
         for (const [key, value] of formData.entries()) {
             if (typeof value === 'string' && !key.startsWith('carousel_images_') && key !== 'home_carousel_images' && key !== 'theme_file') {
+                if (SENSITIVE_KEYS.has(key) && value === '') {
+                    continue; // en blanco = "no cambiar", no "borrar"
+                }
                 settingsToUpdate.push({
                     key,
                     value,

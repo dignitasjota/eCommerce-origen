@@ -13,10 +13,13 @@ interface Setting {
 
 interface SettingsFormProps {
     initialSettings: Setting[];
+    /** Claves de secretos (smtp_pass, stripe_*) que YA tienen un valor guardado en servidor — el valor real nunca llega aquí, sólo este flag. */
+    configuredSecrets?: string[];
     customThemes?: string[];
 }
 
-export default function SettingsForm({ initialSettings, customThemes = [] }: SettingsFormProps) {
+export default function SettingsForm({ initialSettings, configuredSecrets = [], customThemes = [] }: SettingsFormProps) {
+    const isSecretConfigured = (key: string) => configuredSecrets.includes(key);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
@@ -542,7 +545,13 @@ export default function SettingsForm({ initialSettings, customThemes = [] }: Set
 
                                 <div className="admin-form-group">
                                     <label className="admin-form-label">Contraseña SMTP</label>
-                                    <input type="password" name="smtp_pass" className="admin-form-input" defaultValue={settingsMap['smtp_pass'] || ''} />
+                                    <input
+                                        type="password"
+                                        name="smtp_pass"
+                                        className="admin-form-input"
+                                        autoComplete="off"
+                                        placeholder={isSecretConfigured('smtp_pass') ? '••••••••  (ya configurada — déjalo en blanco para no cambiarla)' : ''}
+                                    />
                                     <p className="text-xs text-gray-500 mt-1">Tu clave de la cuenta de correo. Recomendado cuenta dedicada.</p>
                                 </div>
                             </div>
@@ -579,8 +588,11 @@ export default function SettingsForm({ initialSettings, customThemes = [] }: Set
                                         type="password"
                                         name="stripe_secret_key"
                                         className="admin-form-input"
-                                        defaultValue={settingsMap['stripe_secret_key'] || ''}
-                                        placeholder="sk_live_… o sk_test_…"
+                                        placeholder={
+                                            isSecretConfigured('stripe_secret_key')
+                                                ? '••••••••  (ya configurada — déjalo en blanco para no cambiarla)'
+                                                : 'sk_live_… o sk_test_…'
+                                        }
                                         autoComplete="off"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Clave secreta de Stripe. Usa <code>sk_test_…</code> en pruebas y <code>sk_live_…</code> en producción.</p>
@@ -592,8 +604,11 @@ export default function SettingsForm({ initialSettings, customThemes = [] }: Set
                                         type="password"
                                         name="stripe_webhook_secret"
                                         className="admin-form-input"
-                                        defaultValue={settingsMap['stripe_webhook_secret'] || ''}
-                                        placeholder="whsec_…"
+                                        placeholder={
+                                            isSecretConfigured('stripe_webhook_secret')
+                                                ? '••••••••  (ya configurada — déjalo en blanco para no cambiarla)'
+                                                : 'whsec_…'
+                                        }
                                         autoComplete="off"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Firma del endpoint webhook. Verifica que las notificaciones vienen realmente de Stripe.</p>

@@ -1,9 +1,19 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/db';
 import { ADMIN_ROLES, type AdminRole } from '@/lib/auth-roles';
+import { rateLimit } from '@/lib/rate-limit';
+
+/**
+ * `code` queda en la URL de error (`?error=CredentialsSignin&code=...`) — el
+ * login page lo usa para distinguir "demasiados intentos" de "credenciales
+ * incorrectas" sin filtrar cuál de las dos fue exactamente por seguridad.
+ */
+class TooManyAttemptsError extends CredentialsSignin {
+    code = 'too_many_attempts';
+}
 
 export { ADMIN_ROLES, type AdminRole };
 
@@ -50,7 +60,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 email: { label: 'Email', type: 'email' },
                 password: { label: 'Password', type: 'password' },
             },
-            async authorize(credentials) {
+            async authorize(credentials, request) {
+                // Sin esto, el login era el único endpoint de auth sin
+                // rate-limit — register/forgot-password/reset-password sí lo
+                // tenían, pero el propio `signIn('credentials')` (el que de
+                // verdad importa para fuerza bruta de contraseñas contra una
+                // cuenta conocida) no tenía ningún límite de intentos.
+                const limit = rateLimit(request, { bucket: 'login', max: 5, windowMs: 15 * 60_000 });
+                if (!limit.ok) {
+                    throw new TooManyAttemptsError();
+                }
+
                 if (!credentials?.email || !credentials?.password) {
                     return null;
                 }
