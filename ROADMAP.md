@@ -1,6 +1,6 @@
 # Roadmap eCommerce
 
-> Plan derivado de la auditoría del **2026-04-30** y ejecutado en los Sprints 1–5 + tareas continuas (cierre el **2026-05-02**). Auditoría de seguridad adicional en profundidad cerrada el **2026-09-10** (ver bloque dedicado más abajo).
+> Plan derivado de la auditoría del **2026-04-30** y ejecutado en los Sprints 1–5 + tareas continuas (cierre el **2026-05-02**). Auditoría de seguridad adicional en profundidad cerrada el **2026-09-10** (ver bloque dedicado más abajo), seguida de un plan de migración Next.js/Prisma en rama aparte (ver bloque dedicado).
 >
 > Detalle de cada implementación en [`CLAUDE.md`](./CLAUDE.md). Este documento es el resumen accionable: qué está hecho, qué queda pendiente y qué hay en backlog.
 
@@ -17,6 +17,7 @@
 | Sprint 5 — Backoffice | ✅ Completado | 7/7 ítems · WYSIWYG añadido en bloque DX & Editorial |
 | Continuo — Deuda técnica | ✅ 8/8 | Todos completados |
 | Auditoría de seguridad (2026-09-10) | ✅ Completado | Todos los hallazgos corregidos y validados con e2e real |
+| Plan de migración Next.js/Prisma (2026-09-10) | 🔵 Planificado (Fase 0 aplicada) | Rama `chore/nextjs-prisma-major-upgrade-plan`, sin fusionar — ver bloque dedicado |
 | Backlog premium | 🟢 Abierto | A planificar según prioridad de negocio |
 
 **Verificación final:** `npx tsc --noEmit` → exit 0 (sin errores) · `npm run build` sin errores · suite Playwright e2e completa: 19 passed / 1 skipped / 0 failed (contra MariaDB real).
@@ -198,6 +199,20 @@ Auditoría completa del código (4 agentes en paralelo sobre distintas porciones
 
 ---
 
+## Plan de migración Next.js/Prisma (2026-09-10) 🔵
+
+A raíz de los hallazgos de `npm audit` en la auditoría de seguridad de esta misma fecha, se investigó (fuentes oficiales: blog de Next.js, documentación y GitHub de Prisma/Auth.js) si hacía falta una migración de versión mayor y se documentó el resultado en **rama aparte**, sin fusionar a `main`: [`chore/nextjs-prisma-major-upgrade-plan`](https://github.com/dignitasjota/eCommerce-origen/tree/chore/nextjs-prisma-major-upgrade-plan). Plan completo en [`docs/migration-plan-nextjs-prisma.md`](https://github.com/dignitasjota/eCommerce-origen/blob/chore/nextjs-prisma-major-upgrade-plan/docs/migration-plan-nextjs-prisma.md) — **ese archivo vive sólo en esa rama, no en `main`** (por eso el enlace apunta directo a GitHub en vez de una ruta relativa del repo).
+
+**Conclusión de la investigación:** no había ninguna migración de versión mayor urgente. Next.js ya estaba en la última estable (16.3.4 — no existe v17 todavía) y Prisma 8 sigue en release candidate (las vulnerabilidades de `npm audit` vienen del tooling de desarrollo de Prisma — `prisma studio`/CLI —, no del cliente/motor en runtime, y son un problema conocido sin resolver en toda la línea 7.x: [prisma/prisma#29605](https://github.com/prisma/prisma/issues/29605)).
+
+- [x] **Fase 0 — Housekeeping de bajo riesgo** (ejecutada en la rama): `@prisma/client` estaba desalineado (7.4.1) respecto a la CLI de Prisma (7.10.0, ya actualizada en la auditoría de seguridad) — realineado a 7.10.0, dentro del mismo rango semver ya aprobado, riesgo cero. Validado con `tsc`, `build` y la suite e2e completa (19 passed/1 skipped/0 failed). ✅ 2026-09-10
+- [ ] **Fase 1 — Prisma 8** (documentada, no ejecutada): puente con `@prisma/prisma7`; impacto real identificado en `.take()`/`.skip()` → `.limit()`/`.offset()` (usado extensivamente en `src/lib/pagination.ts` y todos los listados admin) y reorganización de subcomandos de la CLI (afecta a `docker-entrypoint.sh` y `.github/workflows/ci.yml`). **Disparador:** Prisma 8.0.0 marcado estable (no RC) + confirmación de que `@auth/prisma-adapter`/`@prisma/adapter-mariadb` tienen release estable compatible.
+- [ ] **Fase 2 — `sharp` 0.34→0.35** (documentada, no ejecutada): usado internamente por `next/image`, parchea CVEs de `libvips`/`libheif`. **Disparador:** se toca `next/image`/`ImageUploader` por otro motivo, o revisión trimestral de rutina.
+- [ ] **Fase 3 — `nodemailer` 7→10 (tres majors) y `@tiptap/*` 2→3** (documentada, no ejecutada): requieren pruebas manuales específicas no cubiertas por `tsc`/`build`/e2e (SMTP real, cada botón del editor WYSIWYG). **Disparador:** CVE real sobre funcionalidad efectivamente usada, o revisión trimestral de rutina.
+- [ ] **Next.js 17**: no existe todavía — sólo monitorizar [nextjs.org/blog](https://nextjs.org/blog).
+
+---
+
 ## Backlog premium 🟢 (#30)
 
 A planificar según prioridad de negocio. Los items con (✓ schema) ya tienen el campo persistente preparado:
@@ -232,5 +247,6 @@ Estimación original (auditoría 2026-04-30): 7–10 semanas a "producto vendibl
 | Sprint 5 | 2 sem | 2026-05-02 |
 | Continuo | transversal | 2026-05-02 |
 | Auditoría de seguridad | — (no estimada en el plan original) | 2026-09-10 |
+| Plan de migración Next.js/Prisma | — (no estimada en el plan original) | 2026-09-10 (planificación; ejecución de Fases 1-3 pendiente de disparadores) |
 
 Próximo paso recomendado: dado que el arranque de Docker estaba roto hasta esta sesión (§ auditoría de seguridad, `--skip-generate`), **validar en un VPS de staging real es ahora más urgente que antes** — `docker compose build` y `docker compose up -d` para confirmar el flujo completo (build OK → migración auto → seed → smoke test con tarjeta `4242…`) con el fix aplicado.
