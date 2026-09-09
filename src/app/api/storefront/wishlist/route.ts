@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 
 // GET /api/storefront/wishlist - Obtener la lista de deseos del usuario activo
 export async function GET(request: NextRequest) {
     try {
+        const limit = rateLimit(request, { bucket: 'wishlist-read', max: 60, windowMs: 60_000 });
+        if (!limit.ok) {
+            return NextResponse.json(
+                { error: 'Demasiadas peticiones. Inténtalo en unos segundos.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
         const session = await auth();
 
         if (!session?.user?.id) {
@@ -60,6 +69,14 @@ export async function GET(request: NextRequest) {
 // POST /api/storefront/wishlist - Añadir o Quitar de la lista de deseos (Toggle)
 export async function POST(request: NextRequest) {
     try {
+        const limit = rateLimit(request, { bucket: 'wishlist-toggle', max: 30, windowMs: 60_000 });
+        if (!limit.ok) {
+            return NextResponse.json(
+                { error: 'Demasiadas peticiones. Inténtalo en unos segundos.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
         const session = await auth();
 
         if (!session?.user?.id) {

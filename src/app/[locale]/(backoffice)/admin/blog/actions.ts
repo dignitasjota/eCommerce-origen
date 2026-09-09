@@ -3,10 +3,11 @@
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { writeFile, mkdir, unlink } from 'fs/promises';
+import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { requireAdmin } from '@/lib/auth';
 import { sanitizeHtml, sanitizeText } from '@/lib/sanitize';
+import { saveUploadedImage } from '@/lib/uploads';
 
 /**
  * Resuelve la imagen de portada (cover) de un post de blog leyendo `image`
@@ -22,15 +23,11 @@ async function resolveBlogCover(
 ): Promise<string | null | undefined> {
     const file = formData.get('image') as File | null;
     if (file && file.size > 0) {
-        const dir = join(process.cwd(), 'public', 'uploads', 'blog');
-        await mkdir(dir, { recursive: true }).catch(() => {});
-        const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-        const filename = `blog_${postId}_${Date.now()}.${ext}`;
-        await writeFile(join(dir, filename), Buffer.from(await file.arrayBuffer()));
+        const url = await saveUploadedImage(file, { subdir: 'blog', prefix: `blog_${postId}` });
         if (currentImage?.startsWith('/uploads/')) {
             await unlink(join(process.cwd(), 'public', currentImage)).catch(() => {});
         }
-        return `/uploads/blog/${filename}`;
+        return url;
     }
     const orderRaw = formData.get('images_order') as string | null;
     if (orderRaw && currentImage) {

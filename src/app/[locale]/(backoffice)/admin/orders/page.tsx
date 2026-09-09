@@ -4,8 +4,9 @@ import OrdersList from './OrdersList';
 import CursorPagination from '@/components/backoffice/CursorPagination';
 import {
     parseCursorParams,
-    buildPrismaCursorArgs,
-    buildCursorPage
+    buildCursorWhere,
+    buildCursorPage,
+    CURSOR_ORDER_BY
 } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
@@ -70,15 +71,16 @@ export default async function OrdersPage({ params, searchParams }: Props) {
         }
     }
 
-    const cursorArgs = buildPrismaCursorArgs(cursorParams);
+    const cursorWhere = buildCursorWhere(cursorParams.cursor);
+    const findWhere: Prisma.OrderWhereInput = cursorWhere ? { AND: [where, cursorWhere] } : where;
 
     // Query principal con cursor + count (count separado porque cursor no
     // tiene "total páginas" — pero seguimos mostrando el total de filtrados).
     const [rows, total] = await Promise.all([
         prisma.order.findMany({
-            where,
-            orderBy: { id: 'desc' },
-            ...cursorArgs,
+            where: findWhere,
+            orderBy: CURSOR_ORDER_BY,
+            take: cursorParams.take + 1,
             include: {
                 users: { select: { name: true, email: true } },
                 order_items: { select: { id: true } },

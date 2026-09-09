@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/navigation';
 import { Suspense } from 'react';
+import { ADMIN_ROLES } from '@/lib/auth-roles';
 
 function LoginFormContent() {
     const [email, setEmail] = useState('');
@@ -14,7 +15,12 @@ function LoginFormContent() {
 
     const router = useRouter();
     const searchParams = useSearchParams();
-    const callbackUrl = searchParams.get('callbackUrl') || '/account';
+    // `callbackUrl` explícito: llega cuando el middleware rebotó aquí desde
+    // una página protegida (p. ej. /admin/orders sin sesión). Si NO hay uno
+    // (el usuario entró directo a /auth/login), el destino por defecto
+    // depende del rol — se decide más abajo tras conocer la sesión.
+    const explicitCallbackUrl = searchParams.get('callbackUrl');
+    const callbackUrl = explicitCallbackUrl || '/account';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,7 +39,17 @@ function LoginFormContent() {
                 setError('Credenciales incorrectas. Por favor, inténtalo de nuevo.');
                 setIsLoading(false);
             } else {
-                router.push(callbackUrl);
+                let destination = callbackUrl;
+                if (!explicitCallbackUrl) {
+                    // Login directo (sin rebote): a un admin/order_manager le
+                    // interesa más el panel que la cuenta de cliente.
+                    const session = await getSession();
+                    const role = session?.user?.role;
+                    if (role && (ADMIN_ROLES as readonly string[]).includes(role)) {
+                        destination = '/admin';
+                    }
+                }
+                router.push(destination);
                 router.refresh();
             }
         } catch (err) {

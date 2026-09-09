@@ -18,7 +18,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
     if (!session || !session.user) {
         // Redirigir al login si no está autenticado
         // Dependiendo de tu config, puede ser /auth/login
-        redirect('/es/auth/login');
+        redirect('/auth/login');
     }
 
     return (

@@ -27,9 +27,13 @@ test.describe('Admin — listado de pedidos', () => {
         await page.goto('/admin/orders');
         await expect(page.locator('h1')).toContainText(/pedidos/i);
         // O hay tabla con filas o hay estado vacío. Cualquiera de los dos es OK.
+        // `.first()` porque cuando la tabla está vacía, el estado vacío se
+        // renderiza COMO FILA DENTRO de la propia tabla (no como alternativa
+        // excluyente) — sin `.first()`, `.or()` resuelve a 2+ elementos
+        // simultáneos y `toBeVisible()` falla en modo estricto.
         const table = page.locator('table');
         const empty = page.locator('.admin-empty, [class*="empty"]');
-        await expect(table.or(empty)).toBeVisible();
+        await expect(table.or(empty).first()).toBeVisible();
     });
 
     test('aplicar filtro de estado actualiza la URL', async ({ page }) => {

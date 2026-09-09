@@ -3,9 +3,10 @@
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { writeFile, mkdir, unlink } from 'fs/promises';
+import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { requireAdmin } from '@/lib/auth';
+import { saveUploadedImage } from '@/lib/uploads';
 
 /**
  * Resuelve la imagen de categoría a partir del FormData:
@@ -21,16 +22,15 @@ async function resolveCategoryImage(
 ): Promise<string | null | undefined> {
     const mainImage = formData.get('image') as File | null;
     if (mainImage && mainImage.size > 0) {
-        const uploadDir = join(process.cwd(), 'public', 'uploads', 'categories');
-        await mkdir(uploadDir, { recursive: true }).catch(() => {});
-        const ext = (mainImage.name.split('.').pop() || 'png').toLowerCase();
-        const filename = `cat_${categoryId}_${Date.now()}.${ext}`;
-        await writeFile(join(uploadDir, filename), Buffer.from(await mainImage.arrayBuffer()));
+        const url = await saveUploadedImage(mainImage, {
+            subdir: 'categories',
+            prefix: `cat_${categoryId}`
+        });
         // Si reemplazamos, borrar la anterior (best-effort).
         if (currentImage?.startsWith('/uploads/')) {
             await unlink(join(process.cwd(), 'public', currentImage)).catch(() => {});
         }
-        return `/uploads/categories/${filename}`;
+        return url;
     }
 
     // Sin archivo nuevo: comprobar si el ImageUploader pidió borrar.

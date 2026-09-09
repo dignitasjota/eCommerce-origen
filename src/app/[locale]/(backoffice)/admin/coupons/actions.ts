@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
@@ -94,13 +95,20 @@ export async function deleteCoupon(id: string) {
         await prisma.coupon.delete({
             where: { id }
         });
-        await auditLog({
-            action: 'coupon.delete',
-            entity_type: 'Coupon',
-            entity_id: id
-        });
-        revalidatePath('/es/admin/coupons');
     } catch (e) {
+        // P2003 = FK constraint violation: hay pedidos que usaron este cupón
+        // (Order→Coupon es RESTRICT a propósito, para no dejar huérfano el
+        // `coupon_id` de un pedido histórico).
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
+            throw new Error('No se puede eliminar: el cupón está usado en pedidos existentes. Desactívalo en su lugar.');
+        }
         throw new Error('Error al eliminar el cupón.');
     }
+
+    await auditLog({
+        action: 'coupon.delete',
+        entity_type: 'Coupon',
+        entity_id: id
+    });
+    revalidatePath('/es/admin/coupons');
 }

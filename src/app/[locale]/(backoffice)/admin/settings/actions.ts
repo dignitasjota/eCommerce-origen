@@ -6,14 +6,13 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
+import { saveUploadedImage } from '@/lib/uploads';
 
 export async function updateSettings(formData: FormData) {
     try {
         await requireAdmin(['ADMIN']);
         const settingsToUpdate = [];
 
-        const uploadDir = join(process.cwd(), 'public', 'uploads');
-        await mkdir(uploadDir, { recursive: true }).catch(() => { }); // Ensure exists
         const themesDir = join(process.cwd(), 'public', 'themes');
         await mkdir(themesDir, { recursive: true }).catch(() => { });
 
@@ -26,19 +25,10 @@ export async function updateSettings(formData: FormData) {
                 });
             } else if (value instanceof File && value.size > 0) {
                 if (key === 'site_logo' || key === 'site_favicon') {
-                    // Extract extension
-                    const ext = value.name.split('.').pop() || 'png';
-                    const filename = `${key}_${Date.now()}.${ext}`;
-                    const filepath = join(uploadDir, filename);
-
-                    // Write file to public/uploads
-                    const buffer = Buffer.from(await value.arrayBuffer());
-                    await writeFile(filepath, buffer);
-
-                    // Add to database update array
+                    const url = await saveUploadedImage(value, { prefix: key });
                     settingsToUpdate.push({
                         key,
-                        value: `/uploads/${filename}`,
+                        value: url,
                         type: 'string',
                     });
                 } else if (key === 'theme_file') {
@@ -69,12 +59,8 @@ export async function updateSettings(formData: FormData) {
         const newImages = formData.getAll('carousel_images_new');
         for (const file of newImages) {
             if (file instanceof File && file.size > 0) {
-                const ext = file.name.split('.').pop() || 'png';
-                const filename = `carousel_${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-                const filepath = join(uploadDir, filename);
-                const buffer = Buffer.from(await file.arrayBuffer());
-                await writeFile(filepath, buffer);
-                carouselImages.push(`/uploads/${filename}`);
+                const url = await saveUploadedImage(file, { prefix: 'carousel' });
+                carouselImages.push(url);
             }
         }
 

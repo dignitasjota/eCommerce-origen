@@ -391,6 +391,12 @@ model Order {
   notes                                           String?               @db.Text
   tracking_number                                 String?               @db.VarChar(255)
   locale                                          String                @default("es") @db.VarChar(5)
+  /// Fecha en la que el admin marcó la orden como DELIVERED (se fija sólo en
+  /// esa transición, no se toca en ediciones posteriores). Null en órdenes
+  /// aún no entregadas o entregadas antes de que este campo existiera — la
+  /// ventana de devolución cae entonces a `updated_at` como aproximación.
+  /// Ver assertOrderEligibleForReturn en src/lib/returns.ts.
+  delivered_at                                    DateTime?
   created_at                                      DateTime              @default(now())
   updated_at                                      DateTime              @default(now())
   order_items                                     OrderItem[]
@@ -408,6 +414,9 @@ model Order {
   @@index([user_id], map: "idx_orders_user")
   @@index([shipping_address_id], map: "shipping_address_id")
   @@index([shipping_method_id], map: "shipping_method_id")
+  /// Usado por la paginación cursor de /admin/orders (orderBy created_at+id)
+  /// y por el cron cleanup-pending-orders (where created_at < cutoff).
+  @@index([created_at], map: "idx_orders_created")
   @@map("orders")
 }
 
@@ -553,6 +562,8 @@ model BlogPost {
 
   @@index([is_published], map: "idx_blog_published")
   @@index([slug], map: "idx_blog_slug")
+  /// Usado por la paginación cursor de /blog (orderBy created_at+id).
+  @@index([created_at], map: "idx_blog_created")
   @@map("blog_posts")
 }
 

@@ -86,6 +86,7 @@ export default function RegisterPage() {
                         <label htmlFor="name" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Nombre completo</label>
                         <input
                             id="name"
+                            name="name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -101,6 +102,7 @@ export default function RegisterPage() {
                         <label htmlFor="email" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Correo Electrónico</label>
                         <input
                             id="email"
+                            name="email"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -116,6 +118,7 @@ export default function RegisterPage() {
                         <label htmlFor="password" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Contraseña</label>
                         <input
                             id="password"
+                            name="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -131,6 +134,7 @@ export default function RegisterPage() {
                         <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Confirmar Contraseña</label>
                         <input
                             id="confirmPassword"
+                            name="confirmPassword"
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}

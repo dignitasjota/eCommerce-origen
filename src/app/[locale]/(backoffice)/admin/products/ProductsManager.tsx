@@ -101,7 +101,7 @@ export default function ProductsManager({ products }: { products: AdminProduct[]
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert('Error al eliminar el producto');
+            alert(error instanceof Error ? error.message : 'Error al eliminar el producto');
         } finally {
             setIsLoading(false);
             setItemToDelete(null);

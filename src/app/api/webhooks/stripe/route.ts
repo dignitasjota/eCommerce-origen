@@ -82,9 +82,15 @@ export async function POST(req: NextRequest) {
                 await handleCheckoutFailed(event.data.object as Stripe.Checkout.Session);
                 break;
 
-            case 'charge.refunded':
             case 'payment_intent.canceled':
-                await handlePaymentRefunded(event.data.object as Stripe.PaymentIntent | Stripe.Charge);
+                // El PaymentIntent se canceló antes de capturar el pago (nunca
+                // llegó a PAID) — es un fallo de pago, NO un reembolso. Va por
+                // el mismo camino que un checkout fallido/expirado.
+                await handlePaymentIntentCanceled(event.data.object as Stripe.PaymentIntent);
+                break;
+
+            case 'charge.refunded':
+                await handleChargeRefunded(event.data.object as Stripe.Charge);
                 break;
 
             default:
@@ -186,66 +192,198 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 async function handleCheckoutFailed(session: Stripe.Checkout.Session) {
     const orderId = session.metadata?.order_id;
     if (!orderId) return;
-
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
-    if (!order || order.payment_status === 'PAID') return;
-
-    // El pago falló o la sesión expiró. Marcamos la orden como CANCELLED.
-    // Liberar stock / revertir cupón requiere otra transacción; lo pasamos al
-    // cron de limpieza para no proliferar lógica de revert aquí.
-    await prisma.order.update({
-        where: { id: orderId },
-        data: {
-            status: 'CANCELLED',
-            payment_status: 'FAILED'
-        }
-    });
+    await revertOrderReservation(orderId, 'stripe_event:checkout_failed_or_expired');
 }
 
-async function handlePaymentRefunded(obj: Stripe.PaymentIntent | Stripe.Charge) {
-    const intentId = 'payment_intent' in obj && typeof obj.payment_intent === 'string'
-        ? obj.payment_intent
-        : obj.id;
+async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent) {
+    const orderId = paymentIntent.metadata?.order_id;
+    if (!orderId) return;
+    await revertOrderReservation(orderId, 'stripe_event:payment_intent_canceled');
+}
+
+/**
+ * Libera la reserva de una orden que nunca llegó a pagarse (checkout
+ * fallido/expirado o PaymentIntent cancelado antes de capturar el cobro):
+ * restituye stock, revierte el uso del cupón y marca CANCELLED+FAILED, todo
+ * en una única transacción con guard atómico — igual patrón que usa el cron
+ * `cleanup-pending-orders` para las órdenes que el cliente abandona sin
+ * pasar siquiera por Stripe. Sin esto, la orden queda en CANCELLED pero
+ * fuera del alcance de ese cron (que sólo mira `status='PENDING_PAYMENT'`),
+ * dejando stock y usos de cupón reservados para siempre.
+ *
+ * Idempotente y a salvo de condiciones de carrera entre eventos: el guard
+ * `updateMany` en el `status` de la orden asegura que sólo un evento
+ * concurrente (p.ej. `checkout.session.expired` y `payment_intent.canceled`
+ * para la misma orden) llegue a restituir stock.
+ */
+async function revertOrderReservation(orderId: string, reason: string) {
+    const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: { order_items: { select: { variant_id: true, quantity: true } } }
+    });
+    if (!order || order.payment_status === 'PAID') return;
+
+    const { recordStockMovement } = await import('@/lib/stock');
+
+    const reverted = await prisma.$transaction(async (tx) => {
+        const claim = await tx.order.updateMany({
+            where: { id: orderId, status: { not: 'CANCELLED' }, payment_status: { not: 'PAID' } },
+            data: { status: 'CANCELLED', payment_status: 'FAILED' }
+        });
+        if (claim.count !== 1) return false;
+
+        for (const item of order.order_items) {
+            if (!item.variant_id) continue;
+            await tx.productVariant.update({
+                where: { id: item.variant_id },
+                data: { stock: { increment: item.quantity } }
+            });
+            await recordStockMovement(
+                {
+                    variant_id: item.variant_id,
+                    quantity: item.quantity,
+                    reason: 'RESERVATION_RELEASE',
+                    reference_id: order.id,
+                    note: `Order ${order.order_number} — ${reason}`
+                },
+                tx
+            );
+        }
+
+        if (order.coupon_id) {
+            await tx.coupon.updateMany({
+                where: { id: order.coupon_id, used_count: { gt: 0 } },
+                data: { used_count: { decrement: 1 } }
+            });
+        }
+
+        return true;
+    });
+
+    if (reverted) {
+        const { auditLogServer } = await import('@/lib/audit');
+        await auditLogServer({
+            action: 'order.payment_failed',
+            entity_type: 'Order',
+            entity_id: order.id,
+            metadata: { order_number: order.order_number, reason }
+        });
+    }
+}
+
+/**
+ * `charge.refunded` dispara tanto en reembolsos totales como parciales, y
+ * tanto si el reembolso lo inició nuestro propio flujo RMA (`refundReturn`,
+ * que YA restituye stock condicionalmente por ítem al marcar la devolución
+ * como recibida) como si se hizo a mano desde el Dashboard de Stripe.
+ * Distinguimos ambos casos para no duplicar la restitución de stock ni
+ * marcar la orden REFUNDED de forma incorrecta ante un reembolso parcial.
+ */
+async function handleChargeRefunded(charge: Stripe.Charge) {
+    const intentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+    if (!intentId) return;
 
     const order = await prisma.order.findFirst({
         where: { payment_intent_id: intentId },
         include: { order_items: { select: { variant_id: true, quantity: true } } }
     });
-    if (!order) return;
+    if (!order || order.payment_status === 'REFUNDED') return;
 
+    const isFullRefund = charge.amount_refunded >= charge.amount;
+
+    // ¿Este reembolso ya lo gestionó /admin/returns (refundReturn)? Consultamos
+    // la lista real de refunds del PaymentIntent en Stripe (no nos fiamos de
+    // `charge.refunds` del payload del evento, que puede no venir expandido)
+    // y buscamos un Return con ese `stripe_refund_id`.
+    const stripe = await getStripe();
+    const refundsList = await stripe.refunds.list({ payment_intent: intentId, limit: 20 });
+    const refundIds = refundsList.data.map((r) => r.id);
+    const handledByReturn =
+        refundIds.length > 0
+            ? await prisma.return.findFirst({
+                  where: { order_id: order.id, stripe_refund_id: { in: refundIds } },
+                  select: { id: true }
+              })
+            : null;
+
+    if (handledByReturn) {
+        // Stock y AuditLog ya los gestionó markReturnReceived/refundReturn.
+        // Sólo reflejamos en la orden si Stripe confirma que se devolvió el
+        // importe TOTAL (para que el listado de pedidos no la siga mostrando
+        // como pagada cuando en realidad ya no queda nada cobrado).
+        if (isFullRefund) {
+            await prisma.order.updateMany({
+                where: { id: order.id, payment_status: { not: 'REFUNDED' } },
+                data: { status: 'REFUNDED', payment_status: 'REFUNDED' }
+            });
+        }
+        return;
+    }
+
+    if (!isFullRefund) {
+        // Reembolso parcial fuera del flujo RMA (p.ej. desde el Dashboard de
+        // Stripe a mano): no hay forma fiable de saber qué ítems corresponden,
+        // así que no adivinamos qué stock restituir ni tocamos el estado de
+        // la orden. Dejamos rastro para revisión manual.
+        const { auditLogServer } = await import('@/lib/audit');
+        await auditLogServer({
+            action: 'order.partial_refund_unmanaged',
+            entity_type: 'Order',
+            entity_id: order.id,
+            metadata: {
+                order_number: order.order_number,
+                amount_refunded: charge.amount_refunded,
+                amount: charge.amount
+            }
+        });
+        console.warn(
+            `[stripe-webhook] reembolso parcial fuera del flujo RMA para pedido ${order.order_number} — requiere revisión manual`
+        );
+        return;
+    }
+
+    // Reembolso total fuera del flujo RMA: comportamiento legacy completo
+    // (restituir todo el stock de la orden + revertir cupón + marcar REFUNDED).
     const previousStatus = order.status;
     const previousPaymentStatus = order.payment_status;
+    const { recordStockMovement } = await import('@/lib/stock');
 
-    // Idempotencia: si ya está REFUNDED, no volvemos a registrar movimientos.
-    if (previousPaymentStatus === 'REFUNDED') return;
+    const updated = await prisma.$transaction(async (tx) => {
+        const claim = await tx.order.updateMany({
+            where: { id: order.id, payment_status: { not: 'REFUNDED' } },
+            data: { status: 'REFUNDED', payment_status: 'REFUNDED' }
+        });
+        if (claim.count !== 1) return null;
 
-    const updated = await prisma.order.update({
-        where: { id: order.id },
-        data: {
-            status: 'REFUNDED',
-            payment_status: 'REFUNDED'
-        },
-        include: { users: true }
+        for (const item of order.order_items) {
+            if (!item.variant_id) continue;
+            await tx.productVariant.update({
+                where: { id: item.variant_id },
+                data: { stock: { increment: item.quantity } }
+            });
+            await recordStockMovement(
+                {
+                    variant_id: item.variant_id,
+                    quantity: item.quantity,
+                    reason: 'REFUND',
+                    reference_id: order.id,
+                    note: `Refund of order ${order.order_number}`
+                },
+                tx
+            );
+        }
+
+        if (order.coupon_id) {
+            await tx.coupon.updateMany({
+                where: { id: order.coupon_id, used_count: { gt: 0 } },
+                data: { used_count: { decrement: 1 } }
+            });
+        }
+
+        return tx.order.findUnique({ where: { id: order.id }, include: { users: true } });
     });
 
-    // Restituir stock por las unidades refundidas. Asumimos refund total
-    // (Stripe puede refundir parcial pero el evento charge.refunded no
-    // distingue si no inspeccionamos `amount_refunded` vs `amount`).
-    const { recordStockMovement } = await import('@/lib/stock');
-    for (const item of order.order_items) {
-        if (!item.variant_id) continue;
-        await prisma.productVariant.update({
-            where: { id: item.variant_id },
-            data: { stock: { increment: item.quantity } }
-        });
-        await recordStockMovement({
-            variant_id: item.variant_id,
-            quantity: item.quantity,
-            reason: 'REFUND',
-            reference_id: order.id,
-            note: `Refund of order ${order.order_number}`
-        });
-    }
+    if (!updated) return; // otro evento concurrente ya lo procesó
 
     const { sendOrderStatusEmail } = await import('@/lib/emails/notify');
     await sendOrderStatusEmail(updated, { previousStatus, previousPaymentStatus });

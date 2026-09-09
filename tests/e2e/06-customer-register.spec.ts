@@ -30,6 +30,10 @@ test.describe('Customer — registro y login', () => {
         await page.fill('input[name="name"]', 'Test E2E');
         await page.fill('input[name="email"]', email);
         await page.fill('input[name="password"]', password);
+        // El form exige confirmar contraseña (campo `required` + validación
+        // "las contraseñas no coinciden" en el submit) — sin rellenarlo el
+        // submit nunca navega a ningún sitio y el test cuelga en el waitForURL.
+        await page.fill('input[name="confirmPassword"]', password);
 
         const submit = page.locator('button[type="submit"]').first();
         await submit.click();

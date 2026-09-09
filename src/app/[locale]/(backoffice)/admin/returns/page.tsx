@@ -115,12 +115,12 @@ export default async function AdminReturnsPage({ params, searchParams }: Props) 
                             {returns.map((r) => (
                                 <tr key={r.id}>
                                     <td>
-                                        <Link href={`/es/admin/returns/${r.id}`} className="font-bold text-primary hover:underline">
+                                        <Link href={`/admin/returns/${r.id}`} className="font-bold text-primary hover:underline">
                                             {r.return_number}
                                         </Link>
                                     </td>
                                     <td>
-                                        <Link href={`/es/admin/orders/${r.order_id}`} className="text-primary hover:underline">
+                                        <Link href={`/admin/orders/${r.order_id}`} className="text-primary hover:underline">
                                             {r.orders.order_number}
                                         </Link>
                                     </td>
@@ -141,7 +141,7 @@ export default async function AdminReturnsPage({ params, searchParams }: Props) 
                                         })}
                                     </td>
                                     <td>
-                                        <Link href={`/es/admin/returns/${r.id}`} className="admin-btn admin-btn-secondary admin-btn-sm">
+                                        <Link href={`/admin/returns/${r.id}`} className="admin-btn admin-btn-secondary admin-btn-sm">
                                             Gestionar
                                         </Link>
                                     </td>

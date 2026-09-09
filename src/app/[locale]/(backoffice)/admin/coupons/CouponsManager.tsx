@@ -99,7 +99,7 @@ export default function CouponsManager({ initialCoupons }: { initialCoupons: any
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert('Error al eliminar el cupón');
+            alert(error instanceof Error ? error.message : 'Error al eliminar el cupón');
         } finally {
             setIsLoading(false);
             setItemToDelete(null);

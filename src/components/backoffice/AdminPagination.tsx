@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 interface AdminPaginationProps {
-    /** URL base sin querystring (ej: "/es/admin/products"). */
+    /** URL base sin querystring (ej: "/admin/products"). */
     basePath: string;
     page: number;
     totalPages: number;

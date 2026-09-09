@@ -4,8 +4,9 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import {
     parseCursorParams,
-    buildPrismaCursorArgs,
-    buildCursorPage
+    buildCursorWhere,
+    buildCursorPage,
+    CURSOR_ORDER_BY
 } from '@/lib/pagination';
 
 export const metadata = {
@@ -36,15 +37,16 @@ export default async function BlogPage({ params, searchParams }: Props) {
     // sería ineficiente para los buscadores que crawlearan páginas profundas.
     const cursorParams = parseCursorParams(sp);
     const currentCursor = typeof sp.cursor === 'string' ? sp.cursor : undefined;
-    const cursorArgs = buildPrismaCursorArgs(cursorParams);
+    const cursorWhere = buildCursorWhere(cursorParams.cursor);
+    const baseWhere = { is_published: true };
 
     const rows = await prisma.blogPost.findMany({
-        where: { is_published: true },
+        where: cursorWhere ? { AND: [baseWhere, cursorWhere] } : baseWhere,
         include: {
             blog_post_translations: { where: { locale } }
         },
-        orderBy: { id: 'desc' },
-        ...cursorArgs
+        orderBy: CURSOR_ORDER_BY,
+        take: cursorParams.take + 1
     });
     const { items: posts, nextCursor } = buildCursorPage(rows, cursorParams.take);
 

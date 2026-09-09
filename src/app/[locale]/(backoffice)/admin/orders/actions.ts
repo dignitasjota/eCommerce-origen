@@ -23,11 +23,19 @@ export async function updateOrderFullStatus(formData: FormData) {
         });
         if (!order) return { success: false, error: 'Pedido no encontrado' };
 
+        // `delivered_at` se fija SOLO en la transición hacia DELIVERED (no en
+        // cada resave mientras ya está DELIVERED) — es la base de la ventana
+        // de devolución (RETURN_WINDOW_DAYS en src/lib/returns.ts). Si se
+        // sobrescribiera en cada edición, cualquier cambio posterior de la
+        // orden (tracking, notas...) reiniciaría la ventana silenciosamente.
+        const enteringDelivered = order.status !== 'DELIVERED' && newStatus === 'DELIVERED';
+
         const updated = await prisma.order.update({
             where: { id },
             data: {
                 status: newStatus as any,
-                payment_status: newPaymentStatus as any
+                payment_status: newPaymentStatus as any,
+                ...(enteringDelivered ? { delivered_at: new Date() } : {})
             },
             include: { users: true }
         });

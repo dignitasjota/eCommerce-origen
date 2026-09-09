@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
     try {
+        const limit = rateLimit(request, { bucket: 'reviews', max: 5, windowMs: 10 * 60_000 });
+        if (!limit.ok) {
+            return NextResponse.json(
+                { error: 'Demasiadas reseñas enviadas. Inténtalo más tarde.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
         const session = await auth();
 
         if (!session?.user?.id) {

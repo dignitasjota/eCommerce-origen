@@ -18,7 +18,17 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, email, password } = registerSchema.parse(body);
 
-        // Check if user already exists
+        // Check if user already exists.
+        //
+        // A diferencia de /api/storefront/forgot-password (que siempre
+        // responde 200 para no confirmar si un email tiene cuenta), aquí SÍ
+        // se revela la colisión de forma explícita. Es una decisión
+        // intencional, no una inconsistencia: es el patrón estándar en
+        // registro (GitHub, etc. hacen lo mismo) porque la alternativa —
+        // fingir éxito sin crear nada — deja al usuario sin ninguna pista de
+        // por qué nunca recibe el email de bienvenida. El rate-limit de este
+        // endpoint (5 intentos / 10 min por IP, arriba) ya acota el uso de
+        // este endpoint para enumerar emails a gran escala.
         const existingUser = await prisma.user.findUnique({
             where: { email }
         });

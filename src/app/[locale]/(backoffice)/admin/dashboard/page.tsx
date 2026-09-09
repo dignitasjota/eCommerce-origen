@@ -214,7 +214,7 @@ export default async function DashboardPage() {
                                     <tr key={p.id}>
                                         <td>
                                             {p.slug ? (
-                                                <Link href={`/es/admin/products/${p.id}/edit`} className="text-primary hover:underline">
+                                                <Link href={`/admin/products/${p.id}/edit`} className="text-primary hover:underline">
                                                     {p.name}
                                                 </Link>
                                             ) : p.name}
@@ -239,7 +239,7 @@ export default async function DashboardPage() {
                 <div className="admin-table-container">
                     <div className="admin-table-header">
                         <h2 className="admin-table-title">Últimos pedidos</h2>
-                        <Link href="/es/admin/orders" className="admin-btn admin-btn-secondary admin-btn-sm">
+                        <Link href="/admin/orders" className="admin-btn admin-btn-secondary admin-btn-sm">
                             Ver todos →
                         </Link>
                     </div>
@@ -258,7 +258,7 @@ export default async function DashboardPage() {
                             {stats.recentOrders.map((order) => (
                                 <tr key={order.id}>
                                     <td>
-                                        <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
+                                        <Link href={`/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
                                             {order.order_number}
                                         </Link>
                                     </td>

@@ -95,7 +95,10 @@ jobs:
             - name: Apply schema to test DB
               env:
                   DATABASE_URL: 'mysql://ecommerce:ecommerce@127.0.0.1:3306/ecommerce_test'
-              run: npx prisma db push --accept-data-loss=false --skip-generate
+              # `--skip-generate` no existe en el CLI de Prisma 7.4.1 (pinned en
+              # package-lock.json) — falla con "unknown option" y aborta el job
+              # antes de llegar a correr ningún test.
+              run: npx prisma db push --accept-data-loss=false
 
             - name: Seed bootstrap (admin + defaults)
               env:

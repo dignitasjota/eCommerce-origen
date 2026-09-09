@@ -78,6 +78,7 @@ export async function assertOrderEligibleForReturn(
             user_id: true,
             status: true,
             payment_status: true,
+            delivered_at: true,
             updated_at: true
         }
     });
@@ -95,8 +96,19 @@ export async function assertOrderEligibleForReturn(
         throw new Error('Sólo se pueden devolver pedidos pagados');
     }
 
-    // Ventana de devolución basada en updated_at (cuando se marcó DELIVERED).
-    const ageMs = Date.now() - order.updated_at.getTime();
+    // Ventana de devolución basada en `delivered_at` — se fija UNA sola vez,
+    // en el momento exacto en que el admin marca la orden DELIVERED (ver
+    // updateOrderFullStatus). Antes se usaba `updated_at`, que se pisa con
+    // CUALQUIER cambio posterior de la orden (tracking, notas, un resave sin
+    // cambios reales…), lo que reiniciaba la ventana de forma silenciosa.
+    //
+    // Fallback a `updated_at` sólo para órdenes que ya estaban DELIVERED
+    // antes de que este campo existiera (`delivered_at` null) — no hay forma
+    // de recuperar la fecha real de entrega para esas, así que mantenemos el
+    // comportamiento anterior como aproximación en vez de bloquear todas las
+    // devoluciones sobre pedidos históricos.
+    const deliveredAt = order.delivered_at ?? order.updated_at;
+    const ageMs = Date.now() - deliveredAt.getTime();
     const ageDays = ageMs / 86_400_000;
     if (ageDays > RETURN_WINDOW_DAYS) {
         throw new Error(`La ventana de devolución ha expirado (${RETURN_WINDOW_DAYS} días desde la entrega)`);

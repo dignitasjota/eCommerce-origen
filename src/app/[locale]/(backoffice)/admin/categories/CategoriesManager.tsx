@@ -80,7 +80,7 @@ export default function CategoriesManager({ initialCategories, allParentCategori
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert('Error al eliminar la categoría');
+            alert(error instanceof Error ? error.message : 'Error al eliminar la categoría');
         } finally {
             setIsLoading(false);
             setItemToDelete(null);

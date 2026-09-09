@@ -222,6 +222,25 @@ export async function refundReturn(returnId: string, formData: FormData) {
             return { success: false, error: `No se puede reembolsar desde ${ret.status}` };
         }
 
+        // Reservamos la transición de estado ANTES de llamar a Stripe: si dos
+        // peticiones llegan casi a la vez (doble clic, dos pestañas), sólo una
+        // gana este guard atómico — la otra ve `count !== 1` y aborta sin
+        // llegar a tocar Stripe. Si la llamada a Stripe fuera primero y la
+        // comprobación de estado después (como estaba antes), ambas peticiones
+        // podrían disparar el reembolso real y sólo una de las dos escrituras
+        // en BD "ganaría" — dinero devuelto dos veces.
+        const claim = await prisma.return.updateMany({
+            where: { id: returnId, status: 'RECEIVED' },
+            data: {
+                status: 'REFUNDED',
+                refunded_at: new Date(),
+                refund_amount: refundAmount
+            }
+        });
+        if (claim.count !== 1) {
+            return { success: false, error: 'La devolución ya se está reembolsando o cambió de estado' };
+        }
+
         let stripeRefundId: string | null = null;
 
         // Si la orden se pagó con Stripe, hacemos el refund vía API.
@@ -230,15 +249,26 @@ export async function refundReturn(returnId: string, formData: FormData) {
         if (ret.orders?.payment_intent_id) {
             try {
                 const stripe = await getStripe();
-                const refund = await stripe.refunds.create({
-                    payment_intent: ret.orders.payment_intent_id,
-                    amount: Math.round(refundAmount * 100), // céntimos
-                    reason: 'requested_by_customer',
-                    metadata: { return_id: ret.id, return_number: ret.return_number }
-                });
+                const refund = await stripe.refunds.create(
+                    {
+                        payment_intent: ret.orders.payment_intent_id,
+                        amount: Math.round(refundAmount * 100), // céntimos
+                        reason: 'requested_by_customer',
+                        metadata: { return_id: ret.id, return_number: ret.return_number }
+                    },
+                    // Si esta misma llamada se reintentara a nivel de red,
+                    // Stripe devuelve el refund ya creado en vez de uno nuevo.
+                    { idempotencyKey: `return-refund-${ret.id}` }
+                );
                 stripeRefundId = refund.id;
             } catch (stripeErr: any) {
                 console.error('[returns] Stripe refund error:', stripeErr);
+                // No se movió dinero: deshacemos la reserva de estado para
+                // que la devolución vuelva a RECEIVED y se pueda reintentar.
+                await prisma.return.updateMany({
+                    where: { id: returnId, status: 'REFUNDED', stripe_refund_id: null },
+                    data: { status: 'RECEIVED', refunded_at: null, refund_amount: null }
+                });
                 return {
                     success: false,
                     error: `Stripe rechazó el reembolso: ${stripeErr?.message || 'desconocido'}`
@@ -246,15 +276,12 @@ export async function refundReturn(returnId: string, formData: FormData) {
             }
         }
 
-        await prisma.return.update({
-            where: { id: returnId, status: 'RECEIVED' },
-            data: {
-                status: 'REFUNDED',
-                refunded_at: new Date(),
-                refund_amount: refundAmount,
-                stripe_refund_id: stripeRefundId
-            }
-        });
+        if (stripeRefundId) {
+            await prisma.return.update({
+                where: { id: returnId },
+                data: { stripe_refund_id: stripeRefundId }
+            });
+        }
 
         await notifyCustomer(
             ret,

@@ -48,6 +48,10 @@ test.describe('Storefront — navegación básica', () => {
         const res = await request.get('/robots.txt');
         expect(res.ok()).toBe(true);
         const body = await res.text();
-        expect(body).toContain('User-agent');
+        // Las directivas de robots.txt son case-insensitive por spec; Next.js
+        // (MetadataRoute.Robots) serializa "User-Agent" con A mayúscula, así
+        // que comparamos sin distinguir mayúsculas en vez de fijar el casing
+        // exacto de un serializador que no controlamos desde robots.ts.
+        expect(body).toMatch(/user-agent/i);
     });
 });

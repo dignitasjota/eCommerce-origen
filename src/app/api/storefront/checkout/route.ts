@@ -7,6 +7,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getStripe, isStripePaymentMethod } from '@/lib/stripe';
 import { recordStockMovement } from '@/lib/stock';
 import { captureError } from '@/lib/sentry';
+import { checkoutSchema } from '@/lib/schemas/checkout';
 
 /**
  * Genera un identificador de pedido público no predecible.
@@ -33,13 +34,6 @@ interface ValidatedItem {
     _enforce_stock: boolean;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function asPositiveInt(value: unknown): number | null {
-    const n = typeof value === 'number' ? value : parseInt(String(value ?? ''), 10);
-    return Number.isInteger(n) && n > 0 && n <= 999 ? n : null;
-}
-
 export async function POST(request: NextRequest) {
     try {
         const limit = rateLimit(request, { bucket: 'checkout', max: 10, windowMs: 60_000 });
@@ -51,36 +45,23 @@ export async function POST(request: NextRequest) {
         }
 
         const session = await auth();
-        const body = await request.json();
-        const { email, address, shippingMethodId, paymentMethod, items, locale, couponCode } = body ?? {};
+        const rawBody = await request.json().catch(() => null);
 
-        // ── Validación básica de formato ──────────────────────────────────
-        if (!Array.isArray(items) || items.length === 0) {
-            return NextResponse.json({ error: 'No se puede procesar un carrito vacío.' }, { status: 400 });
+        // ── Validación de formato (Zod) ────────────────────────────────────
+        const parsed = checkoutSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: parsed.error.issues[0]?.message || 'Datos de checkout inválidos.' },
+                { status: 400 }
+            );
         }
-        if (items.length > 100) {
-            return NextResponse.json({ error: 'Demasiados items en el carrito.' }, { status: 400 });
-        }
-        if (!shippingMethodId || typeof shippingMethodId !== 'string') {
-            return NextResponse.json({ error: 'Método de envío requerido.' }, { status: 400 });
-        }
-        if (!paymentMethod || typeof paymentMethod !== 'string') {
-            return NextResponse.json({ error: 'Método de pago requerido.' }, { status: 400 });
-        }
-        if (!address || typeof address !== 'object') {
-            return NextResponse.json({ error: 'Dirección requerida.' }, { status: 400 });
-        }
-        const required = ['firstName', 'lastName', 'address1', 'city', 'postalCode', 'country'] as const;
-        for (const k of required) {
-            if (!address[k] || typeof address[k] !== 'string' || !address[k].trim()) {
-                return NextResponse.json({ error: `Falta el campo de dirección: ${k}` }, { status: 400 });
-            }
-        }
-        const guestEmail = !session?.user?.id ? String(email ?? '').trim().toLowerCase() : null;
-        if (!session?.user?.id) {
-            if (!guestEmail || !EMAIL_RE.test(guestEmail)) {
-                return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
-            }
+        const { address, shippingMethodId, paymentMethod, items, locale, couponCode } = parsed.data;
+
+        // El email sólo es obligatorio para invitados; con sesión se usa el
+        // email de la cuenta. El formato ya lo valida el schema (`.email()`).
+        const guestEmail = !session?.user?.id ? parsed.data.email ?? null : null;
+        if (!session?.user?.id && !guestEmail) {
+            return NextResponse.json({ error: 'Email requerido.' }, { status: 400 });
         }
 
         const orderLocale = (locale === 'en' ? 'en' : 'es');
@@ -99,14 +80,10 @@ export async function POST(request: NextRequest) {
         let subtotal = 0;
         const validatedItems: ValidatedItem[] = [];
 
-        for (const raw of items as Array<Record<string, unknown>>) {
-            const productId = typeof raw.product_id === 'string' ? raw.product_id : null;
-            const variantId = typeof raw.variant_id === 'string' && raw.variant_id ? raw.variant_id : null;
-            const quantity = asPositiveInt(raw.quantity);
-
-            if (!productId || !quantity) {
-                return NextResponse.json({ error: 'Item de carrito inválido.' }, { status: 400 });
-            }
+        for (const item of items) {
+            const productId = item.product_id;
+            const variantId = item.variant_id ?? null;
+            const quantity = item.quantity;
 
             const product = await prisma.product.findUnique({
                 where: { id: productId },
@@ -159,7 +136,7 @@ export async function POST(request: NextRequest) {
                 price,
                 quantity,
                 // attributes se acepta solo como descriptor; nunca como precio.
-                variant_info: raw.attributes ? JSON.stringify(raw.attributes) : null,
+                variant_info: item.attributes ? JSON.stringify(item.attributes) : null,
                 _enforce_stock: enforceStock,
             });
         }

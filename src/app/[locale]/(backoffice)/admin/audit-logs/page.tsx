@@ -6,8 +6,9 @@ import { auth } from '@/lib/auth';
 import CursorPagination from '@/components/backoffice/CursorPagination';
 import {
     parseCursorParams,
-    buildPrismaCursorArgs,
-    buildCursorPage
+    buildCursorWhere,
+    buildCursorPage,
+    CURSOR_ORDER_BY
 } from '@/lib/pagination';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,6 @@ export default async function AuditLogsPage({ params, searchParams }: Props) {
 
     const cursorParams = parseCursorParams(sp);
     const currentCursor = typeof sp.cursor === 'string' ? sp.cursor : undefined;
-    const cursorArgs = buildPrismaCursorArgs(cursorParams);
 
     const entityTypeRaw = typeof sp.entity_type === 'string' ? sp.entity_type : undefined;
     const entityType = entityTypeRaw && (ENTITY_TYPES as readonly string[]).includes(entityTypeRaw)
@@ -59,10 +59,13 @@ export default async function AuditLogsPage({ params, searchParams }: Props) {
     if (userId) where.user_id = userId;
     if (entityId) where.entity_id = entityId;
 
+    const cursorWhere = buildCursorWhere(cursorParams.cursor);
+    const findWhere: Prisma.AuditLogWhereInput = cursorWhere ? { AND: [where, cursorWhere] } : where;
+
     const rows = await prisma.auditLog.findMany({
-        where,
-        orderBy: { id: 'desc' },
-        ...cursorArgs
+        where: findWhere,
+        orderBy: CURSOR_ORDER_BY,
+        take: cursorParams.take + 1
     });
     const { items: logs, nextCursor } = buildCursorPage(rows, cursorParams.take);
 

@@ -44,7 +44,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <>
             <div className="admin-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                    <Link href="/es/admin/orders" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '0.5rem', display: 'inline-block' }}>
+                    <Link href="/admin/orders" style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', textDecoration: 'none', marginBottom: '0.5rem', display: 'inline-block' }}>
                         &larr; Volver a pedidos
                     </Link>
                     <h1 className="admin-topbar-title">Pedido {order.order_number}</h1>

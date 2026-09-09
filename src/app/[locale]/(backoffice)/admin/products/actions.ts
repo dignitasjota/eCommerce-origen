@@ -1,13 +1,15 @@
 'use server';
 
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
-import { writeFile, mkdir, unlink } from 'fs/promises';
+import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { auditLog } from '@/lib/audit';
+import { saveUploadedImage } from '@/lib/uploads';
 
 interface ImageOrderEntry {
     id: string;
@@ -39,9 +41,6 @@ function parseImagesOrder(raw: string | null): ImageOrderEntry[] | null {
  *   3. Renumera `sort_order` consecutivamente — la primera (0) es la principal.
  */
 async function handleImagesUpload(formData: FormData, productId: string) {
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadDir, { recursive: true }).catch(() => {});
-
     // 1) Reorder + delete sobre existentes ────────────────────────────────
     const orderRaw = formData.get('images_order') as string | null;
     const order = parseImagesOrder(orderRaw);
@@ -94,17 +93,13 @@ async function handleImagesUpload(formData: FormData, productId: string) {
     let nextSortOrder = (currentMax._max.sort_order ?? -1) + 1;
 
     for (const file of newFiles) {
-        const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-        const filename = `product_${productId}_${Date.now()}_${nextSortOrder}.${ext}`;
-        const filepath = join(uploadDir, filename);
-        const buffer = Buffer.from(await file.arrayBuffer());
-        await writeFile(filepath, buffer);
+        const url = await saveUploadedImage(file, { prefix: `product_${productId}` });
 
         await prisma.productImage.create({
             data: {
                 id: crypto.randomUUID(),
                 product_id: productId,
-                url: `/uploads/${filename}`,
+                url,
                 sort_order: nextSortOrder
             }
         });
@@ -254,9 +249,20 @@ export async function updateProduct(id: string, formData: FormData) {
 export async function deleteProduct(id: string) {
     await requireAdmin();
     const existing = await prisma.product.findUnique({ where: { id }, select: { slug: true, sku: true } });
-    await prisma.product.delete({
-        where: { id }
-    });
+    try {
+        await prisma.product.delete({
+            where: { id }
+        });
+    } catch (e) {
+        // P2003 = FK constraint violation: alguna de sus variantes tiene
+        // OrderItem asociado (ProductVariant→OrderItem es RESTRICT a propósito
+        // — nunca debe poder borrarse una línea de pedido histórica). Sin este
+        // catch, el error crudo de Prisma se propaga sin explicación al admin.
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
+            throw new Error('No se puede eliminar: el producto tiene pedidos asociados. Desactívalo en su lugar.');
+        }
+        throw e;
+    }
     await auditLog({
         action: 'product.delete',
         entity_type: 'Product',

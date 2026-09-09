@@ -11,8 +11,16 @@ function verifyToken(token: string) {
     if (!payloadStr || !signature) return null;
 
     const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('base64url');
-    // Prevención de ataques de tiempo
-    if (signature !== expectedSignature) return null;
+
+    // Comparación timing-safe real: `!==` sobre strings compara byte a byte y
+    // aborta en el primer carácter distinto, filtrando por temporización
+    // cuánto de la firma acertó el atacante. `timingSafeEqual` exige buffers
+    // de igual longitud, así que comprobamos eso primero (con longitudes
+    // distintas no hay nada que comparar de forma segura ni insegura).
+    const signatureBuf = Buffer.from(signature);
+    const expectedBuf = Buffer.from(expectedSignature);
+    if (signatureBuf.length !== expectedBuf.length) return null;
+    if (!crypto.timingSafeEqual(signatureBuf, expectedBuf)) return null;
 
     try {
         const payload = JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));

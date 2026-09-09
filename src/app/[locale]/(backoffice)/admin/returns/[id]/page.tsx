@@ -63,7 +63,7 @@ export default async function ReturnDetailPage({ params }: { params: Promise<{ i
     return (
         <>
             <div className="admin-topbar" style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                <Link href="/es/admin/returns" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
+                <Link href="/admin/returns" style={{ color: 'var(--color-text-secondary)', textDecoration: 'none' }}>
                     ← Volver
                 </Link>
                 <h1 className="admin-topbar-title">Devolución {ret.return_number}</h1>
@@ -82,7 +82,7 @@ export default async function ReturnDetailPage({ params }: { params: Promise<{ i
                                 <tr>
                                     <td><strong>Pedido</strong></td>
                                     <td>
-                                        <Link href={`/es/admin/orders/${ret.order_id}`} className="text-primary hover:underline">
+                                        <Link href={`/admin/orders/${ret.order_id}`} className="text-primary hover:underline">
                                             {ret.orders.order_number}
                                         </Link>
                                         {' · '}

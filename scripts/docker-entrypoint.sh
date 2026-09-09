@@ -35,7 +35,13 @@ echo "📦 Sincronizando schema (prisma db push)..."
 # --accept-data-loss=false: aborta si la operación destruiría datos.
 # En primer arranque la BD está vacía y crea todo; en arranques sucesivos
 # el diff es vacío y no hace nada.
-npx prisma db push --accept-data-loss=false --skip-generate
+#
+# NOTA: `--skip-generate` ya NO existe en el CLI de Prisma 7.4.1 (falla con
+# "unknown or unexpected option" y, por el `set -e` de arriba, tumbaba el
+# arranque del contenedor entero). El cliente ya se generó en el build de la
+# imagen (`npm run build` → `prisma generate && next build`); dejar que
+# `db push` regenere igualmente sólo añade ~200ms al arranque.
+npx prisma db push --accept-data-loss=false
 
 echo "🌱 Ejecutando seed inicial (idempotente)..."
 node ./scripts/seed-bootstrap.mjs || echo "⚠️  Seed falló (no fatal, continuando)."

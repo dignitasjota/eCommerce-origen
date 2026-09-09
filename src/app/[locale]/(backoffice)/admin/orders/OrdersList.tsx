@@ -120,7 +120,7 @@ export default function OrdersList({ orders, totalOrders, filters, exportHref }:
                             {orders.map((order) => (
                                 <tr key={order.id}>
                                     <td>
-                                        <Link href={`/es/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
+                                        <Link href={`/admin/orders/${order.id}`} className="font-bold text-primary hover:underline">
                                             {order.order_number}
                                         </Link>
                                     </td>
@@ -142,7 +142,7 @@ export default function OrdersList({ orders, totalOrders, filters, exportHref }:
                                         {new Date(order.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' })}
                                     </td>
                                     <td>
-                                        <Link href={`/es/admin/orders/${order.id}`} className="admin-btn admin-btn-secondary admin-btn-sm">
+                                        <Link href={`/admin/orders/${order.id}`} className="admin-btn admin-btn-secondary admin-btn-sm">
                                             Gestionar
                                         </Link>
                                     </td>

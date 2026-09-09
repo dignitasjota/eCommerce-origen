@@ -3,6 +3,9 @@ import Credentials from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import prisma from '@/lib/db';
+import { ADMIN_ROLES, type AdminRole } from '@/lib/auth-roles';
+
+export { ADMIN_ROLES, type AdminRole };
 
 declare module 'next-auth' {
     interface Session {
@@ -25,9 +28,6 @@ declare module '@auth/core/jwt' {
         role: string;
     }
 }
-
-export const ADMIN_ROLES = ['ADMIN', 'ORDER_MANAGER'] as const;
-export type AdminRole = (typeof ADMIN_ROLES)[number];
 
 export class AuthorizationError extends Error {
     constructor(message = 'No autorizado') {
@@ -97,20 +97,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             return session;
         },
-        async authorized({ auth, request: { nextUrl } }) {
-            const isLoggedIn = !!auth?.user;
-            const isAdminRoute = nextUrl.pathname.includes('/admin');
-
-            if (isAdminRoute) {
-                if (!isLoggedIn) return false;
-                const userRole = auth?.user?.role as AdminRole | undefined;
-                if (!userRole || !ADMIN_ROLES.includes(userRole)) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
+        // Nota: la protección de rutas /admin/* NO se hace con un callback
+        // `authorized` aquí, porque eso exigiría que src/middleware.ts envuelva
+        // con `auth()` — lo que arrastraría el PrismaAdapter (y el driver de
+        // MariaDB) al bundle del middleware. En su lugar, src/middleware.ts
+        // decodifica el JWT de sesión directamente con `getToken()` de
+        // `next-auth/jwt`, que no depende del adapter.
     },
 });
 
