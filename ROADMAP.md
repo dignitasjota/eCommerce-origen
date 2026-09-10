@@ -18,7 +18,7 @@
 | Continuo — Deuda técnica | ✅ 8/8 | Todos completados |
 | Auditoría de seguridad (2026-09-10) | ✅ Completado | Todos los hallazgos corregidos y validados con e2e real |
 | Plan de migración Next.js/Prisma (2026-09-10) | 🔵 Planificado (Fase 0 aplicada) | Rama `chore/nextjs-prisma-major-upgrade-plan`, sin fusionar — ver bloque dedicado |
-| Backlog premium | 🟢 En marcha (1/14) | Reseñas con foto + verificación completado 2026-09-10 — ver bloque dedicado |
+| Backlog premium | 🟢 En marcha (2/14) | Reseñas con foto + verificación y Stock countdown/urgencia completados 2026-09-10 — ver bloque dedicado |
 
 **Verificación final:** `npx tsc --noEmit` → exit 0 (sin errores) · `npm run build` sin errores · suite Playwright e2e completa: 19 passed / 1 skipped / 0 failed (contra MariaDB real).
 
@@ -218,9 +218,9 @@ A raíz de los hallazgos de `npm audit` en la auditoría de seguridad de esta mi
 A planificar según prioridad de negocio. Los items con (✓ schema) ya tienen el campo persistente preparado.
 
 - [x] **Reseñas con foto + verificación** — `POST /api/storefront/reviews` acepta ahora multipart con hasta 5 fotos (reutiliza `src/lib/uploads.ts`: whitelist MIME + magic bytes + nombre en servidor). `is_verified_purchase` se fija a `true` en la creación (antes se comprobaba la compra PAID pero el campo nunca se escribía). `ReviewForm.tsx` reutiliza el `<ImageUploader>` del admin sin cambios. La ficha de producto muestra las fotos y condiciona el badge "Compra verificada" al campo real. **Hallazgo bloqueante encontrado al implementar:** no existía ninguna forma de aprobar una reseña — `is_approved` nacía en `false` y ningún código lo ponía nunca en `true`, así que el sistema de reseñas llevaba desde el Sprint 1 sin mostrar nada en público. Se añadió `/admin/reviews` (listado con pestañas pendientes/aprobadas/todas, aprobar/despublicar/eliminar con borrado físico best-effort de las fotos), siguiendo el patrón estándar de manager admin. Validado de extremo a extremo con Playwright (compra PAID sembrada → reseña con foto → oculta hasta aprobar → aprobación en admin → visible públicamente) + tsc/eslint/build limpios + suite e2e estándar (19 passed/1 skipped/0 failed). ✅ 2026-09-10
+- [x] **Stock countdown / urgencia** — aviso "¡Solo quedan X unidades!" usando `ProductVariant.stock`, umbral `LOW_STOCK_THRESHOLD=5` en `src/lib/inventory.ts`. En la ficha de producto (`AddToCartForm.tsx`) usa el stock exacto de la variante seleccionada; en los listados (`/products`, `/category/[slug]`) un badge "¡Últimas N!" con la suma de stock de variantes activas (sin contexto de variante todavía a ese nivel). Nunca se muestra si `unlimited_stock=true` o el stock supera el umbral. Validado con un producto de stock bajo sembrado por fixture (3 unidades) + tsc/eslint/build limpios + suite e2e completa (19 passed/1 skipped/0 failed). ✅ 2026-09-10
 - **Wishlist compartible** (URL token-based).
 - **Comparador de productos** (selector multi-producto, tabla de specs).
-- **Stock countdown / urgencia** ("Solo X unidades") — usar `ProductVariant.stock`.
 - **Live chat / WhatsApp Business** (widget externo).
 - **Programa de fidelización** (puntos por compra, canje).
 - **A/B testing** de hero/CTA (feature flags en `SiteSettings`).
