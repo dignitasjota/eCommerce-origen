@@ -42,6 +42,13 @@ export async function generateMetadata(): Promise<Metadata> {
         },
         icons: {
             icon: settings['site_favicon'] || '/favicon.ico',
+            apple: settings['site_favicon'] || settings['site_logo'] || undefined,
+        },
+        manifest: '/manifest.webmanifest',
+        appleWebApp: {
+            capable: true,
+            statusBarStyle: 'default',
+            title: siteName,
         },
         // hreflang global para evitar duplicados es/en. Cada página puede
         // sobrescribir `alternates` con paths específicos del recurso.

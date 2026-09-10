@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
         // este rewrite a nivel de config lo hace. Necesario para Plesk/Passenger
         // donde NextResponse.rewrite() del middleware no funciona correctamente.
         {
-          source: '/:path((?!es|en|api|_next|_vercel|uploads|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)',
+          source: '/:path((?!es|en|api|_next|_vercel|uploads|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|sw\\.js).*)',
           destination: '/es/:path',
         },
       ],

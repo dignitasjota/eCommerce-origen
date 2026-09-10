@@ -3,6 +3,7 @@ import Footer from '@/components/storefront/Footer';
 import CookieConsent from '@/components/storefront/CookieConsent';
 import AnalyticsScripts from '@/components/storefront/AnalyticsScripts';
 import WhatsAppButton from '@/components/storefront/WhatsAppButton';
+import ServiceWorkerRegister from '@/components/storefront/ServiceWorkerRegister';
 import { CartProvider } from '@/context/CartContext';
 import { CompareProvider } from '@/context/CompareContext';
 import CompareBar from '@/components/storefront/CompareBar';
@@ -54,6 +55,7 @@ export default async function StorefrontLayout({ children, params }: Props) {
                 phone={get('whatsapp_phone') || undefined}
                 defaultMessage={get('whatsapp_default_message') || undefined}
             />
+            <ServiceWorkerRegister />
         </div>
     );
 }
