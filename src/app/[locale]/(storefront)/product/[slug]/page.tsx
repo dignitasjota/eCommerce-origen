@@ -110,6 +110,7 @@ export default async function ProductPage({ params }: Props) {
             prisma.order.findFirst({
                 where: {
                     user_id: userId,
+                    payment_status: 'PAID',
                     order_items: { some: { product_id: product.id } }
                 },
                 select: { id: true }
@@ -299,10 +300,21 @@ export default async function ProductPage({ params }: Props) {
                                                 {review.comment}
                                             </p>
                                         )}
-                                        <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--color-success)', fontWeight: '600' }}>
-                                            <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-                                            Compra verificada
-                                        </div>
+                                        {review.images && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                                                {(JSON.parse(review.images) as string[]).map((url) => (
+                                                    <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                                        <Image src={url} alt="" width={72} height={72} style={{ objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }} />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {review.is_verified_purchase && (
+                                            <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.8rem', color: 'var(--color-success)', fontWeight: '600' }}>
+                                                <svg aria-hidden="true" focusable="false" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                                                Compra verificada
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>

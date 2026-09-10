@@ -72,3 +72,12 @@ const blogAdminInclude = {
 } satisfies Prisma.BlogPostInclude;
 
 export type AdminBlogPost = Prisma.BlogPostGetPayload<{ include: typeof blogAdminInclude }>;
+
+// ── Reviews (moderación) ─────────────────────────────────────────────────
+
+const reviewAdminInclude = {
+    users: { select: { name: true, email: true } },
+    products: { select: { slug: true, product_translations: { where: { locale: 'es' }, select: { name: true } } } }
+} satisfies Prisma.ReviewInclude;
+
+export type AdminReview = Prisma.ReviewGetPayload<{ include: typeof reviewAdminInclude }>;

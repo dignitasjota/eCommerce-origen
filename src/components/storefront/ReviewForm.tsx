@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ImageUploader from '@/components/backoffice/ImageUploader';
 
 export default function ReviewForm({ productId }: { productId: string }) {
     const [rating, setRating] = useState(5);
-    const [title, setTitle] = useState('');
-    const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -18,10 +18,13 @@ export default function ReviewForm({ productId }: { productId: string }) {
         setIsSubmitting(true);
 
         try {
+            const fd = new FormData(formRef.current!);
+            fd.set('productId', productId);
+            fd.set('rating', String(rating));
+
             const res = await fetch('/api/storefront/reviews', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productId, rating, title, comment })
+                body: fd
             });
 
             const data = await res.json();
@@ -32,8 +35,8 @@ export default function ReviewForm({ productId }: { productId: string }) {
 
             setSuccess(true);
             router.refresh();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error al enviar la reseña');
         } finally {
             setIsSubmitting(false);
         }
@@ -53,7 +56,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
     }
 
     return (
-        <form onSubmit={handleSubmit} style={{ padding: '2rem', backgroundColor: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
+        <form ref={formRef} onSubmit={handleSubmit} style={{ padding: '2rem', backgroundColor: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Escribe una reseña</h3>
 
             {error && (
@@ -85,8 +88,7 @@ export default function ReviewForm({ productId }: { productId: string }) {
                 <input
                     type="text"
                     id="title"
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
+                    name="title"
                     className="input"
                     placeholder="Resume tu experiencia..."
                     required
@@ -97,12 +99,15 @@ export default function ReviewForm({ productId }: { productId: string }) {
                 <label htmlFor="comment" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Comentario (Opcional)</label>
                 <textarea
                     id="comment"
-                    value={comment}
-                    onChange={e => setComment(e.target.value)}
+                    name="comment"
                     className="input"
                     placeholder="¿Qué te ha parecido el producto?"
                     rows={4}
                 />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+                <ImageUploader name="images" orderFieldName="images_order" label="Fotos (opcional, hasta 5)" aspectRatio={1} maxSizeMB={8} />
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
