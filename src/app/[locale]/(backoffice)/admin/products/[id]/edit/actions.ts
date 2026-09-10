@@ -217,3 +217,103 @@ export async function updateProductRelations(
         return { success: false, error: 'Hubo un error guardando las relaciones' };
     }
 }
+
+/** Producto cartesiano de N arrays: cada combinación es un array con un elemento de cada uno. */
+function cartesianProduct<T>(groups: T[][]): T[][] {
+    return groups.reduce<T[][]>(
+        (acc, group) => acc.flatMap((combo) => group.map((item) => [...combo, item])),
+        [[]]
+    );
+}
+
+/**
+ * Genera todas las combinaciones (matriz) de las opciones seleccionadas y
+ * crea una `ProductVariant` + sus `ProductVariantOption` por cada una que
+ * no exista ya (identificado por el CONJUNTO exacto de opciones, no por
+ * SKU — así re-ejecutar el generador tras añadir un valor nuevo sólo crea
+ * las combinaciones nuevas, sin tocar las variantes ya editadas a mano).
+ */
+export async function generateVariantMatrix(
+    productId: string,
+    selections: { typeId: string; optionIds: string[] }[]
+): Promise<{ success: true; created: number; skipped: number } | { success: false; error: string }> {
+    try {
+        await requireAdmin(undefined, 'products.manage');
+
+        const groups = selections.filter((s) => s.optionIds.length > 0);
+        if (groups.length === 0) {
+            return { success: false, error: 'Selecciona al menos un valor de algún atributo.' };
+        }
+
+        const product = await prisma.product.findUnique({ where: { id: productId }, select: { sku: true } });
+        if (!product) return { success: false, error: 'Producto no encontrado.' };
+
+        const allOptionIds = groups.flatMap((g) => g.optionIds);
+        const options = await prisma.variantOption.findMany({ where: { id: { in: allOptionIds } } });
+        const optionById = new Map(options.map((o) => [o.id, o]));
+
+        const combos = cartesianProduct(groups.map((g) => g.optionIds));
+        if (combos.length > 200) {
+            return { success: false, error: `Esa combinación generaría ${combos.length} variantes — reduce el número de valores seleccionados (máximo 200 de una vez).` };
+        }
+
+        const existingVariants = await prisma.productVariant.findMany({
+            where: { product_id: productId },
+            include: { product_variant_options: true }
+        });
+        const existingSignatures = new Set(
+            existingVariants.map((v) =>
+                v.product_variant_options
+                    .map((pvo) => pvo.variant_option_id)
+                    .sort()
+                    .join(',')
+            )
+        );
+
+        let created = 0;
+        let skipped = 0;
+
+        await prisma.$transaction(async (tx) => {
+            for (const combo of combos) {
+                const signature = [...combo].sort().join(',');
+                if (existingSignatures.has(signature)) {
+                    skipped++;
+                    continue;
+                }
+
+                const slugs = combo.map((optId) => optionById.get(optId)?.slug || 'opt');
+                let sku = `${product.sku}-${slugs.join('-')}`.toUpperCase();
+
+                // Colisión de SKU (muy improbable, pero el campo es único
+                // globalmente): añadir un sufijo corto y reintentar.
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    const clash = await tx.productVariant.findUnique({ where: { sku } });
+                    if (!clash) break;
+                    sku = `${product.sku}-${slugs.join('-')}-${crypto.randomBytes(2).toString('hex')}`.toUpperCase();
+                }
+
+                const variant = await tx.productVariant.create({
+                    data: { product_id: productId, sku, stock: 0, is_active: true }
+                });
+                await tx.productVariantOption.createMany({
+                    data: combo.map((optionId) => ({ variant_id: variant.id, variant_option_id: optionId }))
+                });
+                created++;
+            }
+        });
+
+        await auditLog({
+            action: 'variant.generate_matrix',
+            entity_type: 'Product',
+            entity_id: productId,
+            metadata: { created, skipped, combos: combos.length }
+        });
+
+        revalidatePath(`/[locale]/admin/products/${productId}/edit`, 'page');
+        return { success: true, created, skipped };
+    } catch (error) {
+        if (error instanceof AuthorizationError) return { success: false, error: error.message };
+        console.error('Error generando la matriz de variantes:', error);
+        return { success: false, error: 'No se pudo generar la matriz de variantes.' };
+    }
+}

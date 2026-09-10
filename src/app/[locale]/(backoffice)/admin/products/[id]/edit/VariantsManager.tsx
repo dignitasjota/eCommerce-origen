@@ -10,6 +10,7 @@ interface Variant {
     price: number | null;
     stock: number;
     is_active: boolean;
+    options?: { typeName: string; value: string }[];
 }
 
 interface Props {
@@ -111,6 +112,7 @@ export default function VariantsManager({ productId, productPrice, initialVarian
                 <thead>
                     <tr>
                         <th>SKU</th>
+                        <th>Opciones</th>
                         <th style={{ textAlign: 'right' }}>Precio</th>
                         <th style={{ textAlign: 'right' }}>Stock</th>
                         <th>Estado</th>
@@ -121,6 +123,11 @@ export default function VariantsManager({ productId, productPrice, initialVarian
                     {initialVariants.map((v) => (
                         <tr key={v.id}>
                             <td><code>{v.sku}</code></td>
+                            <td style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                                {v.options && v.options.length > 0
+                                    ? v.options.map((o) => `${o.typeName}: ${o.value}`).join(' · ')
+                                    : '—'}
+                            </td>
                             <td style={{ textAlign: 'right' }}>
                                 {v.price !== null
                                     ? `${v.price.toFixed(2)} €`
@@ -144,7 +151,7 @@ export default function VariantsManager({ productId, productPrice, initialVarian
                     ))}
                     {initialVariants.length === 0 && (
                         <tr>
-                            <td colSpan={5}>
+                            <td colSpan={6}>
                                 <div className="admin-empty"><h3>El producto aún no tiene variantes.</h3></div>
                             </td>
                         </tr>

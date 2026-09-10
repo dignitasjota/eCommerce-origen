@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { hasPermission } from '@/lib/auth';
 import ProductEditForm from './ProductEditForm';
 import VariantsManager from './VariantsManager';
+import VariantMatrixGenerator from './VariantMatrixGenerator';
 import Link from 'next/link';
 
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
@@ -16,11 +17,48 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
         include: {
             product_translations: { where: { locale } },
             related_to: true,
-            product_variants: { orderBy: { sku: 'asc' } }
+            product_variants: {
+                orderBy: { sku: 'asc' },
+                include: {
+                    product_variant_options: {
+                        // Orden estable por tipo de atributo (independiente del
+                        // orden interno de inserción) para que "Color: X · Talla: Y"
+                        // se muestre siempre en el mismo orden en todas las filas.
+                        orderBy: { variant_options: { variant_type_id: 'asc' } },
+                        include: {
+                            variant_options: {
+                                include: {
+                                    variant_types: { include: { variant_type_translations: { where: { locale: 'es' } } } },
+                                    variant_option_translations: { where: { locale: 'es' } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     });
 
     if (!product) notFound();
+
+    // Biblioteca global de atributos (Color, Talla…) para el generador de
+    // matriz combinatoria — se gestiona en /admin/attributes, aquí sólo se
+    // lee para que el admin elija qué valores aplican a ESTE producto.
+    const variantTypes = await prisma.variantType.findMany({
+        orderBy: { slug: 'asc' },
+        include: {
+            variant_type_translations: { where: { locale: 'es' } },
+            variant_options: {
+                orderBy: { sort_order: 'asc' },
+                include: { variant_option_translations: { where: { locale: 'es' } } }
+            }
+        }
+    });
+    const formattedVariantTypes = variantTypes.map((t) => ({
+        id: t.id,
+        name: t.variant_type_translations[0]?.name || t.slug,
+        options: t.variant_options.map((o) => ({ id: o.id, slug: o.slug, value: o.variant_option_translations[0]?.value || o.slug }))
+    }));
 
     // Fetch all other products for the selection dropdowns
     const allProducts = await prisma.product.findMany({
@@ -53,6 +91,19 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                     <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
                         Cada variante tiene SKU, precio y stock independientes. Si el precio se deja vacío, hereda el del producto base ({Number(product.price).toFixed(2)} €).
                     </p>
+
+                    {variantTypes.length > 0 ? (
+                        <VariantMatrixGenerator
+                            productId={product.id}
+                            productSku={product.sku}
+                            variantTypes={formattedVariantTypes}
+                        />
+                    ) : (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-tertiary)', marginBottom: '1.5rem' }}>
+                            Define atributos (Color, Talla…) en <Link href={`/${locale}/admin/attributes`}>Atributos</Link> para poder generar variantes automáticamente por combinación.
+                        </p>
+                    )}
+
                     <VariantsManager
                         productId={product.id}
                         productPrice={Number(product.price)}
@@ -61,7 +112,11 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                             sku: v.sku,
                             price: v.price !== null ? Number(v.price) : null,
                             stock: v.stock,
-                            is_active: v.is_active
+                            is_active: v.is_active,
+                            options: v.product_variant_options.map((pvo) => ({
+                                typeName: pvo.variant_options.variant_types.variant_type_translations[0]?.name || pvo.variant_options.variant_types.slug,
+                                value: pvo.variant_options.variant_option_translations[0]?.value || pvo.variant_options.slug
+                            }))
                         }))}
                     />
                 </div>

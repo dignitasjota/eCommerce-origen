@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import type { AdminProduct } from '@/types/admin';
 import { createProduct, updateProduct, deleteProduct, updateProductRelations } from './actions';
 import ImageUploader from '@/components/backoffice/ImageUploader';
@@ -255,6 +254,9 @@ export default function ProductsManager({ products }: { products: AdminProduct[]
                                                 <button onClick={() => openModal(product)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                     Editar opciones
                                                 </button>
+                                                <Link href={`/admin/products/${product.id}/edit`} className="admin-btn admin-btn-secondary admin-btn-sm">
+                                                    Variantes
+                                                </Link>
                                                 <button onClick={() => openRelationsModal(product)} className="admin-btn admin-btn-secondary admin-btn-sm">
                                                     Sugerencias (Cross-Sell)
                                                 </button>
