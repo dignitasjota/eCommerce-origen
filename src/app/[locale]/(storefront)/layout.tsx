@@ -2,6 +2,7 @@ import Header from '@/components/storefront/Header';
 import Footer from '@/components/storefront/Footer';
 import CookieConsent from '@/components/storefront/CookieConsent';
 import AnalyticsScripts from '@/components/storefront/AnalyticsScripts';
+import WhatsAppButton from '@/components/storefront/WhatsAppButton';
 import { CartProvider } from '@/context/CartContext';
 import { CompareProvider } from '@/context/CompareContext';
 import CompareBar from '@/components/storefront/CompareBar';
@@ -18,7 +19,7 @@ export default async function StorefrontLayout({ children, params }: Props) {
     // en una sola query.
     const [settings, session] = await Promise.all([
         prisma.siteSetting.findMany({
-            where: { key: { in: ['storefront_theme', 'analytics_ga4_id', 'analytics_meta_pixel_id', 'cookies_policy_url'] } }
+            where: { key: { in: ['storefront_theme', 'analytics_ga4_id', 'analytics_meta_pixel_id', 'cookies_policy_url', 'whatsapp_phone', 'whatsapp_default_message'] } }
         }),
         auth()
     ]);
@@ -48,6 +49,10 @@ export default async function StorefrontLayout({ children, params }: Props) {
             <AnalyticsScripts
                 gaId={get('analytics_ga4_id') || undefined}
                 metaPixelId={get('analytics_meta_pixel_id') || undefined}
+            />
+            <WhatsAppButton
+                phone={get('whatsapp_phone') || undefined}
+                defaultMessage={get('whatsapp_default_message') || undefined}
             />
         </div>
     );

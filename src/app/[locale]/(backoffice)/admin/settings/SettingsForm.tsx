@@ -725,6 +725,54 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
                     )}
                 </div>
 
+                {/* ── TAB: WhatsApp ─────────────────────────────────────────── */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  WhatsApp  "
+                    checked={activeTab === 'whatsapp'}
+                    onChange={() => setActiveTab('whatsapp')}
+                />
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
+                    {activeTab === 'whatsapp' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4">
+                                <h3 className="text-lg font-medium text-[var(--color-primary)]">Botón de WhatsApp</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Muestra un botón flotante en la tienda que abre un chat de WhatsApp con el número indicado. Si dejas el número vacío, el botón no se muestra.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Número de WhatsApp</label>
+                                    <input
+                                        name="whatsapp_phone"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['whatsapp_phone'] || ''}
+                                        placeholder="34600000000"
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Formato internacional, sólo dígitos (código de país + número, sin espacios ni el símbolo &quot;+&quot;).</p>
+                                </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Mensaje inicial (opcional)</label>
+                                    <input
+                                        name="whatsapp_default_message"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['whatsapp_default_message'] || ''}
+                                        placeholder="Hola, tengo una pregunta sobre..."
+                                        autoComplete="off"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Aparece precargado en el chat cuando el cliente pulsa el botón.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
             </div>
 
             {/* Botón Flotante / Fijo abajo para guardar sea cual sea la pestaña */}
