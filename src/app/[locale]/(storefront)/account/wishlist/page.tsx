@@ -5,6 +5,7 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import WishlistButton from '@/components/storefront/WishlistButton';
+import WishlistShareControl from './WishlistShareControl';
 
 export const metadata = {
     title: 'Mi Lista de Deseos | eShop',
@@ -34,18 +35,24 @@ export default async function WishlistPage({ params }: Props) {
         redirect('/auth/login?callbackUrl=/account/wishlist');
     }
 
-    const dbWishlist = await prisma.wishlistItem.findMany({
-        where: { user_id: session.user.id },
-        include: {
-            products: {
-                include: {
-                    product_translations: { where: { locale } },
-                    product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+    const [dbWishlist, currentUser] = await Promise.all([
+        prisma.wishlistItem.findMany({
+            where: { user_id: session.user.id },
+            include: {
+                products: {
+                    include: {
+                        product_translations: { where: { locale } },
+                        product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+                    }
                 }
-            }
-        },
-        orderBy: { created_at: 'desc' }
-    });
+            },
+            orderBy: { created_at: 'desc' }
+        }),
+        prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { wishlist_share_token: true }
+        })
+    ]);
 
     const formattedProducts = dbWishlist.map(w => {
         const p = w.products;
@@ -67,6 +74,8 @@ export default async function WishlistPage({ params }: Props) {
                     {formattedProducts.length} {formattedProducts.length === 1 ? 'producto' : 'productos'}
                 </div>
             </div>
+
+            <WishlistShareControl initialToken={currentUser?.wishlist_share_token ?? null} />
 
             {formattedProducts.length > 0 ? (
                 <div className="product-grid" style={{ marginBottom: '3rem' }}>

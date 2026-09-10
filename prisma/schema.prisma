@@ -7,26 +7,30 @@ datasource db {
 }
 
 model User {
-  id             String         @id @default(uuid()) @db.VarChar(36)
-  email          String         @unique(map: "email") @db.VarChar(255)
-  email_verified DateTime?
-  password_hash  String?        @db.VarChar(255)
-  name           String?        @db.VarChar(255)
-  phone          String?        @db.VarChar(50)
-  role           Role           @default(CUSTOMER)
-  image          String?        @db.VarChar(500)
-  is_active      Boolean        @default(true)
-  last_login_at  DateTime?
-  created_at     DateTime       @default(now())
-  updated_at     DateTime       @default(now())
-  accounts       Account[]
-  addresses      Address[]
-  cart_items     CartItem[]
-  orders         Order[]
-  reviews        Review[]
-  sessions       Session[]
-  wishlist_items WishlistItem[]
-  returns        Return[]
+  id                   String         @id @default(uuid()) @db.VarChar(36)
+  email                String         @unique(map: "email") @db.VarChar(255)
+  email_verified       DateTime?
+  password_hash        String?        @db.VarChar(255)
+  name                 String?        @db.VarChar(255)
+  phone                String?        @db.VarChar(50)
+  role                 Role           @default(CUSTOMER)
+  image                String?        @db.VarChar(500)
+  is_active            Boolean        @default(true)
+  last_login_at        DateTime?
+  /// Token de 256 bits para compartir públicamente la wishlist vía
+  /// /wishlist/[token]. `null` = compartir desactivado. Generado bajo
+  /// demanda desde /account/wishlist, nunca se deriva del id del usuario.
+  wishlist_share_token String?        @unique(map: "uq_user_wishlist_share_token") @db.VarChar(64)
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @default(now())
+  accounts             Account[]
+  addresses            Address[]
+  cart_items           CartItem[]
+  orders               Order[]
+  reviews              Review[]
+  sessions             Session[]
+  wishlist_items       WishlistItem[]
+  returns              Return[]
 
   @@map("users")
 }
@@ -293,12 +297,12 @@ model CartItem {
 }
 
 enum ReturnStatus {
-  REQUESTED   // cliente solicita devolución, espera aprobación admin
-  APPROVED    // admin aprueba: cliente envía mercancía, espera recepción
-  REJECTED    // admin rechaza la solicitud
-  RECEIVED    // mercancía recibida, pendiente de reembolso
-  REFUNDED    // dinero devuelto al cliente, fin del flujo
-  CANCELLED   // cliente cancela su solicitud antes de aprobar
+  REQUESTED // cliente solicita devolución, espera aprobación admin
+  APPROVED // admin aprueba: cliente envía mercancía, espera recepción
+  REJECTED // admin rechaza la solicitud
+  RECEIVED // mercancía recibida, pendiente de reembolso
+  REFUNDED // dinero devuelto al cliente, fin del flujo
+  CANCELLED // cliente cancela su solicitud antes de aprobar
 }
 
 enum ReturnItemCondition {
@@ -309,34 +313,34 @@ enum ReturnItemCondition {
 }
 
 model Return {
-  id             String       @id @default(uuid()) @db.VarChar(36)
+  id               String       @id @default(uuid()) @db.VarChar(36)
   /// Número público no enumerable: RMA-YYYYMM-XXXXXXXX.
-  return_number  String       @unique(map: "uq_return_number") @db.VarChar(50)
-  order_id       String       @db.VarChar(36)
-  user_id        String?      @db.VarChar(36)
-  status         ReturnStatus @default(REQUESTED)
+  return_number    String       @unique(map: "uq_return_number") @db.VarChar(50)
+  order_id         String       @db.VarChar(36)
+  user_id          String?      @db.VarChar(36)
+  status           ReturnStatus @default(REQUESTED)
   /// Razón global de la devolución (campo libre + categoría).
-  reason         String       @db.Text
+  reason           String       @db.Text
   /// Notas internas del admin (rejection reason, condición observada, etc.).
-  admin_notes    String?      @db.Text
+  admin_notes      String?      @db.Text
   /// Importe efectivamente reembolsado (puede ser parcial).
-  refund_amount  Decimal?     @db.Decimal(10, 2)
+  refund_amount    Decimal?     @db.Decimal(10, 2)
   /// ID del refund en Stripe (`re_…`) si aplica.
-  stripe_refund_id String?    @db.VarChar(255)
+  stripe_refund_id String?      @db.VarChar(255)
   /// Tracking del envío de retorno (transportista del cliente).
-  tracking_number String?     @db.VarChar(255)
-  requested_at   DateTime     @default(now())
-  approved_at    DateTime?
-  received_at    DateTime?
-  refunded_at    DateTime?
-  cancelled_at   DateTime?
-  rejected_at    DateTime?
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @default(now()) @updatedAt
+  tracking_number  String?      @db.VarChar(255)
+  requested_at     DateTime     @default(now())
+  approved_at      DateTime?
+  received_at      DateTime?
+  refunded_at      DateTime?
+  cancelled_at     DateTime?
+  rejected_at      DateTime?
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @default(now()) @updatedAt
 
-  orders        Order         @relation(fields: [order_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_1")
-  users         User?         @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_2")
-  return_items  ReturnItem[]
+  orders       Order        @relation(fields: [order_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_1")
+  users        User?        @relation(fields: [user_id], references: [id], onUpdate: Restrict, map: "returns_ibfk_2")
+  return_items ReturnItem[]
 
   @@index([order_id], map: "idx_returns_order")
   @@index([user_id], map: "idx_returns_user")
@@ -345,17 +349,17 @@ model Return {
 }
 
 model ReturnItem {
-  id             String              @id @default(uuid()) @db.VarChar(36)
-  return_id      String              @db.VarChar(36)
+  id            String              @id @default(uuid()) @db.VarChar(36)
+  return_id     String              @db.VarChar(36)
   /// Referencia al OrderItem original. Permite saber qué se devuelve.
-  order_item_id  String               @db.VarChar(36)
-  quantity       Int
-  condition      ReturnItemCondition  @default(UNOPENED)
+  order_item_id String              @db.VarChar(36)
+  quantity      Int
+  condition     ReturnItemCondition @default(UNOPENED)
   /// Razón específica de este item (puede diferir del motivo global).
-  reason         String?              @db.Text
+  reason        String?             @db.Text
 
-  returns        Return               @relation(fields: [return_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "return_items_ibfk_1")
-  order_items    OrderItem            @relation(fields: [order_item_id], references: [id], onUpdate: Restrict, map: "return_items_ibfk_2")
+  returns     Return    @relation(fields: [return_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "return_items_ibfk_1")
+  order_items OrderItem @relation(fields: [order_item_id], references: [id], onUpdate: Restrict, map: "return_items_ibfk_2")
 
   @@index([return_id], map: "idx_return_items_return")
   @@index([order_item_id], map: "idx_return_items_order_item")
@@ -528,8 +532,8 @@ model Review {
   is_verified_purchase Boolean  @default(false)
   created_at           DateTime @default(now())
   updated_at           DateTime @default(now())
-  users       User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_1")
-  products    Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_2")
+  users                User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_1")
+  products             Product  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_2")
 
   @@unique([user_id, product_id], map: "uq_user_product_review")
   @@index([product_id], map: "idx_reviews_product")
@@ -728,14 +732,14 @@ enum StockMovementReason {
 }
 
 model Subscriber {
-  id           String    @id @default(uuid()) @db.VarChar(36)
-  email        String    @unique(map: "uq_subscriber_email") @db.VarChar(255)
-  locale       String    @default("es") @db.VarChar(5)
+  id              String    @id @default(uuid()) @db.VarChar(36)
+  email           String    @unique(map: "uq_subscriber_email") @db.VarChar(255)
+  locale          String    @default("es") @db.VarChar(5)
   /// Token HMAC para confirmar la suscripción (doble opt-in). Se invalida al confirmar.
-  confirm_token String?  @unique(map: "uq_subscriber_token") @db.VarChar(255)
-  confirmed_at DateTime?
+  confirm_token   String?   @unique(map: "uq_subscriber_token") @db.VarChar(255)
+  confirmed_at    DateTime?
   unsubscribed_at DateTime?
-  created_at   DateTime  @default(now())
+  created_at      DateTime  @default(now())
 
   @@index([confirmed_at], map: "idx_subscribers_confirmed")
   @@map("subscribers")
