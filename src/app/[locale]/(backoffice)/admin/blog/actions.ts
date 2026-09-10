@@ -8,6 +8,7 @@ import { join } from 'path';
 import { requireAdmin } from '@/lib/auth';
 import { sanitizeHtml, sanitizeText } from '@/lib/sanitize';
 import { saveUploadedImage } from '@/lib/uploads';
+import { auditLog } from '@/lib/audit';
 
 /**
  * Resuelve la imagen de portada (cover) de un post de blog leyendo `image`
@@ -47,7 +48,7 @@ async function resolveBlogCover(
 }
 
 export async function createBlogPost(formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'blog.manage');
     const slug = formData.get('slug') as string;
     const isPublished = formData.get('is_published') === 'true';
     const title = formData.get('title') as string;
@@ -77,11 +78,12 @@ export async function createBlogPost(formData: FormData) {
         }
     });
 
+    await auditLog({ action: 'blog_post.create', entity_type: 'BlogPost', entity_id: postId, metadata: { slug, title, is_published: isPublished } });
     revalidatePath('/[locale]/admin/blog', 'page');
 }
 
 export async function updateBlogPost(id: string, formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'blog.manage');
     const slug = formData.get('slug') as string;
     const isPublished = formData.get('is_published') === 'true';
     const title = formData.get('title') as string;
@@ -134,13 +136,15 @@ export async function updateBlogPost(id: string, formData: FormData) {
         })
     ]);
 
+    await auditLog({ action: 'blog_post.update', entity_type: 'BlogPost', entity_id: id, metadata: { slug, title, is_published: isPublished } });
     revalidatePath('/[locale]/admin/blog', 'page');
 }
 
 export async function deleteBlogPost(id: string) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'blog.manage');
     await prisma.blogPost.delete({
         where: { id }
     });
+    await auditLog({ action: 'blog_post.delete', entity_type: 'BlogPost', entity_id: id });
     revalidatePath('/[locale]/admin/blog', 'page');
 }

@@ -1,4 +1,6 @@
 import prisma from '@/lib/db';
+import { notFound } from 'next/navigation';
+import { hasPermission } from '@/lib/auth';
 
 import ShippingManager from './ShippingManager';
 
@@ -10,6 +12,8 @@ async function getShippingMethods() {
 }
 
 export default async function ShippingPage() {
+    if (!(await hasPermission('shipping.manage'))) notFound();
+
     const methods = await getShippingMethods();
     return <ShippingManager initialMethods={methods} />;
 }

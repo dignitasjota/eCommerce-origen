@@ -2,11 +2,14 @@ import prisma from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
+import { hasPermission } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 import { getOrderStatusUpdateEmailHtml } from '@/lib/emails/order-status-update';
 import OrderManagerForm from './OrderManagerForm';
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    if (!(await hasPermission('orders.manage'))) notFound();
+
     const resolvedParams = await params;
     const order = await prisma.order.findUnique({
         where: { id: resolvedParams.id },

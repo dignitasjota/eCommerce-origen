@@ -65,7 +65,7 @@ async function notifyCustomer(
 
 export async function approveReturn(returnId: string, formData: FormData) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'returns.manage');
         const adminNotes = (formData.get('admin_notes') as string)?.trim() || null;
 
         const ret = await loadReturnFull(returnId);
@@ -96,7 +96,7 @@ export async function approveReturn(returnId: string, formData: FormData) {
 
 export async function rejectReturn(returnId: string, formData: FormData) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'returns.manage');
         const adminNotes = (formData.get('admin_notes') as string)?.trim() || null;
         if (!adminNotes) {
             return { success: false, error: 'Indica el motivo de rechazo en las notas' };
@@ -130,7 +130,7 @@ export async function rejectReturn(returnId: string, formData: FormData) {
 
 export async function markReturnReceived(returnId: string, formData: FormData) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(undefined, 'returns.manage');
         const trackingNumber = (formData.get('tracking_number') as string)?.trim() || null;
 
         const ret = await loadReturnFull(returnId);
@@ -209,7 +209,7 @@ export async function markReturnReceived(returnId: string, formData: FormData) {
 
 export async function refundReturn(returnId: string, formData: FormData) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'returns.manage');
         const refundAmountRaw = formData.get('refund_amount') as string;
         const refundAmount = parseFloat(refundAmountRaw);
         if (!Number.isFinite(refundAmount) || refundAmount <= 0) {

@@ -11,7 +11,7 @@ type ActionResult = { success: true } | { success: false; error: string };
 
 export async function approveReview(id: string): Promise<ActionResult> {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'reviews.manage');
         await prisma.review.update({ where: { id }, data: { is_approved: true } });
         await auditLog({ action: 'review.approve', entity_type: 'Review', entity_id: id });
         revalidatePath('/es/admin/reviews');
@@ -25,7 +25,7 @@ export async function approveReview(id: string): Promise<ActionResult> {
 
 export async function unapproveReview(id: string): Promise<ActionResult> {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'reviews.manage');
         await prisma.review.update({ where: { id }, data: { is_approved: false } });
         await auditLog({ action: 'review.unapprove', entity_type: 'Review', entity_id: id });
         revalidatePath('/es/admin/reviews');
@@ -39,7 +39,7 @@ export async function unapproveReview(id: string): Promise<ActionResult> {
 
 export async function deleteReview(id: string): Promise<ActionResult> {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'reviews.manage');
         const review = await prisma.review.delete({ where: { id } });
 
         // Borrado físico best-effort de las imágenes adjuntas (mismo criterio

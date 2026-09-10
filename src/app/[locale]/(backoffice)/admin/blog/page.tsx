@@ -1,4 +1,6 @@
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import BlogManager from './BlogManager';
 import AdminPagination from '@/components/backoffice/AdminPagination';
 
@@ -10,6 +12,8 @@ type Props = {
 };
 
 export default async function BlogPage({ params, searchParams }: Props) {
+    if (!(await hasPermission('blog.manage'))) notFound();
+
     const { locale } = await params;
     const sp = await searchParams;
 

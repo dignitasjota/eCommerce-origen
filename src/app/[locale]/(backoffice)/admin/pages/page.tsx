@@ -1,4 +1,6 @@
 import prisma from '@/lib/db';
+import { notFound } from 'next/navigation';
+import { hasPermission } from '@/lib/auth';
 
 import PagesManager from './PagesManager';
 
@@ -9,6 +11,8 @@ async function getPages() {
 }
 
 export default async function PagesPage() {
+    if (!(await hasPermission('pages.manage'))) notFound();
+
     const pages = await getPages();
     const prefixSetting = await prisma.siteSetting.findUnique({ where: { key: 'pages_prefix' } });
     const prefix = (prefixSetting?.value && prefixSetting.value !== 'null') ? prefixSetting.value : '';

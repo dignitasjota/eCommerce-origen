@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import ReturnManagerForm from './ReturnManagerForm';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,8 @@ const CONDITION_LABELS: Record<string, string> = {
 };
 
 export default async function ReturnDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    if (!(await hasPermission('returns.manage'))) notFound();
+
     const { id } = await params;
 
     const ret = await prisma.return.findUnique({

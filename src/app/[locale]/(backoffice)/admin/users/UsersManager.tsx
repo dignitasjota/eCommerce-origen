@@ -4,11 +4,21 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from '@/i18n/navigation';
 import type { AdminUser } from '@/types/admin';
 import { createUser, updateUser, deleteUser } from './actions';
+import { PERMISSIONS, PERMISSION_LABELS, DEFAULT_ORDER_MANAGER_PERMISSIONS, type Permission } from '@/lib/permissions';
+
+function parsePermissions(raw: string | null): Permission[] {
+    if (!raw) return DEFAULT_ORDER_MANAGER_PERMISSIONS;
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : DEFAULT_ORDER_MANAGER_PERMISSIONS;
+    } catch {
+        return DEFAULT_ORDER_MANAGER_PERMISSIONS;
+    }
+}
 
 export default function UsersManager({ initialUsers }: { initialUsers: AdminUser[] }) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'customers' | 'system'>('customers');
-    const [users, setUsers] = useState(initialUsers);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -16,7 +26,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
     const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
 
     const filteredUsers = useMemo(() => {
-        let filtered = users.filter((u: any) => {
+        let filtered = initialUsers.filter((u: any) => {
             if (activeTab === 'system') return u.role === 'ADMIN' || u.role === 'ORDER_MANAGER';
             return u.role === 'CUSTOMER';
         });
@@ -31,7 +41,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             });
         }
         return filtered;
-    }, [users, activeTab, searchTerm]);
+    }, [initialUsers, activeTab, searchTerm]);
 
     // Form states
     const [name, setName] = useState('');
@@ -39,6 +49,11 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
     const [phone, setPhone] = useState('');
     const [role, setRole] = useState('CUSTOMER');
     const [password, setPassword] = useState('');
+    const [permissions, setPermissions] = useState<Permission[]>(DEFAULT_ORDER_MANAGER_PERMISSIONS);
+
+    const togglePermission = (key: Permission) => {
+        setPermissions((prev) => (prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]));
+    };
 
     // Address states (Only for Customers)
     const [addressId, setAddressId] = useState('');
@@ -61,6 +76,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             setPhone(user.phone || '');
             setRole(user.role || 'CUSTOMER');
             setPassword(''); // Nunca mostramos la contraseña al editar, la dejamos blanca para indicar "no cambiar"
+            setPermissions(parsePermissions(user.permissions));
 
             if (user.role === 'CUSTOMER') {
                 const defaultAddress = user.addresses?.[0];
@@ -85,6 +101,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             setPhone('');
             setRole(activeTab === 'customers' ? 'CUSTOMER' : 'ADMIN');
             setPassword('');
+            setPermissions(DEFAULT_ORDER_MANAGER_PERMISSIONS);
             resetAddressFields();
         }
         setIsModalOpen(true);
@@ -121,6 +138,11 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             alert('Debes establecer una contraseña inicial para el nuevo usuario');
             setIsLoading(false);
             return;
+        }
+
+        if (role === 'ORDER_MANAGER') {
+            formData.append('permissions_customized', 'true');
+            permissions.forEach((p) => formData.append('permissions', p));
         }
 
         if (role === 'CUSTOMER') {
@@ -410,6 +432,27 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
                                     <option value="ADMIN">Administrador Global (Acceso Total)</option>
                                 </select>
                             </div>
+
+                            {role === 'ORDER_MANAGER' && (
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Áreas del backoffice a las que tiene acceso</label>
+                                    <p style={{ fontSize: '0.8rem', color: 'gray', marginTop: '-0.25rem', marginBottom: '0.5rem' }}>
+                                        Configuración, Usuarios y Pagos nunca son delegables — sólo un Administrador Global puede acceder a esas áreas.
+                                    </p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
+                                        {PERMISSIONS.map((key) => (
+                                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={permissions.includes(key)}
+                                                    onChange={() => togglePermission(key)}
+                                                />
+                                                {PERMISSION_LABELS[key]}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             <hr style={{ margin: '1.5rem 0', borderColor: 'var(--color-border)' }} />
 

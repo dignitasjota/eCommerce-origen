@@ -21,6 +21,13 @@ model User {
   /// /wishlist/[token]. `null` = compartir desactivado. Generado bajo
   /// demanda desde /account/wishlist, nunca se deriva del id del usuario.
   wishlist_share_token String?        @unique(map: "uq_user_wishlist_share_token") @db.VarChar(64)
+  /// JSON array de claves de `Permission` (src/lib/permissions.ts). Sólo se
+  /// consulta para `role = ORDER_MANAGER`; `null` = bucket por defecto
+  /// (ver `DEFAULT_ORDER_MANAGER_PERMISSIONS`, backward-compatible con el
+  /// comportamiento previo a este campo). Ignorado para ADMIN (acceso
+  /// total siempre) y CUSTOMER (ninguno). settings/users/payments quedan
+  /// fuera del set delegable — siguen exigiendo ADMIN sin excepción.
+  permissions          String?        @db.Text
   created_at           DateTime       @default(now())
   updated_at           DateTime       @default(now())
   accounts             Account[]

@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'orders.manage');
     } catch (e) {
         if (e instanceof AuthorizationError) {
             return NextResponse.json({ error: e.message }, { status: 403 });

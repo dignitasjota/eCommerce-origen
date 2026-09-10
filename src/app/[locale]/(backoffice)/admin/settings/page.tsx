@@ -1,4 +1,6 @@
 import prisma from '@/lib/db';
+import { notFound } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import SettingsForm from './SettingsForm';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
@@ -17,6 +19,11 @@ async function getSettings() {
 }
 
 export default async function SettingsPage() {
+    // Nunca delegable: incluye claves de Stripe/SMTP (enmascaradas más abajo,
+    // pero el resto de ajustes no) y branding/negocio completo. Sólo ADMIN.
+    const session = await auth();
+    if (session?.user?.role !== 'ADMIN') notFound();
+
     const settings = await getSettings();
     const configuredSecrets = settings
         .filter((s) => SENSITIVE_KEYS.has(s.key) && s.value)

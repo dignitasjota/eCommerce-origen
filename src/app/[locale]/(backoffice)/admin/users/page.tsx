@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client';
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { auth } from '@/lib/auth';
 import UsersManager from './UsersManager';
 import AdminPagination from '@/components/backoffice/AdminPagination';
 
@@ -11,6 +13,11 @@ type Props = {
 };
 
 export default async function UsersPage({ params, searchParams }: Props) {
+    // Nunca delegable: gestionar usuarios permite cambiar roles (self-service
+    // hacia ADMIN si se delegara). Sólo ADMIN.
+    const session = await auth();
+    if (session?.user?.role !== 'ADMIN') notFound();
+
     const { locale } = await params;
     const sp = await searchParams;
 
@@ -35,6 +42,7 @@ export default async function UsersPage({ params, searchParams }: Props) {
                 email: true,
                 role: true,
                 phone: true,
+                permissions: true,
                 created_at: true,
                 _count: { select: { orders: true } },
                 addresses: {

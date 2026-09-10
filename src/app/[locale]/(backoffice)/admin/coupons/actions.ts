@@ -7,7 +7,7 @@ import { requireAdmin } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
 
 export async function createCoupon(formData: FormData) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'coupons.manage');
     const code = formData.get('code') as string;
     const discountType = formData.get('discount_type') as 'PERCENTAGE' | 'FIXED';
     const discountValue = parseFloat(formData.get('discount_value') as string);
@@ -48,7 +48,7 @@ export async function createCoupon(formData: FormData) {
 }
 
 export async function updateCoupon(id: string, formData: FormData) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'coupons.manage');
     const code = formData.get('code') as string;
     const discountType = formData.get('discount_type') as 'PERCENTAGE' | 'FIXED';
     const discountValue = parseFloat(formData.get('discount_value') as string);
@@ -90,7 +90,7 @@ export async function updateCoupon(id: string, formData: FormData) {
 }
 
 export async function deleteCoupon(id: string) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'coupons.manage');
     try {
         await prisma.coupon.delete({
             where: { id }

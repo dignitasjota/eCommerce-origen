@@ -4,14 +4,15 @@ import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { auditLog } from '@/lib/audit';
 
 export async function createPage(formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'pages.manage');
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
     const content = sanitizeHtml(formData.get('content') as string);
 
-    await prisma.page.create({
+    const created = await prisma.page.create({
         data: {
             slug,
             page_translations: {
@@ -24,11 +25,12 @@ export async function createPage(formData: FormData) {
         }
     });
 
+    await auditLog({ action: 'page.create', entity_type: 'Page', entity_id: created.id, metadata: { slug, title } });
     revalidatePath('/', 'layout');
 }
 
 export async function updatePage(id: string, formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'pages.manage');
     const title = formData.get('title') as string;
     const slug = formData.get('slug') as string;
     const content = sanitizeHtml(formData.get('content') as string);
@@ -63,11 +65,12 @@ export async function updatePage(id: string, formData: FormData) {
         })
     ]);
 
+    await auditLog({ action: 'page.update', entity_type: 'Page', entity_id: id, metadata: { slug, title, previous_slug: original?.slug } });
     revalidatePath('/', 'layout');
 }
 
 export async function deletePage(id: string) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'pages.manage');
     const page = await prisma.page.findUnique({
         where: { id }
     });
@@ -78,5 +81,6 @@ export async function deletePage(id: string) {
         where: { id }
     });
 
+    await auditLog({ action: 'page.delete', entity_type: 'Page', entity_id: id, metadata: { slug: page.slug } });
     revalidatePath('/', 'layout');
 }

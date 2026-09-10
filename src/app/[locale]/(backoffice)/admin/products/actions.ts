@@ -108,7 +108,7 @@ async function handleImagesUpload(formData: FormData, productId: string) {
 }
 
 export async function createProduct(formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'products.manage');
     const slug = formData.get('slug') as string;
     const sku = formData.get('sku') as string;
     const priceStr = formData.get('price') as string;
@@ -165,7 +165,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(id: string, formData: FormData) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'products.manage');
     const slug = formData.get('slug') as string;
     const sku = formData.get('sku') as string;
     const priceStr = formData.get('price') as string;
@@ -247,7 +247,7 @@ export async function updateProduct(id: string, formData: FormData) {
 }
 
 export async function deleteProduct(id: string) {
-    await requireAdmin();
+    await requireAdmin(undefined, 'products.manage');
     const existing = await prisma.product.findUnique({ where: { id }, select: { slug: true, sku: true } });
     try {
         await prisma.product.delete({
@@ -278,7 +278,7 @@ export async function updateProductRelations(
     upSellIds: string[]
 ) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'products.manage');
         await prisma.relatedProduct.deleteMany({
             where: { product_id: productId }
         });

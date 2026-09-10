@@ -5,6 +5,7 @@ import { compare } from 'bcryptjs';
 import prisma from '@/lib/db';
 import { ADMIN_ROLES, type AdminRole } from '@/lib/auth-roles';
 import { rateLimit } from '@/lib/rate-limit';
+import { PERMISSIONS, DEFAULT_ORDER_MANAGER_PERMISSIONS, isPermission, type Permission } from '@/lib/permissions';
 
 /**
  * `code` queda en la URL de error (`?error=CredentialsSignin&code=...`) — el
@@ -132,14 +133,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 });
 
 /**
+ * Permisos concedidos a un usuario admin. ADMIN tiene siempre el set
+ * completo; CUSTOMER (no debería llegar aquí) ninguno; ORDER_MANAGER
+ * depende de `User.permissions` con fallback al bucket por defecto.
+ *
+ * Consulta la BD directamente (no el JWT) para que un cambio de permisos
+ * hecho por un ADMIN surta efecto de inmediato en la siguiente acción del
+ * usuario afectado, sin esperar a que caduque/renueve su sesión.
+ */
+async function getGrantedPermissions(userId: string, role: AdminRole): Promise<Permission[]> {
+    if (role === 'ADMIN') return [...PERMISSIONS];
+    if (role !== 'ORDER_MANAGER') return [];
+
+    const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { permissions: true } });
+    if (!dbUser?.permissions) return DEFAULT_ORDER_MANAGER_PERMISSIONS;
+
+    try {
+        const parsed = JSON.parse(dbUser.permissions);
+        return Array.isArray(parsed) ? parsed.filter(isPermission) : DEFAULT_ORDER_MANAGER_PERMISSIONS;
+    } catch {
+        return DEFAULT_ORDER_MANAGER_PERMISSIONS;
+    }
+}
+
+/**
  * Garantiza que la sesión actual pertenece a un usuario con permisos de admin.
  * Lanzar AuthorizationError aquí evita exponer detalles del error al cliente
  * y permite a Next.js convertirlo en un fallo controlado de la server action.
  *
  * @param allowedRoles roles aceptados; por defecto cualquier admin (ADMIN | ORDER_MANAGER).
+ * @param permission si se indica, además de el rol se exige este permiso
+ *   concreto para ORDER_MANAGER (ADMIN lo tiene siempre; ver
+ *   `src/lib/permissions.ts` para el set delegable — settings/users/
+ *   payments quedan fuera a propósito y no aceptan este parámetro).
  * @returns la sesión validada con `user.id` y `user.role` no nulos.
  */
-export async function requireAdmin(allowedRoles: readonly AdminRole[] = ADMIN_ROLES) {
+export async function requireAdmin(allowedRoles: readonly AdminRole[] = ADMIN_ROLES, permission?: Permission) {
     const session = await auth();
 
     if (!session?.user?.id) {
@@ -151,7 +180,32 @@ export async function requireAdmin(allowedRoles: readonly AdminRole[] = ADMIN_RO
         throw new AuthorizationError('Permisos insuficientes');
     }
 
+    if (permission) {
+        const granted = await getGrantedPermissions(session.user.id, role);
+        if (!granted.includes(permission)) {
+            throw new AuthorizationError('No tienes permiso para realizar esta acción.');
+        }
+    }
+
     return session as typeof session & {
         user: { id: string; email: string; role: AdminRole; name: string | null; image: string | null };
     };
+}
+
+/**
+ * Igual que `requireAdmin` pero sin lanzar — pensado para gatear la
+ * VISIBILIDAD de una página (Server Component) devolviendo `false` en vez
+ * de forzar un try/catch. `requireAdmin` sigue siendo la guardia real de
+ * las server actions; esto sólo evita renderizar contenido que luego
+ * ninguna acción dejaría guardar.
+ */
+export async function hasPermission(permission: Permission): Promise<boolean> {
+    const session = await auth();
+    if (!session?.user?.id) return false;
+
+    const role = session.user.role as AdminRole | undefined;
+    if (!role || !ADMIN_ROLES.includes(role)) return false;
+
+    const granted = await getGrantedPermissions(session.user.id, role);
+    return granted.includes(permission);
 }

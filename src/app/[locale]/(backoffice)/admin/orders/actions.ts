@@ -8,7 +8,7 @@ import { auditLog } from '@/lib/audit';
 
 export async function updateOrderFullStatus(formData: FormData) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'orders.manage');
         const id = formData.get('orderId') as string;
         const newStatus = formData.get('status') as string;
         const newPaymentStatus = formData.get('paymentStatus') as string;

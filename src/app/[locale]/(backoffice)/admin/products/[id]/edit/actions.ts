@@ -33,7 +33,7 @@ function parseVariant(input: VariantInput) {
 
 export async function createVariant(productId: string, input: VariantInput) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(undefined, 'products.manage');
         const data = parseVariant(input);
 
         const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -80,7 +80,7 @@ export async function createVariant(productId: string, input: VariantInput) {
 
 export async function updateVariant(variantId: string, input: VariantInput) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(undefined, 'products.manage');
         const data = parseVariant(input);
 
         const existing = await prisma.productVariant.findUnique({
@@ -137,7 +137,7 @@ export async function updateVariant(variantId: string, input: VariantInput) {
 
 export async function deleteVariant(variantId: string) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'products.manage');
 
         // No permitimos borrar la última variante porque el checkout depende
         // de que haya al menos una para resolver el producto.
@@ -174,7 +174,7 @@ export async function updateProductRelations(
     upSellIds: string[]
 ) {
     try {
-        await requireAdmin();
+        await requireAdmin(undefined, 'products.manage');
         // Delete all existing relations from this product first
         await prisma.relatedProduct.deleteMany({
             where: { product_id: productId }

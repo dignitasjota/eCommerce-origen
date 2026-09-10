@@ -7,6 +7,7 @@ import { unlink } from 'fs/promises';
 import { join } from 'path';
 import { requireAdmin } from '@/lib/auth';
 import { saveUploadedImage } from '@/lib/uploads';
+import { auditLog } from '@/lib/audit';
 
 /**
  * Resuelve la imagen de categoría a partir del FormData:
@@ -52,7 +53,7 @@ async function resolveCategoryImage(
 }
 
 export async function createCategory(formData: FormData) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'categories.manage');
     const name = formData.get('name') as string;
     const slug = formData.get('slug') as string;
     const parentId = formData.get('parent_id') as string | null;
@@ -78,11 +79,12 @@ export async function createCategory(formData: FormData) {
         }
     });
 
+    await auditLog({ action: 'category.create', entity_type: 'Category', entity_id: categoryId, metadata: { slug, name } });
     revalidatePath('/', 'layout');
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'categories.manage');
     const name = formData.get('name') as string;
     const slug = formData.get('slug') as string;
     const parentId = formData.get('parent_id') as string | null;
@@ -126,15 +128,17 @@ export async function updateCategory(id: string, formData: FormData) {
         })
     ]);
 
+    await auditLog({ action: 'category.update', entity_type: 'Category', entity_id: id, metadata: { slug, name } });
     revalidatePath('/', 'layout');
 }
 
 export async function deleteCategory(id: string) {
-    await requireAdmin(['ADMIN']);
+    await requireAdmin(undefined, 'categories.manage');
     try {
         await prisma.category.delete({
             where: { id }
         });
+        await auditLog({ action: 'category.delete', entity_type: 'Category', entity_id: id });
         revalidatePath('/', 'layout');
     } catch (e: any) {
         throw new Error('No se puede eliminar la categoría si tiene productos asociados. Debe eliminarlos primero.');

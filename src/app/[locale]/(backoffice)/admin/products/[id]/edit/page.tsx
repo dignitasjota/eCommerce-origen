@@ -1,10 +1,13 @@
 import prisma from '@/lib/db';
 import { notFound } from 'next/navigation';
+import { hasPermission } from '@/lib/auth';
 import ProductEditForm from './ProductEditForm';
 import VariantsManager from './VariantsManager';
 import Link from 'next/link';
 
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
+    if (!(await hasPermission('products.manage'))) notFound();
+
     const { id, locale } = await params;
 
     // Fetch the product being edited

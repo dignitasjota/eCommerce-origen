@@ -5,6 +5,23 @@ import { revalidatePath } from 'next/cache';
 import bcrypt from 'bcryptjs';
 import { requireAdmin } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
+import { isPermission } from '@/lib/permissions';
+
+/**
+ * `permissions` sólo tiene sentido para ORDER_MANAGER — ADMIN tiene acceso
+ * total siempre y CUSTOMER ninguno (ver src/lib/permissions.ts), así que
+ * para cualquier otro rol se persiste `null` (limpia permisos residuales si
+ * el rol cambió desde/hacia ORDER_MANAGER). El input hidden
+ * `permissions_customized` sólo viaja en el form cuando el cliente está
+ * mostrando el checklist (rol ORDER_MANAGER seleccionado) — su presencia es
+ * la señal de que `permissions` trae la lista explícita a guardar, en vez
+ * de dejar el campo intacto.
+ */
+function extractPermissions(formData: FormData, role: string): string | null {
+    if (role !== 'ORDER_MANAGER' || !formData.has('permissions_customized')) return null;
+    const selected = formData.getAll('permissions').filter((v): v is string => typeof v === 'string' && isPermission(v));
+    return JSON.stringify(selected);
+}
 
 export async function createUser(formData: FormData) {
     await requireAdmin(['ADMIN']);
@@ -30,6 +47,8 @@ export async function createUser(formData: FormData) {
         state: formData.get('state') as string,
     } : null;
 
+    const permissions = extractPermissions(formData, role);
+
     try {
         const created = await prisma.user.create({
             data: {
@@ -37,6 +56,7 @@ export async function createUser(formData: FormData) {
                 email,
                 phone,
                 role,
+                permissions,
                 password_hash: hashedPassword,
                 ...(addressData && addressData.address1 ? {
                     addresses: {
@@ -52,7 +72,7 @@ export async function createUser(formData: FormData) {
             action: 'user.create',
             entity_type: 'User',
             entity_id: created.id,
-            metadata: { email, role }
+            metadata: { email, role, permissions }
         });
         revalidatePath('/es/admin/users');
     } catch (error: any) {
@@ -88,6 +108,7 @@ export async function updateUser(id: string, formData: FormData) {
         email,
         phone,
         role,
+        permissions: extractPermissions(formData, role),
     };
 
     if (password) {
@@ -126,7 +147,7 @@ export async function updateUser(id: string, formData: FormData) {
             action: 'user.update',
             entity_type: 'User',
             entity_id: id,
-            metadata: { email, role, password_changed: !!password }
+            metadata: { email, role, password_changed: !!password, permissions: dataToUpdate.permissions }
         });
         revalidatePath('/es/admin/users');
     } catch (error: any) {

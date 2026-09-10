@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client';
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import OrdersList from './OrdersList';
 import CursorPagination from '@/components/backoffice/CursorPagination';
 import {
@@ -31,6 +33,8 @@ function asDate(v: string | string[] | undefined): Date | undefined {
 }
 
 export default async function OrdersPage({ params, searchParams }: Props) {
+    if (!(await hasPermission('orders.manage'))) notFound();
+
     const { locale } = await params;
     const sp = await searchParams;
 

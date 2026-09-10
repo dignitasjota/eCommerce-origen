@@ -1,4 +1,6 @@
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import CategoriesManager from './CategoriesManager';
 
 async function getCategories() {
@@ -19,6 +21,8 @@ async function getCategories() {
 }
 
 export default async function CategoriesPage() {
+    if (!(await hasPermission('categories.manage'))) notFound();
+
     const categories = await getCategories();
     // Use categories that don't have a parent as root categories
     const parentCategories = categories.filter((c: any) => !c.parent_id);

@@ -1,5 +1,7 @@
 import type { Prisma } from '@prisma/client';
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import ReviewsManager from './ReviewsManager';
 import AdminPagination from '@/components/backoffice/AdminPagination';
 
@@ -11,6 +13,8 @@ type Props = {
 };
 
 export default async function ReviewsPage({ params, searchParams }: Props) {
+    if (!(await hasPermission('reviews.manage'))) notFound();
+
     const { locale } = await params;
     const sp = await searchParams;
 

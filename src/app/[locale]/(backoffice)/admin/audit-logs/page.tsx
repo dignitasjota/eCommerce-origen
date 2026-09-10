@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
-import { auth } from '@/lib/auth';
+import { hasPermission } from '@/lib/auth';
 import CursorPagination from '@/components/backoffice/CursorPagination';
 import {
     parseCursorParams,
@@ -34,9 +34,9 @@ type Props = {
  * y entity_id se pueden filtrar exactos vía URL para investigaciones.
  */
 export default async function AuditLogsPage({ params, searchParams }: Props) {
-    // Sólo ADMIN: el log puede contener IPs y metadata sensible.
-    const session = await auth();
-    if (session?.user?.role !== 'ADMIN') {
+    // El log puede contener IPs y metadata sensible: ADMIN siempre, o un
+    // ORDER_MANAGER con el permiso 'audit_logs.view' concedido explícitamente.
+    if (!(await hasPermission('audit_logs.view'))) {
         notFound();
     }
 

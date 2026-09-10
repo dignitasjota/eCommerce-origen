@@ -1,4 +1,6 @@
+import { notFound } from 'next/navigation';
 import prisma from '@/lib/db';
+import { hasPermission } from '@/lib/auth';
 import ProductsManager from './ProductsManager';
 import AdminPagination from '@/components/backoffice/AdminPagination';
 
@@ -12,6 +14,8 @@ type Props = {
 };
 
 export default async function ProductsPage({ params, searchParams }: Props) {
+    if (!(await hasPermission('products.manage'))) notFound();
+
     const { locale } = await params;
     const sp = await searchParams;
     const pageRaw = typeof sp.page === 'string' ? parseInt(sp.page) : 1;

@@ -46,6 +46,7 @@ const userAdminSelect = {
     email: true,
     role: true,
     phone: true,
+    permissions: true,
     created_at: true,
     _count: { select: { orders: true } },
     addresses: { where: { is_default: true }, take: 1 }
