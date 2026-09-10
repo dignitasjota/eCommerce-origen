@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCart } from '@/context/CartContext';
+import { isLowStock } from '@/lib/inventory';
 
 interface VariantOption {
     attributeId: string;
@@ -31,9 +32,10 @@ interface AddToCartFormProps {
     basePrice: string;
     variants: Variant[];
     attributes: Attribute[];
+    unlimitedStock: boolean;
 }
 
-export default function AddToCartForm({ productId, productName, image, basePrice, variants, attributes }: AddToCartFormProps) {
+export default function AddToCartForm({ productId, productName, image, basePrice, variants, attributes, unlimitedStock }: AddToCartFormProps) {
     const t = useTranslations('product');
     const { addItem } = useCart();
     const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
@@ -60,6 +62,7 @@ export default function AddToCartForm({ productId, productName, image, basePrice
 
     const currentPrice = selectedVariant?.price || basePrice;
     const isOutOfStock = selectedVariant ? selectedVariant.stock <= 0 : false;
+    const showLowStock = selectedVariant ? isLowStock(selectedVariant.stock, unlimitedStock) : false;
 
     const handleOptionChange = (attributeId: string, optionId: string) => {
         setSelectedOptions(prev => ({
@@ -149,6 +152,17 @@ export default function AddToCartForm({ productId, productName, image, basePrice
                     {isOutOfStock ? 'Agotado' : t('addToCart')}
                 </button>
             </div>
+
+            {showLowStock && (
+                <p role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--color-danger)', fontWeight: 600, fontSize: '0.9rem', marginTop: '0.75rem' }}>
+                    <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    ¡Solo quedan {selectedVariant!.stock} unidades disponibles!
+                </p>
+            )}
 
             {/* DaisyUI Toast - Visibilidad Alta */}
             {showToast && (

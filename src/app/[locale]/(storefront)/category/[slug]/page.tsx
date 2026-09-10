@@ -6,6 +6,7 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
+import { LOW_STOCK_THRESHOLD } from '@/lib/inventory';
 
 const VALID_SORTS = ['newest', 'price-asc', 'price-desc', 'featured'] as const;
 function asNonNegativeFloat(v: string | string[] | undefined): string | undefined {
@@ -80,19 +81,24 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             orderBy,
             include: {
                 product_translations: { where: { locale } },
-                product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+                product_images: { take: 1, orderBy: { sort_order: 'asc' } },
+                product_variants: { where: { is_active: true }, select: { stock: true } }
             }
         }),
         prisma.product.count({ where: whereClause })
     ]);
 
-    const formattedProducts = dbProducts.map(p => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.product_translations[0]?.name || p.slug,
-        price: Number(p.price).toFixed(2),
-        image: p.product_images[0]?.url || null
-    }));
+    const formattedProducts = dbProducts.map(p => {
+        const totalStock = p.product_variants.reduce((acc, v) => acc + v.stock, 0);
+        return {
+            id: p.id,
+            slug: p.slug,
+            name: p.product_translations[0]?.name || p.slug,
+            price: Number(p.price).toFixed(2),
+            image: p.product_images[0]?.url || null,
+            lowStockUnits: !p.unlimited_stock && totalStock > 0 && totalStock <= LOW_STOCK_THRESHOLD ? totalStock : null
+        };
+    });
 
     const totalPages = Math.ceil(totalProducts / limit);
 
@@ -148,6 +154,24 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                             className={`card product-card animate-fade-in-up stagger-${(index % limit) + 1}`}
                         >
                             <div className="card-image" style={{ position: 'relative', aspectRatio: '1 / 1', backgroundColor: 'var(--color-background-soft)' }}>
+                                {product.lowStockUnits !== null && (
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            top: '10px',
+                                            left: '10px',
+                                            zIndex: 10,
+                                            background: 'var(--color-danger)',
+                                            color: 'white',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: 'var(--radius-sm)'
+                                        }}
+                                    >
+                                        ¡Últimas {product.lowStockUnits}!
+                                    </span>
+                                )}
                                 {product.image ? (
                                     <Image
                                         src={product.image}

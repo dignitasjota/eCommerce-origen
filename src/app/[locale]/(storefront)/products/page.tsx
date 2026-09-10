@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth';
 import WishlistButton from '@/components/storefront/WishlistButton';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
+import { LOW_STOCK_THRESHOLD } from '@/lib/inventory';
 import styles from './page.module.css'; // We'll create this or reuse globals
 
 const VALID_SORTS = ['newest', 'price-asc', 'price-desc', 'featured'] as const;
@@ -79,7 +80,8 @@ export default async function ProductsPage({ params, searchParams }: Props) {
             orderBy,
             include: {
                 product_translations: { where: { locale } },
-                product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+                product_images: { take: 1, orderBy: { sort_order: 'asc' } },
+                product_variants: { where: { is_active: true }, select: { stock: true } }
             }
         }),
         prisma.product.count({ where: whereClause }),
@@ -103,14 +105,21 @@ export default async function ProductsPage({ params, searchParams }: Props) {
 
     const wishlistedProductIds = new Set(userWishlist.map(item => item.product_id));
 
-    const formattedProducts = dbProducts.map(p => ({
-        id: p.id,
-        slug: p.slug,
-        name: p.product_translations[0]?.name || p.slug,
-        price: Number(p.price).toFixed(2),
-        image: p.product_images[0]?.url || null,
-        isFavorited: wishlistedProductIds.has(p.id)
-    }));
+    const formattedProducts = dbProducts.map(p => {
+        // Suma de stock de variantes activas: proxy de "cuánto queda" a nivel
+        // de tarjeta (sin selección de variante todavía). `null` = ilimitado
+        // o por encima del umbral, no se muestra ningún aviso.
+        const totalStock = p.product_variants.reduce((acc, v) => acc + v.stock, 0);
+        return {
+            id: p.id,
+            slug: p.slug,
+            name: p.product_translations[0]?.name || p.slug,
+            price: Number(p.price).toFixed(2),
+            image: p.product_images[0]?.url || null,
+            isFavorited: wishlistedProductIds.has(p.id),
+            lowStockUnits: !p.unlimited_stock && totalStock > 0 && totalStock <= LOW_STOCK_THRESHOLD ? totalStock : null
+        };
+    });
 
     const totalPages = Math.ceil(totalProducts / limit);
 
@@ -149,6 +158,24 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                                         initialIsFavorited={product.isFavorited}
                                     />
                                 </div>
+                                {product.lowStockUnits !== null && (
+                                    <span
+                                        style={{
+                                            position: 'absolute',
+                                            top: '10px',
+                                            left: '10px',
+                                            zIndex: 10,
+                                            background: 'var(--color-danger)',
+                                            color: 'white',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: 'var(--radius-sm)'
+                                        }}
+                                    >
+                                        ¡Últimas {product.lowStockUnits}!
+                                    </span>
+                                )}
                                 {product.image ? (
                                     <Image
                                         src={product.image}

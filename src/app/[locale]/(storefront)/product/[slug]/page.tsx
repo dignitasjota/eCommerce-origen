@@ -247,6 +247,7 @@ export default async function ProductPage({ params }: Props) {
                         basePrice={Number(product.price).toFixed(2)}
                         variants={formattedVariants}
                         attributes={availableAttributes}
+                        unlimitedStock={product.unlimited_stock}
                     />
 
                     {/* Description */}
