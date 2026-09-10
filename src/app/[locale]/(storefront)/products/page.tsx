@@ -6,6 +6,7 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import WishlistButton from '@/components/storefront/WishlistButton';
+import CompareButton from '@/components/storefront/CompareButton';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
 import { LOW_STOCK_THRESHOLD } from '@/lib/inventory';
@@ -152,11 +153,12 @@ export default async function ProductsPage({ params, searchParams }: Props) {
                             className={`card product-card animate-fade-in-up stagger-${(index % limit) + 1}`}
                         >
                             <div className="card-image" style={{ position: 'relative', aspectRatio: '1 / 1', backgroundColor: 'var(--color-background-soft)' }}>
-                                <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+                                <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10, display: 'flex', flexDirection: 'column', gap: '0.25rem', backgroundColor: 'var(--color-background)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
                                     <WishlistButton
                                         productId={product.id}
                                         initialIsFavorited={product.isFavorited}
                                     />
+                                    <CompareButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image || undefined }} />
                                 </div>
                                 {product.lowStockUnits !== null && (
                                     <span

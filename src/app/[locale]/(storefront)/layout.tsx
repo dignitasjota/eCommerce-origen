@@ -3,6 +3,8 @@ import Footer from '@/components/storefront/Footer';
 import CookieConsent from '@/components/storefront/CookieConsent';
 import AnalyticsScripts from '@/components/storefront/AnalyticsScripts';
 import { CartProvider } from '@/context/CartContext';
+import { CompareProvider } from '@/context/CompareContext';
+import CompareBar from '@/components/storefront/CompareBar';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
 
@@ -33,9 +35,12 @@ export default async function StorefrontLayout({ children, params }: Props) {
             <a href="#main-content" className="skip-to-content">Saltar al contenido</a>
             {/* userId habilita la fusión carrito anónimo ↔ DB en el provider. */}
             <CartProvider userId={session?.user?.id}>
-                <Header />
-                <main id="main-content" tabIndex={-1} className="storefront-main">{children}</main>
-                <Footer />
+                <CompareProvider>
+                    <Header />
+                    <main id="main-content" tabIndex={-1} className="storefront-main">{children}</main>
+                    <Footer />
+                    <CompareBar />
+                </CompareProvider>
             </CartProvider>
 
             {/* RGPD: banner de consent + carga condicional de analytics/marketing. */}

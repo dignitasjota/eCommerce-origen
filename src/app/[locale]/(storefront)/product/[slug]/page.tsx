@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth';
 import ProductGallery from '@/components/storefront/ProductGallery';
 import AddToCartForm from '@/components/storefront/AddToCartForm';
 import WishlistButton from '@/components/storefront/WishlistButton';
+import CompareButton from '@/components/storefront/CompareButton';
 import ReviewForm from '@/components/storefront/ReviewForm';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pushRecentSlug } from '@/lib/recently-viewed';
@@ -217,11 +218,16 @@ export default async function ProductPage({ params }: Props) {
                         <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold', lineHeight: '1.2', margin: 0, paddingRight: '1rem' }}>
                             {name}
                         </h1>
-                        <div style={{ padding: '0.5rem', backgroundColor: 'var(--color-background-soft)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <WishlistButton
-                                productId={product.id}
-                                initialIsFavorited={isFavorited}
-                            />
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ padding: '0.5rem', backgroundColor: 'var(--color-background-soft)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <WishlistButton
+                                    productId={product.id}
+                                    initialIsFavorited={isFavorited}
+                                />
+                            </div>
+                            <div style={{ padding: '0.5rem', backgroundColor: 'var(--color-background-soft)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <CompareButton product={{ id: product.id, slug: product.slug, name, price: Number(product.price).toFixed(2), image: product.product_images[0]?.url || undefined }} />
+                            </div>
                         </div>
                     </div>
 

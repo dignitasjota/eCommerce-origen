@@ -6,6 +6,7 @@ import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
+import CompareButton from '@/components/storefront/CompareButton';
 import { LOW_STOCK_THRESHOLD } from '@/lib/inventory';
 
 const VALID_SORTS = ['newest', 'price-asc', 'price-desc', 'featured'] as const;
@@ -154,6 +155,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                             className={`card product-card animate-fade-in-up stagger-${(index % limit) + 1}`}
                         >
                             <div className="card-image" style={{ position: 'relative', aspectRatio: '1 / 1', backgroundColor: 'var(--color-background-soft)' }}>
+                                <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10, backgroundColor: 'var(--color-background)', borderRadius: 'var(--radius-md)', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }}>
+                                    <CompareButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image || undefined }} />
+                                </div>
                                 {product.lowStockUnits !== null && (
                                     <span
                                         style={{
