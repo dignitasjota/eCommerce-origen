@@ -37,7 +37,7 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
         const formData = new FormData(e.currentTarget);
 
         // Handle unchecked checkboxes (FormData doesn't include them)
-        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled', 'feature_contact_enabled'];
+        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled', 'feature_contact_enabled', 'loyalty_enabled'];
         checkBoxes.forEach(box => {
             if (!formData.has(box)) {
                 formData.append(box, 'false');
@@ -767,6 +767,62 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
                                         autoComplete="off"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Aparece precargado en el chat cuando el cliente pulsa el botón.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── TAB: Fidelización ─────────────────────────────────────── */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  Fidelización  "
+                    checked={activeTab === 'loyalty'}
+                    onChange={() => setActiveTab('loyalty')}
+                />
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
+                    {activeTab === 'loyalty' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-medium text-[var(--color-primary)]">Programa de fidelización</h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Los clientes ganan puntos al completar una compra pagada y pueden canjearlos por un cupón de descuento.
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="loyalty_enabled" defaultChecked={settingsMap['loyalty_enabled'] === 'true'} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                </label>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Puntos por cada € gastado</label>
+                                    <input
+                                        type="number"
+                                        name="loyalty_points_per_euro"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['loyalty_points_per_euro'] || '1'}
+                                        min={1}
+                                        step={1}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Se otorgan al confirmarse el pago de un pedido (redondeado hacia abajo sobre el total).</p>
+                                </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Valor de 1 punto al canjear (céntimos)</label>
+                                    <input
+                                        type="number"
+                                        name="loyalty_point_value_cents"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['loyalty_point_value_cents'] || '1'}
+                                        min={1}
+                                        step={1}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Ej: valor 1 → 100 puntos = 1,00 € de descuento al canjear.</p>
                                 </div>
                             </div>
                         </div>

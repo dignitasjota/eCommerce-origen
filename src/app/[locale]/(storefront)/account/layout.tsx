@@ -16,6 +16,11 @@ export default async function AccountLayout({ children }: { children: React.Reac
     });
     const isWishlistEnabled = wishlistSetting ? wishlistSetting.value === 'true' : true;
 
+    const loyaltySetting = await prisma.siteSetting.findUnique({
+        where: { key: 'loyalty_enabled' }
+    });
+    const isLoyaltyEnabled = loyaltySetting?.value === 'true';
+
     if (!session || !session.user) {
         // Redirigir al login si no está autenticado
         // Dependiendo de tu config, puede ser /auth/login
@@ -43,6 +48,11 @@ export default async function AccountLayout({ children }: { children: React.Reac
                         {isWishlistEnabled && (
                             <Link href="/account/wishlist" className="btn btn-outline" style={{ justifyContent: 'flex-start', border: 'none' }}>
                                 Lista de Deseos
+                            </Link>
+                        )}
+                        {isLoyaltyEnabled && (
+                            <Link href="/account/loyalty" className="btn btn-outline" style={{ justifyContent: 'flex-start', border: 'none' }}>
+                                Mis Puntos
                             </Link>
                         )}
                         <LogoutButton />

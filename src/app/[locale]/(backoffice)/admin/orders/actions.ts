@@ -1,17 +1,19 @@
 'use server';
 
+import type { OrderStatus, orders_payment_status } from '@prisma/client';
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { sendOrderStatusEmail } from '@/lib/emails/notify';
 import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
+import { awardPointsForOrder } from '@/lib/loyalty';
 
 export async function updateOrderFullStatus(formData: FormData) {
     try {
         await requireAdmin(undefined, 'orders.manage');
         const id = formData.get('orderId') as string;
-        const newStatus = formData.get('status') as string;
-        const newPaymentStatus = formData.get('paymentStatus') as string;
+        const newStatus = formData.get('status') as OrderStatus;
+        const newPaymentStatus = formData.get('paymentStatus') as orders_payment_status;
 
         if (!id || !newStatus || !newPaymentStatus) {
             return { success: false, error: 'Datos incompletos' };
@@ -29,15 +31,24 @@ export async function updateOrderFullStatus(formData: FormData) {
         // sobrescribiera en cada edición, cualquier cambio posterior de la
         // orden (tracking, notas...) reiniciaría la ventana silenciosamente.
         const enteringDelivered = order.status !== 'DELIVERED' && newStatus === 'DELIVERED';
+        const enteringPaid = order.payment_status !== 'PAID' && newPaymentStatus === 'PAID';
 
-        const updated = await prisma.order.update({
-            where: { id },
-            data: {
-                status: newStatus as any,
-                payment_status: newPaymentStatus as any,
-                ...(enteringDelivered ? { delivered_at: new Date() } : {})
-            },
-            include: { users: true }
+        const updated = await prisma.$transaction(async (tx) => {
+            const result = await tx.order.update({
+                where: { id },
+                data: {
+                    status: newStatus,
+                    payment_status: newPaymentStatus,
+                    ...(enteringDelivered ? { delivered_at: new Date() } : {})
+                },
+                include: { users: true }
+            });
+
+            if (enteringPaid) {
+                await awardPointsForOrder(tx, id, order.user_id, Number(result.total));
+            }
+
+            return result;
         });
 
         // El helper notifica sólo si hubo cambio efectivo y el estado lo permite.

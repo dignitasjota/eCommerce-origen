@@ -7,29 +7,33 @@ datasource db {
 }
 
 model User {
-  id                   String         @id @default(uuid()) @db.VarChar(36)
-  email                String         @unique(map: "email") @db.VarChar(255)
+  id                   String               @id @default(uuid()) @db.VarChar(36)
+  email                String               @unique(map: "email") @db.VarChar(255)
   email_verified       DateTime?
-  password_hash        String?        @db.VarChar(255)
-  name                 String?        @db.VarChar(255)
-  phone                String?        @db.VarChar(50)
-  role                 Role           @default(CUSTOMER)
-  image                String?        @db.VarChar(500)
-  is_active            Boolean        @default(true)
+  password_hash        String?              @db.VarChar(255)
+  name                 String?              @db.VarChar(255)
+  phone                String?              @db.VarChar(50)
+  role                 Role                 @default(CUSTOMER)
+  image                String?              @db.VarChar(500)
+  is_active            Boolean              @default(true)
   last_login_at        DateTime?
   /// Token de 256 bits para compartir públicamente la wishlist vía
   /// /wishlist/[token]. `null` = compartir desactivado. Generado bajo
   /// demanda desde /account/wishlist, nunca se deriva del id del usuario.
-  wishlist_share_token String?        @unique(map: "uq_user_wishlist_share_token") @db.VarChar(64)
+  wishlist_share_token String?              @unique(map: "uq_user_wishlist_share_token") @db.VarChar(64)
   /// JSON array de claves de `Permission` (src/lib/permissions.ts). Sólo se
   /// consulta para `role = ORDER_MANAGER`; `null` = bucket por defecto
   /// (ver `DEFAULT_ORDER_MANAGER_PERMISSIONS`, backward-compatible con el
   /// comportamiento previo a este campo). Ignorado para ADMIN (acceso
   /// total siempre) y CUSTOMER (ninguno). settings/users/payments quedan
   /// fuera del set delegable — siguen exigiendo ADMIN sin excepción.
-  permissions          String?        @db.Text
-  created_at           DateTime       @default(now())
-  updated_at           DateTime       @default(now())
+  permissions          String?              @db.Text
+  /// Saldo actual de puntos de fidelización (denormalizado para lectura
+  /// rápida — la fuente de verdad recomputable es la suma de
+  /// `LoyaltyTransaction.points`). Sólo se mueve vía src/lib/loyalty.ts.
+  loyalty_points       Int                  @default(0)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @default(now())
   accounts             Account[]
   addresses            Address[]
   cart_items           CartItem[]
@@ -38,6 +42,7 @@ model User {
   sessions             Session[]
   wishlist_items       WishlistItem[]
   returns              Return[]
+  loyalty_transactions LoyaltyTransaction[]
 
   @@map("users")
 }
@@ -468,6 +473,34 @@ model Coupon {
   orders         Order[]
 
   @@map("coupons")
+}
+
+enum LoyaltyTransactionType {
+  EARN
+  REDEEM
+  REVERSAL
+}
+
+/// Ledger de movimientos de puntos — fuente de verdad recomputable de
+/// `User.loyalty_points`. Un `EARN` referencia el pedido que lo generó
+/// (`order_id`); un `REDEEM` referencia el cupón de un solo uso generado a
+/// cambio (`coupon_id`); un `REVERSAL` deshace un `EARN` cuando su pedido se
+/// reembolsa por completo.
+model LoyaltyTransaction {
+  id         String                 @id @default(uuid()) @db.VarChar(36)
+  user_id    String                 @db.VarChar(36)
+  type       LoyaltyTransactionType
+  /// Positivo en EARN, negativo en REDEEM/REVERSAL.
+  points     Int
+  order_id   String?                @db.VarChar(36)
+  coupon_id  String?                @db.VarChar(36)
+  note       String?                @db.VarChar(255)
+  created_at DateTime               @default(now())
+  users      User                   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "loyalty_transactions_ibfk_1")
+
+  @@index([user_id], map: "idx_loyalty_transactions_user")
+  @@index([order_id], map: "idx_loyalty_transactions_order")
+  @@map("loyalty_transactions")
 }
 
 model ShippingMethod {

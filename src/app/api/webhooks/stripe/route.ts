@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import prisma from '@/lib/db';
 import { getStripe, getStripeWebhookSecret } from '@/lib/stripe';
 import { captureError } from '@/lib/sentry';
+import { awardPointsForOrder, reversePointsForOrder } from '@/lib/loyalty';
 
 /**
  * Webhook de Stripe.
@@ -149,6 +150,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
                 }
             });
             await claimInvoiceNumber(tx, orderId);
+            await awardPointsForOrder(tx, orderId, order.user_id, Number(order.total));
         });
     } catch (e) {
         console.error('[stripe-webhook] error confirmando orden:', e);
@@ -379,6 +381,8 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
                 data: { used_count: { decrement: 1 } }
             });
         }
+
+        await reversePointsForOrder(tx, order.id);
 
         return tx.order.findUnique({ where: { id: order.id }, include: { users: true } });
     });
