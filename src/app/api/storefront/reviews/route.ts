@@ -30,12 +30,16 @@ export async function POST(request: NextRequest) {
         }
         const { productId, rating, title, comment } = parsed.data;
 
-        // 1. Validar que el usuario realmente compró este producto alguna vez
+        // 1. Validar que el usuario realmente compró (y pagó) este producto.
+        // Antes no filtraba payment_status: un pedido CANCELLED o PENDING sin
+        // pagar también habilitaba a reseñar. `payment_status: 'PAID'` excluye
+        // también los reembolsados (el webhook los pasa a REFUNDED, nunca
+        // se quedan en PAID) — coincide con lo que ya documenta CLAUDE.md
+        // para `is_verified_purchase` ("auto-true si hay OrderItem PAID").
         const userHasPurchased = await prisma.order.findFirst({
             where: {
                 user_id: session.user.id,
-                // Opcional: validar que el estado sea COMPLETADO
-                // status: 'COMPLETED',
+                payment_status: 'PAID',
                 order_items: {
                     some: {
                         product_id: productId

@@ -226,6 +226,10 @@ docker compose exec app wget -qO- http://localhost:3000/api/health
 
 Si responde `db: down`, comprobar que el servicio `db` está sano (`docker compose ps`) y la red interna funciona.
 
+### Subir una imagen falla con 502/413 (pero funciona con archivos pequeños)
+
+El límite real de tamaño de subida lo pone el reverse proxy de delante (nginx/Traefik/Caddy suelen limitar a 1 MB por defecto), no la aplicación (que ya permite hasta 32 MB por request). Ver [`deploy-portainer.md` §4, Opción D](./deploy-portainer.md#opción-d--límite-de-tamaño-de-subida-imágenes-de-productoblog) para la configuración exacta según tu proxy.
+
 ### Cambiar `NEXTAUTH_URL` (cambio de dominio)
 
 ```bash

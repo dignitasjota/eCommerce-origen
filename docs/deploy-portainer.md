@@ -182,6 +182,34 @@ tienda.cliente.com {
 
 Caddy gestiona los certificados automáticamente.
 
+### Opción D — Límite de tamaño de subida (imágenes de producto/blog)
+
+El uploader de imágenes del admin (`src/components/backoffice/ImageUploader.tsx`) permite hasta 8 MB por archivo y varias imágenes a la vez, y Next.js ya lo permite a nivel de aplicación (`experimental.serverActions.bodySizeLimit: '32mb'` en `next.config.ts`). **Pero eso sólo cubre las Server Actions** (el formulario de producto/blog/categoría) — las rutas API normales (`app/api/**`, p. ej. si en el futuro se añade un endpoint de subida ahí) no tienen ningún límite propio de Next.js, así que en ambos casos el límite real lo pone el reverse proxy de delante, que por defecto suele ser mucho más bajo:
+
+- **Nginx Proxy Manager:** por defecto nginx limita a `1m`. En el Proxy Host → pestaña **Advanced** → **Custom Nginx Configuration**, añadir:
+  ```nginx
+  client_max_body_size 32m;
+  ```
+- **Traefik:** añadir un middleware de buffering al servicio `app` (junto a las labels de la Opción B):
+  ```yaml
+      labels:
+        # … labels de la Opción B …
+        - "traefik.http.middlewares.tienda-bodylimit.buffering.maxRequestBodyBytes=33554432"
+        - "traefik.http.routers.tienda.middlewares=tienda-bodylimit"
+  ```
+- **Caddy:** dentro del bloque del sitio (Opción C):
+  ```caddyfile
+  tienda.cliente.com {
+      reverse_proxy ecommerce-app:3000
+      request_body {
+          max_size 32MB
+      }
+      encode gzip zstd
+  }
+  ```
+
+Sin esto, subir una imagen de producto de más de 1 MB (habitual en fotos de móvil) puede fallar con un error genérico del proxy (502/413) antes de llegar siquiera a la validación de la aplicación — confuso de depurar si no se sabe que el límite está en esta capa.
+
 ---
 
 ## 5. Crear el stack en Portainer

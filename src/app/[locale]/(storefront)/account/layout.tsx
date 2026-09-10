@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth'; // Ensure you have auth configured
 
 import prisma from '@/lib/db';
+import LogoutButton from './LogoutButton';
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
     const session = await auth();
@@ -44,9 +45,7 @@ export default async function AccountLayout({ children }: { children: React.Reac
                                 Lista de Deseos
                             </Link>
                         )}
-                        <button className="btn btn-outline" style={{ justifyContent: 'flex-start', border: 'none', color: 'var(--color-danger)', marginTop: '2rem' }}>
-                            Cerrar Sesión
-                        </button>
+                        <LogoutButton />
                     </nav>
                 </div>
             </aside>
