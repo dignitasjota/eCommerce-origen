@@ -16,9 +16,10 @@ interface SettingsFormProps {
     /** Claves de secretos (smtp_pass, stripe_*) que YA tienen un valor guardado en servidor — el valor real nunca llega aquí, sólo este flag. */
     configuredSecrets?: string[];
     customThemes?: string[];
+    abHeroStats?: Record<'A' | 'B', { impressions: number; clicks: number }>;
 }
 
-export default function SettingsForm({ initialSettings, configuredSecrets = [], customThemes = [] }: SettingsFormProps) {
+export default function SettingsForm({ initialSettings, configuredSecrets = [], customThemes = [], abHeroStats }: SettingsFormProps) {
     const isSecretConfigured = (key: string) => configuredSecrets.includes(key);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
@@ -37,7 +38,7 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
         const formData = new FormData(e.currentTarget);
 
         // Handle unchecked checkboxes (FormData doesn't include them)
-        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled', 'feature_contact_enabled', 'loyalty_enabled'];
+        const checkBoxes = ['feature_blog_enabled', 'feature_wishlist_enabled', 'feature_reviews_enabled', 'feature_contact_enabled', 'loyalty_enabled', 'ab_hero_enabled'];
         checkBoxes.forEach(box => {
             if (!formData.has(box)) {
                 formData.append(box, 'false');
@@ -823,6 +824,83 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
                                         step={1}
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Ej: valor 1 → 100 puntos = 1,00 € de descuento al canjear.</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── TAB: A/B Testing ──────────────────────────────────────── */}
+                <input
+                    type="radio"
+                    name="settings_tabs"
+                    role="tab"
+                    className="tab"
+                    style={{ whiteSpace: 'pre', minWidth: 'max-content', padding: '0 2rem' }}
+                    aria-label="  A/B Testing  "
+                    checked={activeTab === 'abtesting'}
+                    onChange={() => setActiveTab('abtesting')}
+                />
+                <div role="tabpanel" className="tab-content admin-table-container !p-6 w-full max-w-none">
+                    {activeTab === 'abtesting' && (
+                        <div className="space-y-4 animate-fadeIn">
+                            <div className="border-b pb-2 mb-4 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-medium text-[var(--color-primary)]">Test A/B del hero de portada</h3>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Cada visitante ve la variante A (por defecto) o B (la configurada aquí) de forma aleatoria y consistente. Mide impresiones y clicks en el botón principal del hero.
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" name="ab_hero_enabled" defaultChecked={settingsMap['ab_hero_enabled'] === 'true'} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--color-primary)]"></div>
+                                </label>
+                            </div>
+
+                            {abHeroStats && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                                    {(['A', 'B'] as const).map((variant) => {
+                                        const s = abHeroStats[variant];
+                                        const ctr = s.impressions > 0 ? ((s.clicks / s.impressions) * 100).toFixed(1) : '—';
+                                        return (
+                                            <div key={variant} style={{ padding: '1rem', backgroundColor: 'var(--color-background-soft, #f8fafc)', borderRadius: 'var(--radius-md)' }}>
+                                                <div style={{ fontWeight: 700, marginBottom: '0.4rem' }}>Variante {variant}</div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary, #64748b)' }}>
+                                                    {s.impressions} impresiones · {s.clicks} clicks · CTR {ctr}{ctr !== '—' ? '%' : ''}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Título (Variante B)</label>
+                                    <input
+                                        name="ab_hero_b_title"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['ab_hero_b_title'] || ''}
+                                        placeholder="Deja vacío para usar el título por defecto"
+                                    />
+                                </div>
+                                <div className="admin-form-group md:col-span-2">
+                                    <label className="admin-form-label">Subtítulo (Variante B)</label>
+                                    <input
+                                        name="ab_hero_b_subtitle"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['ab_hero_b_subtitle'] || ''}
+                                        placeholder="Deja vacío para usar el subtítulo por defecto"
+                                    />
+                                </div>
+                                <div className="admin-form-group">
+                                    <label className="admin-form-label">Texto del botón (Variante B)</label>
+                                    <input
+                                        name="ab_hero_b_button"
+                                        className="admin-form-input"
+                                        defaultValue={settingsMap['ab_hero_b_button'] || ''}
+                                        placeholder="Deja vacío para usar el texto por defecto"
+                                    />
                                 </div>
                             </div>
                         </div>

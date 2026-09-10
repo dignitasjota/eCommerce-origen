@@ -1,10 +1,12 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { cookies } from 'next/headers';
 import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import HomeCarousel from '@/components/storefront/HomeCarousel';
 import NewsletterForm from '@/components/storefront/NewsletterForm';
 import RecentlyViewed from '@/components/storefront/RecentlyViewed';
+import { AB_HERO_COOKIE, getHeroAbSettings, isAbVariant } from '@/lib/ab-testing';
 import styles from './page.module.css';
 
 type Props = {
@@ -58,6 +60,16 @@ async function HomePageContent({ locale }: { locale: string }) {
         }
     });
 
+    // A/B testing del hero: la variante ya viene asignada por middleware.ts
+    // (cookie fijada en la primera visita). Variante B sólo sustituye el
+    // texto si el test está activo Y hay contenido configurado — si no,
+    // se sirve el contenido por defecto (variante A) igualmente.
+    const cookieStore = await cookies();
+    const rawVariant = cookieStore.get(AB_HERO_COOKIE)?.value;
+    const heroVariant = isAbVariant(rawVariant) ? rawVariant : 'A';
+    const heroAb = await getHeroAbSettings(prisma);
+    const useVariantB = heroAb.enabled && heroVariant === 'B';
+
     const categories = dbCategories.map(c => ({
         id: c.id,
         slug: c.slug,
@@ -81,10 +93,11 @@ async function HomePageContent({ locale }: { locale: string }) {
                 interval={homeCarouselInterval}
                 texts={{
                     newArrivals: t('newArrivals'),
-                    heroTitle: t('heroTitle'),
-                    heroSubtitle: t('heroSubtitle'),
-                    heroButton: t('heroButton')
+                    heroTitle: (useVariantB && heroAb.variantBTitle) || t('heroTitle'),
+                    heroSubtitle: (useVariantB && heroAb.variantBSubtitle) || t('heroSubtitle'),
+                    heroButton: (useVariantB && heroAb.variantBButton) || t('heroButton')
                 }}
+                abTest={heroAb.enabled ? { variant: heroVariant } : undefined}
             />
 
             {/* Categories Section */}

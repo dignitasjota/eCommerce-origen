@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import SettingsForm from './SettingsForm';
 import { readdir } from 'fs/promises';
 import { join } from 'path';
+import { getHeroAbStats } from '@/lib/ab-testing';
 
 // Claves cuyo valor real NUNCA debe llegar al cliente: son secretos de pago/
 // SMTP. `type="password"` en el input sólo enmascara la VISUALIZACIÓN — el
@@ -30,6 +31,8 @@ export default async function SettingsPage() {
         .map((s) => s.key);
     const safeSettings = settings.map((s) => (SENSITIVE_KEYS.has(s.key) ? { ...s, value: '' } : s));
 
+    const abHeroStats = await getHeroAbStats(prisma);
+
     let customThemes: string[] = [];
     try {
         const themesDir = join(process.cwd(), 'public', 'themes');
@@ -49,6 +52,7 @@ export default async function SettingsPage() {
                     initialSettings={safeSettings}
                     configuredSecrets={configuredSecrets}
                     customThemes={customThemes}
+                    abHeroStats={abHeroStats}
                 />
             </div>
         </>

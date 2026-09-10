@@ -13,9 +13,23 @@ interface HomeCarouselProps {
         heroSubtitle: string;
         heroButton: string;
     };
+    /** Presente sólo si el test A/B del hero está activo. */
+    abTest?: { variant: 'A' | 'B' };
 }
 
-export default function HomeCarousel({ images, interval, texts }: HomeCarouselProps) {
+function sendAbEvent(variant: 'A' | 'B', eventType: 'impression' | 'click') {
+    const payload = JSON.stringify({ variant, eventType });
+    // sendBeacon no bloquea ni retrasa la navegación del CTA (a diferencia
+    // de un fetch normal, que el navegador podría cancelar al navegar).
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/storefront/ab-test', blob);
+    } else {
+        fetch('/api/storefront/ab-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+    }
+}
+
+export default function HomeCarousel({ images, interval, texts, abTest }: HomeCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
@@ -27,6 +41,12 @@ export default function HomeCarousel({ images, interval, texts }: HomeCarouselPr
 
         return () => clearInterval(timer);
     }, [images, interval]);
+
+    // Una impresión por carga de página, sólo si el test está activo.
+    useEffect(() => {
+        if (abTest) sendAbEvent(abTest.variant, 'impression');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // If no images are configured, we show the default background through CSS classes just like before
     // If there is only one image, we show it statically.
@@ -53,7 +73,13 @@ export default function HomeCarousel({ images, interval, texts }: HomeCarouselPr
                 <h1 className={styles.heroTitle}>{texts.heroTitle}</h1>
                 <p className={styles.heroSubtitle}>{texts.heroSubtitle}</p>
                 <div className={styles.heroActions}>
-                    <Link href="/products" className="btn btn-primary btn-lg">
+                    <Link
+                        href="/products"
+                        className="btn btn-primary btn-lg"
+                        onClick={() => {
+                            if (abTest) sendAbEvent(abTest.variant, 'click');
+                        }}
+                    >
                         {texts.heroButton}
                         <svg aria-hidden="true" focusable="false" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '8px' }}>
                             <path d="M5 12h14" />

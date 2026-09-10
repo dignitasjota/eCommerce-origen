@@ -457,6 +457,23 @@ model OrderItem {
   @@map("order_items")
 }
 
+/// Eventos de A/B testing (impresión/click), anónimos — sin relación a
+/// User a propósito: el hero lo ve tráfico anónimo mayoritariamente, y la
+/// variante se asigna por cookie, no por cuenta.
+model AbTestEvent {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  /// Identificador del test (p.ej. "home_hero") — permite reutilizar el
+  /// modelo para futuros tests sin cambiar el schema.
+  test_key   String   @db.VarChar(50)
+  variant    String   @db.VarChar(10)
+  /// 'impression' | 'click'
+  event_type String   @db.VarChar(20)
+  created_at DateTime @default(now())
+
+  @@index([test_key, variant, event_type], map: "idx_ab_test_lookup")
+  @@map("ab_test_events")
+}
+
 model Coupon {
   id             String                @id @default(uuid()) @db.VarChar(36)
   code           String                @unique(map: "code") @db.VarChar(50)

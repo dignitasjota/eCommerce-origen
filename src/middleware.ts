@@ -3,6 +3,7 @@ import createMiddleware from 'next-intl/middleware';
 import { getToken } from 'next-auth/jwt';
 import { routing } from '@/i18n/navigation';
 import { ADMIN_ROLES, type AdminRole } from '@/lib/auth-roles';
+import { AB_HERO_COOKIE } from '@/lib/ab-testing';
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -35,7 +36,26 @@ export default async function middleware(request: NextRequest) {
     // standalone (ver Dockerfile), donde el rewrite nativo funciona con
     // normalidad — mantener el hack forzaba un round-trip y un cambio de URL
     // visibles innecesarios en cada request sin prefijo de locale.
-    return intlMiddleware(request);
+    const response = intlMiddleware(request);
+    ensureAbHeroCookie(request, response);
+    return response;
+}
+
+/**
+ * Asigna la variante A/B del hero de home en la primera visita (50/50) y la
+ * fija en cookie — así el mismo visitante ve siempre la misma variante en
+ * toda su sesión, en vez de que cambie en cada recarga. Se asigna aquí (no
+ * en el propio Server Component de home) porque un Server Component no
+ * puede escribir cookies nuevas fuera de una Server Action/Route Handler.
+ */
+function ensureAbHeroCookie(request: NextRequest, response: NextResponse) {
+    if (request.cookies.has(AB_HERO_COOKIE)) return;
+    const variant = Math.random() < 0.5 ? 'A' : 'B';
+    response.cookies.set(AB_HERO_COOKIE, variant, {
+        maxAge: 60 * 60 * 24 * 90,
+        path: '/',
+        sameSite: 'lax'
+    });
 }
 
 /**
