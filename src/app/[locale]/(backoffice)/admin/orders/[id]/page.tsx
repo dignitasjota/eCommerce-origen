@@ -20,7 +20,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             order_items: {
                 include: {
                     products: true,
-                    product_variants: true
+                    product_variants: true,
+                    warehouses: { select: { name: true, is_dropshipping: true } }
                 }
             }
         }
@@ -82,6 +83,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                                         <td>
                                             <div style={{ fontWeight: 500 }}>{item.products?.slug || item.product_id}</div>
                                             {item.variant_info && <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Variante: {item.variant_info}</div>}
+                                            {item.warehouses && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
+                                                    Almacén: {item.warehouses.name}{item.warehouses.is_dropshipping ? ' (drop shipping)' : ''}
+                                                </div>
+                                            )}
                                         </td>
                                         <td>{Number(item.price).toFixed(2)}€</td>
                                         <td>{item.quantity}</td>

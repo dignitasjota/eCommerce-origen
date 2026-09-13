@@ -103,11 +103,50 @@ async function ensureAdmin() {
     console.log('  ─────────────────────────────────────────────');
 }
 
+/**
+ * Garantiza que exista al menos un almacén activo (el checkout de
+ * src/lib/warehouse.ts necesita uno para asignar stock) y migra el stock
+ * de variantes que aún no tengan desglose por almacén (`WarehouseStock`) —
+ * típicamente todas las variantes creadas ANTES de que multi-warehouse
+ * existiera. Idempotente: en arranques posteriores no encuentra variantes
+ * sin desglose y no hace nada.
+ */
+async function ensureDefaultWarehouseAndBackfillStock() {
+    let mainWarehouse = await prisma.warehouse.findFirst({ where: { code: 'MAIN' } });
+    if (!mainWarehouse) {
+        mainWarehouse = await prisma.warehouse.create({
+            data: { name: 'Almacén principal', code: 'MAIN', priority: 0, is_active: true }
+        });
+        console.log('  · almacén "Almacén principal" (MAIN) creado');
+    } else {
+        console.log('  · almacén principal ya existe');
+    }
+
+    const variantsWithoutWarehouseStock = await prisma.productVariant.findMany({
+        where: { warehouse_stocks: { none: {} } },
+        select: { id: true, stock: true }
+    });
+    if (variantsWithoutWarehouseStock.length > 0) {
+        await prisma.warehouseStock.createMany({
+            data: variantsWithoutWarehouseStock.map((v) => ({
+                variant_id: v.id,
+                warehouse_id: mainWarehouse.id,
+                stock: v.stock
+            })),
+            skipDuplicates: true
+        });
+        console.log(`  · ${variantsWithoutWarehouseStock.length} variante(s) migradas al almacén principal`);
+    } else {
+        console.log('  · todas las variantes ya tienen desglose por almacén');
+    }
+}
+
 async function main() {
     console.log('🌱 Bootstrap seed:');
     await ensureSettings();
     await ensureRootCategory();
     await ensureAdmin();
+    await ensureDefaultWarehouseAndBackfillStock();
     console.log('✅ Seed completado.');
 }
 

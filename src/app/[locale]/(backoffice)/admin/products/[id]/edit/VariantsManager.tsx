@@ -22,6 +22,7 @@ interface Props {
 interface FormState {
     sku: string;
     price: string;
+    /** Sólo se usa al CREAR (stock inicial, sembrado en el almacén por defecto). Al editar, se ignora. */
     stock: string;
     is_active: boolean;
 }
@@ -29,14 +30,15 @@ interface FormState {
 const emptyForm: FormState = { sku: '', price: '', stock: '0', is_active: true };
 
 /**
- * Editor plano de variantes de producto. CRUD individual con SKU/precio/stock
- * por variante. Sin combinatoria automática de opciones (pendiente de un
- * sprint posterior con UI de matriz). Reemplaza el hardcoding de
- * `product_variants[0]` que tenía el ProductsManager.
+ * Editor plano de variantes de producto. CRUD de SKU/precio/estado por
+ * variante. El stock YA NO se edita aquí (salvo el valor inicial al crear) —
+ * se gestiona por almacén en la sección "Stock por almacén" de más abajo
+ * (`WarehouseStockManager`), que es la fuente de verdad real desde que existe
+ * multi-warehouse. La columna "Stock" de esta tabla muestra el total
+ * cacheado (suma de todos los almacenes), sólo lectura.
  *
- * Nota: si el producto tiene `unlimited_stock = true`, el stock por variante
- * se ignora en checkout. Aún así dejamos editarlo para que el admin pueda
- * cambiar el flag global y que el dato de stock no se pierda.
+ * Nota: si el producto tiene `unlimited_stock = true`, el stock se ignora en
+ * checkout independientemente de lo que muestre esta tabla.
  */
 export default function VariantsManager({ productId, productPrice, initialVariants }: Props) {
     const router = useRouter();
@@ -189,18 +191,24 @@ export default function VariantsManager({ productId, productPrice, initialVarian
                             className="admin-form-input"
                         />
                     </label>
-                    <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                        <span style={{ fontSize: '0.8rem' }}>Stock</span>
-                        <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={form.stock}
-                            onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
-                            required
-                            className="admin-form-input"
-                        />
-                    </label>
+                    {editingId === 'new' ? (
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <span style={{ fontSize: '0.8rem' }}>Stock inicial</span>
+                            <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={form.stock}
+                                onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
+                                required
+                                className="admin-form-input"
+                            />
+                        </label>
+                    ) : (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: 0, alignSelf: 'center' }}>
+                            El stock se edita en «Stock por almacén», más abajo.
+                        </p>
+                    )}
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', alignSelf: 'center' }}>
                         <input
                             type="checkbox"

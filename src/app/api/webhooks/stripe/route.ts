@@ -221,11 +221,11 @@ async function handlePaymentIntentCanceled(paymentIntent: Stripe.PaymentIntent) 
 async function revertOrderReservation(orderId: string, reason: string) {
     const order = await prisma.order.findUnique({
         where: { id: orderId },
-        include: { order_items: { select: { variant_id: true, quantity: true } } }
+        include: { order_items: { select: { variant_id: true, quantity: true, warehouse_id: true } } }
     });
     if (!order || order.payment_status === 'PAID') return;
 
-    const { recordStockMovement } = await import('@/lib/stock');
+    const { restockToWarehouse } = await import('@/lib/warehouse');
 
     const reverted = await prisma.$transaction(async (tx) => {
         const claim = await tx.order.updateMany({
@@ -236,20 +236,14 @@ async function revertOrderReservation(orderId: string, reason: string) {
 
         for (const item of order.order_items) {
             if (!item.variant_id) continue;
-            await tx.productVariant.update({
-                where: { id: item.variant_id },
-                data: { stock: { increment: item.quantity } }
+            await restockToWarehouse(tx, {
+                variant_id: item.variant_id,
+                warehouse_id: item.warehouse_id,
+                quantity: item.quantity,
+                reason: 'RESERVATION_RELEASE',
+                reference_id: order.id,
+                note: `Order ${order.order_number} — ${reason}`
             });
-            await recordStockMovement(
-                {
-                    variant_id: item.variant_id,
-                    quantity: item.quantity,
-                    reason: 'RESERVATION_RELEASE',
-                    reference_id: order.id,
-                    note: `Order ${order.order_number} — ${reason}`
-                },
-                tx
-            );
         }
 
         if (order.coupon_id) {
@@ -287,7 +281,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
     const order = await prisma.order.findFirst({
         where: { payment_intent_id: intentId },
-        include: { order_items: { select: { variant_id: true, quantity: true } } }
+        include: { order_items: { select: { variant_id: true, quantity: true, warehouse_id: true } } }
     });
     if (!order || order.payment_status === 'REFUNDED') return;
 
@@ -348,7 +342,7 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
     // (restituir todo el stock de la orden + revertir cupón + marcar REFUNDED).
     const previousStatus = order.status;
     const previousPaymentStatus = order.payment_status;
-    const { recordStockMovement } = await import('@/lib/stock');
+    const { restockToWarehouse } = await import('@/lib/warehouse');
 
     const updated = await prisma.$transaction(async (tx) => {
         const claim = await tx.order.updateMany({
@@ -359,20 +353,14 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
 
         for (const item of order.order_items) {
             if (!item.variant_id) continue;
-            await tx.productVariant.update({
-                where: { id: item.variant_id },
-                data: { stock: { increment: item.quantity } }
+            await restockToWarehouse(tx, {
+                variant_id: item.variant_id,
+                warehouse_id: item.warehouse_id,
+                quantity: item.quantity,
+                reason: 'REFUND',
+                reference_id: order.id,
+                note: `Refund of order ${order.order_number}`
             });
-            await recordStockMovement(
-                {
-                    variant_id: item.variant_id,
-                    quantity: item.quantity,
-                    reason: 'REFUND',
-                    reference_id: order.id,
-                    note: `Refund of order ${order.order_number}`
-                },
-                tx
-            );
         }
 
         if (order.coupon_id) {

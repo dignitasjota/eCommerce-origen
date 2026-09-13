@@ -10,6 +10,8 @@ export interface StockMovementInput {
     reason: StockReason;
     /** Referencia opcional (id de orden, id de devolución…) para trazar. */
     reference_id?: string | null;
+    /** Almacén donde ocurrió el movimiento. `null`/omitido en movimientos sin desglose por almacén. */
+    warehouse_id?: string | null;
     note?: string | null;
     user_id?: string | null;
 }
@@ -39,6 +41,7 @@ export async function recordStockMovement(
                 quantity: input.quantity,
                 reason: input.reason,
                 reference_id: input.reference_id ?? null,
+                warehouse_id: input.warehouse_id ?? null,
                 note: input.note ? input.note.slice(0, 255) : null,
                 user_id: input.user_id ?? null
             }

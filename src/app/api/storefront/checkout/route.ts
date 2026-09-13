@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { resolveCoupon, consumeCoupon } from '@/lib/coupons';
 import { rateLimit } from '@/lib/rate-limit';
 import { getStripe, isStripePaymentMethod } from '@/lib/stripe';
-import { recordStockMovement } from '@/lib/stock';
+import { allocateAndDecrementStock } from '@/lib/warehouse';
 import { captureError } from '@/lib/sentry';
 import { checkoutSchema } from '@/lib/schemas/checkout';
 
@@ -111,14 +111,12 @@ export async function POST(request: NextRequest) {
             }
 
             // Stock: si el producto es unlimited_stock NO bloqueamos ni decrementamos.
+            // La comprobación real de disponibilidad ocurre en allocateAndDecrementStock
+            // (dentro de la transacción, más abajo) — NO aquí. `variant.stock` es sólo
+            // el total cacheado de almacenes físicos: un almacén de drop shipping activo
+            // puede cubrir el pedido aunque ese total sea 0, así que un guard temprano
+            // basado en `variant.stock` rechazaría ventas válidas por error.
             const enforceStock = !product.unlimited_stock;
-            if (enforceStock && variant.stock < quantity) {
-                const fallbackName = product.product_translations[0]?.name || product.slug;
-                return NextResponse.json(
-                    { error: `Stock insuficiente para ${fallbackName}` },
-                    { status: 400 }
-                );
-            }
 
             // Precio definitivo desde DB (variant > product). Nunca del cliente.
             const price = Number(variant.price ?? product.price);
@@ -171,7 +169,7 @@ export async function POST(request: NextRequest) {
         const total = Math.max(0, subtotal - discount + shippingCost);
         const orderNumber = generateOrderNumber();
 
-        // ── 4. Transacción atómica: dirección + orden + decremento de stock ─
+        // ── 4. Transacción atómica: dirección + asignación de almacén/stock + orden ─
         const order = await prisma.$transaction(async (tx) => {
             const shippingAddress = await tx.address.create({
                 data: {
@@ -188,6 +186,38 @@ export async function POST(request: NextRequest) {
                 }
             });
 
+            // Generamos el id de la orden ANTES de crearla para poder usarlo
+            // como reference_id de los StockMovement de asignación — la
+            // asignación de almacén ocurre antes de tx.order.create() porque
+            // el warehouse_id resuelto se persiste en cada OrderItem al crearlo.
+            const orderId = randomUUID();
+
+            // Asignación de almacén + decremento atómico. Si algún ítem no
+            // encuentra almacén con stock suficiente, allocateAndDecrementStock
+            // lanza y la transacción hace rollback completo (incluida la
+            // dirección recién creada arriba).
+            const itemsForOrder = [];
+            for (const item of validatedItems) {
+                let warehouseId: string | null = null;
+                if (item.variant_id) {
+                    try {
+                        const allocation = await allocateAndDecrementStock(tx, {
+                            variant_id: item.variant_id,
+                            quantity: item.quantity,
+                            enforceStock: item._enforce_stock,
+                            reference_id: orderId,
+                            note: `Order ${orderNumber}`,
+                            user_id: session?.user?.id ?? null
+                        });
+                        warehouseId = allocation.warehouse_id;
+                    } catch {
+                        throw new Error(`Stock insuficiente para ${item.name}`);
+                    }
+                }
+                const { _enforce_stock, ...rest } = item;
+                itemsForOrder.push({ ...rest, warehouse_id: warehouseId });
+            }
+
             // Si el método de pago va por pasarela externa, la orden nace
             // como PENDING_PAYMENT y sólo pasa a PENDING/CONFIRMED cuando el
             // webhook de Stripe confirme el pago. Para COD/TRANSFER seguimos
@@ -195,6 +225,7 @@ export async function POST(request: NextRequest) {
             const usesStripe = isStripePaymentMethod(paymentMethod);
             const newOrder = await tx.order.create({
                 data: {
+                    id: orderId,
                     order_number: orderNumber,
                     user_id: session?.user?.id || null,
                     guest_email: !session?.user?.id ? guestEmail : null,
@@ -213,40 +244,10 @@ export async function POST(request: NextRequest) {
                     coupon_id: resolvedCoupon?.coupon.id ?? null,
                     locale: orderLocale,
                     order_items: {
-                        create: validatedItems.map(({ _enforce_stock, ...rest }) => rest)
+                        create: itemsForOrder
                     }
                 }
             });
-
-            // Decremento atómico: updateMany con guardia stock>=quantity.
-            // Si dos checkouts compiten por el último ítem, sólo uno actualiza
-            // (count === 1) y el otro hace count === 0 → abortamos y la transacción
-            // hace rollback de la orden recién creada.
-            for (const item of validatedItems) {
-                if (!item._enforce_stock || !item.variant_id) continue;
-
-                const result = await tx.productVariant.updateMany({
-                    where: { id: item.variant_id, stock: { gte: item.quantity } },
-                    data: { stock: { decrement: item.quantity } }
-                });
-
-                if (result.count !== 1) {
-                    throw new Error(`Stock insuficiente para ${item.name}`);
-                }
-
-                // Trazar el movimiento de stock dentro de la misma transacción.
-                await recordStockMovement(
-                    {
-                        variant_id: item.variant_id,
-                        quantity: -item.quantity, // negativo = salida
-                        reason: 'PURCHASE',
-                        reference_id: newOrder.id,
-                        note: `Order ${newOrder.order_number}`,
-                        user_id: session?.user?.id ?? null
-                    },
-                    tx
-                );
-            }
 
             // Consumo atómico del cupón (incremento de used_count con guardia).
             // Si en la condición de carrera ya se agotaron los usos, abortamos

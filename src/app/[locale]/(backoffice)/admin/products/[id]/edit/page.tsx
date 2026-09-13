@@ -4,6 +4,7 @@ import { hasPermission } from '@/lib/auth';
 import ProductEditForm from './ProductEditForm';
 import VariantsManager from './VariantsManager';
 import VariantMatrixGenerator from './VariantMatrixGenerator';
+import WarehouseStockManager from './WarehouseStockManager';
 import Link from 'next/link';
 
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string, locale: string }> }) {
@@ -33,7 +34,8 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                                 }
                             }
                         }
-                    }
+                    },
+                    warehouse_stocks: true
                 }
             }
         }
@@ -59,6 +61,12 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
         name: t.variant_type_translations[0]?.name || t.slug,
         options: t.variant_options.map((o) => ({ id: o.id, slug: o.slug, value: o.variant_option_translations[0]?.value || o.slug }))
     }));
+
+    // Almacenes activos e inactivos (los inactivos se muestran atenuados para
+    // que el admin sepa por qué una columna existe pero no acepta ediciones).
+    const warehouses = await prisma.warehouse.findMany({
+        orderBy: [{ priority: 'asc' }, { created_at: 'asc' }]
+    });
 
     // Fetch all other products for the selection dropdowns
     const allProducts = await prisma.product.findMany({
@@ -117,6 +125,21 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                                 typeName: pvo.variant_options.variant_types.variant_type_translations[0]?.name || pvo.variant_options.variant_types.slug,
                                 value: pvo.variant_options.variant_option_translations[0]?.value || pvo.variant_options.slug
                             }))
+                        }))}
+                    />
+                </div>
+
+                <div style={{ padding: '2rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)' }}>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Stock por almacén</h2>
+                    <p style={{ color: 'var(--color-text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+                        Desglose real del stock de cada variante por almacén. La columna &quot;Stock&quot; de la tabla de arriba es sólo el total. Gestiona los almacenes en <Link href={`/${locale}/admin/warehouses`}>Almacenes</Link>.
+                    </p>
+                    <WarehouseStockManager
+                        warehouses={warehouses.map((w) => ({ id: w.id, name: w.name, is_active: w.is_active, is_dropshipping: w.is_dropshipping }))}
+                        variants={product.product_variants.map((v) => ({
+                            id: v.id,
+                            sku: v.sku,
+                            stockByWarehouse: Object.fromEntries(v.warehouse_stocks.map((ws) => [ws.warehouse_id, ws.stock]))
                         }))}
                     />
                 </div>

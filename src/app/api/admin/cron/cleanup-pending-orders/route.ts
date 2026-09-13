@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { verifyCronAuth, CronAuthError } from '@/lib/cron-auth';
-import { recordStockMovement } from '@/lib/stock';
+import { restockToWarehouse } from '@/lib/warehouse';
 import { auditLogServer } from '@/lib/audit';
 
 /**
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
             created_at: { lt: cutoff }
         },
         include: {
-            order_items: { select: { id: true, variant_id: true, quantity: true, name: true } }
+            order_items: { select: { id: true, variant_id: true, quantity: true, name: true, warehouse_id: true } }
         },
         take: MAX_BATCH,
         orderBy: { created_at: 'asc' }
@@ -64,20 +64,14 @@ export async function POST(req: Request) {
                 //    no decrementaron, así que tampoco hay que reponer).
                 for (const item of order.order_items) {
                     if (!item.variant_id) continue;
-                    await tx.productVariant.update({
-                        where: { id: item.variant_id },
-                        data: { stock: { increment: item.quantity } }
+                    await restockToWarehouse(tx, {
+                        variant_id: item.variant_id,
+                        warehouse_id: item.warehouse_id,
+                        quantity: item.quantity,
+                        reason: 'RESERVATION_RELEASE',
+                        reference_id: order.id,
+                        note: `Order ${order.order_number} expired`
                     });
-                    await recordStockMovement(
-                        {
-                            variant_id: item.variant_id,
-                            quantity: item.quantity,
-                            reason: 'RESERVATION_RELEASE',
-                            reference_id: order.id,
-                            note: `Order ${order.order_number} expired`
-                        },
-                        tx
-                    );
                 }
 
                 // 2. Decrementar `used_count` del cupón si aplica.

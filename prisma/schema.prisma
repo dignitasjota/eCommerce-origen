@@ -261,16 +261,24 @@ model VariantOptionTranslation {
 }
 
 model ProductVariant {
-  id                      String                 @id @default(uuid()) @db.VarChar(36)
-  product_id              String                 @db.VarChar(36)
-  sku                     String                 @unique(map: "sku") @db.VarChar(100)
-  price                   Decimal?               @db.Decimal(10, 2)
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  product_id String   @db.VarChar(36)
+  sku        String   @unique(map: "sku") @db.VarChar(100)
+  price      Decimal? @db.Decimal(10, 2)
+  /// Total cacheado (denormalizado) de `WarehouseStock.stock` para esta
+  /// variante — mismo patrón que `User.loyalty_points`. La fuente de verdad
+  /// del desglose por almacén es `WarehouseStock`; este campo existe para
+  /// que TODO el código de lectura pre-existente (storefront, countdown de
+  /// stock, selección de variante) siga funcionando sin cambios. Sólo se
+  /// escribe a través de src/lib/warehouse.ts — nunca decrementar/incrementar
+  /// directamente sin pasar también por la fila de WarehouseStock correspondiente.
   stock                   Int                    @default(0)
   weight                  Decimal?               @db.Decimal(8, 2)
   is_active               Boolean                @default(true)
   cart_items              CartItem[]
   order_items             OrderItem[]
   product_variant_options ProductVariantOption[]
+  warehouse_stocks        WarehouseStock[]
   products                Product                @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variants_ibfk_1")
 
   @@index([product_id], map: "product_id")
@@ -286,6 +294,55 @@ model ProductVariantOption {
   @@id([variant_id, variant_option_id])
   @@index([variant_option_id], map: "variant_option_id")
   @@map("product_variant_options")
+}
+
+/// Almacén físico (o proveedor de drop shipping) desde el que se puede
+/// preparar/enviar un pedido. `priority` decide el orden en que
+/// src/lib/warehouse.ts intenta asignar/decrementar stock (menor = primero) —
+/// así el admin controla la política de fulfillment sin tocar código.
+model Warehouse {
+  id              String  @id @default(uuid()) @db.VarChar(36)
+  name            String  @db.VarChar(255)
+  code            String  @unique(map: "uq_warehouse_code") @db.VarChar(20)
+  address1        String? @db.VarChar(255)
+  address2        String? @db.VarChar(255)
+  city            String? @db.VarChar(100)
+  postal_code     String? @db.VarChar(20)
+  country         String? @default("ES") @db.VarChar(2)
+  is_active       Boolean @default(true)
+  /// Proveedor externo de drop shipping: capacidad virtual/ilimitada — no se
+  /// decrementa ningún contador local al asignarle una venta (el proveedor
+  /// gestiona su propio inventario). Ver allocateAndDecrementStock().
+  is_dropshipping Boolean @default(false)
+  /// Orden de asignación en el checkout: menor valor = se intenta primero.
+  priority        Int     @default(0)
+
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @default(now())
+  warehouse_stocks WarehouseStock[]
+  order_items      OrderItem[]
+
+  @@index([priority], map: "idx_warehouse_priority")
+  @@map("warehouses")
+}
+
+/// Desglose de stock de una variante por almacén — la fuente de verdad real
+/// del inventario. `ProductVariant.stock` es la suma cacheada de estas filas
+/// (para no romper el código de lectura pre-existente). Sólo escribir a
+/// través de src/lib/warehouse.ts, que mantiene ambos en sincronía dentro de
+/// la misma transacción.
+model WarehouseStock {
+  id           String @id @default(uuid()) @db.VarChar(36)
+  variant_id   String @db.VarChar(36)
+  warehouse_id String @db.VarChar(36)
+  stock        Int    @default(0)
+
+  product_variants ProductVariant @relation(fields: [variant_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "warehouse_stocks_ibfk_1")
+  warehouses       Warehouse      @relation(fields: [warehouse_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "warehouse_stocks_ibfk_2")
+
+  @@unique([variant_id, warehouse_id], map: "uq_warehouse_stock_variant_warehouse")
+  @@index([warehouse_id], map: "idx_warehouse_stock_warehouse")
+  @@map("warehouse_stocks")
 }
 
 model CartItem {
@@ -437,23 +494,31 @@ model Order {
 }
 
 model OrderItem {
-  id               String          @id @default(uuid()) @db.VarChar(36)
-  order_id         String          @db.VarChar(36)
-  product_id       String?         @db.VarChar(36)
-  variant_id       String?         @db.VarChar(36)
-  name             String          @db.VarChar(255)
-  sku              String          @db.VarChar(100)
-  price            Decimal         @db.Decimal(10, 2)
-  quantity         Int
-  variant_info     String?         @db.Text
+  id           String  @id @default(uuid()) @db.VarChar(36)
+  order_id     String  @db.VarChar(36)
+  product_id   String? @db.VarChar(36)
+  variant_id   String? @db.VarChar(36)
+  name         String  @db.VarChar(255)
+  sku          String  @db.VarChar(100)
+  price        Decimal @db.Decimal(10, 2)
+  quantity     Int
+  variant_info String? @db.Text
+  /// Almacén desde el que se asignó/decrementó el stock de este ítem en el
+  /// checkout (ver allocateAndDecrementStock en src/lib/warehouse.ts). `null`
+  /// en pedidos anteriores a esta funcionalidad o en ítems unlimited_stock
+  /// sin almacén activo — los flujos de restitución (cancelación, RMA,
+  /// reembolso) caen a getDefaultWarehouseId() cuando es null.
+  warehouse_id     String?         @db.VarChar(36)
   orders           Order           @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
   products         Product?        @relation(fields: [product_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_2")
   product_variants ProductVariant? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
+  warehouses       Warehouse?      @relation(fields: [warehouse_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "order_items_ibfk_4")
   return_items     ReturnItem[]
 
   @@index([order_id], map: "order_id")
   @@index([product_id], map: "product_id")
   @@index([variant_id], map: "variant_id")
+  @@index([warehouse_id], map: "idx_order_items_warehouse")
   @@map("order_items")
 }
 
@@ -770,6 +835,11 @@ model StockMovement {
   reason       StockMovementReason
   /// Referencia opcional al pedido / devolución / ajuste origen.
   reference_id String?             @db.VarChar(36)
+  /// Almacén donde ocurrió el movimiento. Campo suelto sin relación FK a
+  /// propósito (mismo criterio que `variant_id` en este modelo): el registro
+  /// de auditoría debe sobrevivir aunque el almacén se borre más adelante.
+  /// `null` en movimientos anteriores a esta funcionalidad.
+  warehouse_id String?             @db.VarChar(36)
   note         String?             @db.VarChar(255)
   user_id      String?             @db.VarChar(36)
   created_at   DateTime            @default(now())
@@ -777,6 +847,7 @@ model StockMovement {
   @@index([variant_id], map: "idx_stock_variant")
   @@index([reason], map: "idx_stock_reason")
   @@index([created_at], map: "idx_stock_created")
+  @@index([warehouse_id], map: "idx_stock_warehouse")
   @@map("stock_movements")
 }
 

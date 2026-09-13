@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import prisma from '@/lib/db';
 import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { canTransition } from '@/lib/returns';
-import { recordStockMovement } from '@/lib/stock';
+import { restockToWarehouse } from '@/lib/warehouse';
 import { auditLog } from '@/lib/audit';
 import { sendEmail } from '@/lib/email';
 import { getReturnStatusEmailHtml } from '@/lib/emails/return-status';
@@ -35,7 +35,7 @@ async function loadReturnFull(id: string) {
             },
             return_items: {
                 include: {
-                    order_items: { select: { variant_id: true, name: true, price: true } }
+                    order_items: { select: { variant_id: true, name: true, price: true, warehouse_id: true } }
                 }
             }
         }
@@ -156,21 +156,15 @@ export async function markReturnReceived(returnId: string, formData: FormData) {
                 const isResellable = RESELLABLE.includes(item.condition);
 
                 if (isResellable) {
-                    await tx.productVariant.update({
-                        where: { id: item.order_items.variant_id },
-                        data: { stock: { increment: item.quantity } }
+                    await restockToWarehouse(tx, {
+                        variant_id: item.order_items.variant_id,
+                        warehouse_id: item.order_items.warehouse_id,
+                        quantity: item.quantity,
+                        reason: 'REFUND',
+                        reference_id: ret.id,
+                        note: `Return ${ret.return_number} received (${item.condition})`,
+                        user_id: session.user.id
                     });
-                    await recordStockMovement(
-                        {
-                            variant_id: item.order_items.variant_id,
-                            quantity: item.quantity,
-                            reason: 'REFUND',
-                            reference_id: ret.id,
-                            note: `Return ${ret.return_number} received (${item.condition})`,
-                            user_id: session.user.id
-                        },
-                        tx
-                    );
                 }
                 // Si !isResellable: NO incrementamos stock (mercancía inservible)
                 // ni registramos StockMovement (no hubo movimiento real). El descarte

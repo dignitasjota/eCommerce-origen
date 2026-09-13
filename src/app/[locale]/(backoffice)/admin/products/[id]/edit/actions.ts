@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { recordStockMovement } from '@/lib/stock';
+import { seedInitialWarehouseStock, setWarehouseStock } from '@/lib/warehouse';
 import { auditLog } from '@/lib/audit';
 
 interface VariantInput {
@@ -40,21 +41,29 @@ export async function createVariant(productId: string, input: VariantInput) {
         if (!product) return { success: false, error: 'Producto no encontrado.' };
 
         const variantId = crypto.randomUUID();
-        await prisma.productVariant.create({
-            data: {
-                id: variantId,
-                product_id: productId,
-                sku: data.sku,
-                stock: data.stock,
-                price: data.price,
-                is_active: data.is_active
-            }
+        let seededWarehouseId: string | null = null;
+        await prisma.$transaction(async (tx) => {
+            await tx.productVariant.create({
+                data: {
+                    id: variantId,
+                    product_id: productId,
+                    sku: data.sku,
+                    stock: data.stock,
+                    price: data.price,
+                    is_active: data.is_active
+                }
+            });
+            const seeded = await seedInitialWarehouseStock(tx, { variant_id: variantId, stock: data.stock });
+            seededWarehouseId = seeded.warehouse_id;
         });
 
         // Registrar el stock inicial como RESTOCK (entrada manual del admin).
+        // El desglose por almacén ya se creó arriba (seedInitialWarehouseStock);
+        // aquí sólo dejamos el movimiento de auditoría con ese mismo almacén.
         if (data.stock > 0) {
             await recordStockMovement({
                 variant_id: variantId,
+                warehouse_id: seededWarehouseId,
                 quantity: data.stock,
                 reason: 'RESTOCK',
                 note: 'Stock inicial al crear variante',
@@ -80,8 +89,11 @@ export async function createVariant(productId: string, input: VariantInput) {
 
 export async function updateVariant(variantId: string, input: VariantInput) {
     try {
-        const session = await requireAdmin(undefined, 'products.manage');
-        const data = parseVariant(input);
+        await requireAdmin(undefined, 'products.manage');
+        // El stock ya NO se edita aquí — se gestiona por almacén en la matriz
+        // "Stock por almacén" (setWarehouseStock), que mantiene sincronizado
+        // el total cacheado en ProductVariant.stock. Sólo se parsean sku/precio/estado.
+        const data = parseVariant({ ...input, stock: '0' });
 
         const existing = await prisma.productVariant.findUnique({
             where: { id: variantId },
@@ -89,30 +101,15 @@ export async function updateVariant(variantId: string, input: VariantInput) {
         });
         if (!existing) return { success: false, error: 'Variante no encontrada.' };
 
-        const stockDelta = data.stock - existing.stock;
-
         await prisma.productVariant.update({
             where: { id: variantId },
             data: {
                 sku: data.sku,
-                stock: data.stock,
                 price: data.price,
                 is_active: data.is_active
             }
         });
 
-        // Si el admin ajustó stock manualmente, registrarlo. Diferenciamos
-        // RESTOCK (incremento, ej. recepción de mercancía) de ADJUSTMENT
-        // (decremento, ej. corrección por inventario perdido).
-        if (stockDelta !== 0) {
-            await recordStockMovement({
-                variant_id: variantId,
-                quantity: stockDelta,
-                reason: stockDelta > 0 ? 'RESTOCK' : 'ADJUSTMENT',
-                note: 'Ajuste manual desde admin',
-                user_id: session.user.id
-            });
-        }
         await auditLog({
             action: 'variant.update',
             entity_type: 'ProductVariant',
@@ -120,8 +117,8 @@ export async function updateVariant(variantId: string, input: VariantInput) {
             metadata: {
                 product_id: existing.products.id,
                 sku: data.sku,
-                stock_before: existing.stock,
-                stock_after: data.stock
+                price: data.price,
+                is_active: data.is_active
             }
         });
 
@@ -165,6 +162,58 @@ export async function deleteVariant(variantId: string) {
             return { success: false, error: 'La variante tiene pedidos asociados; desactívala en su lugar.' };
         }
         return { success: false, error: error?.message || 'No se pudo eliminar la variante.' };
+    }
+}
+
+/**
+ * Guarda de una sola vez el stock de una variante en varios almacenes
+ * (fila completa de la matriz "Stock por almacén"). Cada celda se fija por
+ * VALOR ABSOLUTO vía `setWarehouseStock` (no delta) — el helper calcula el
+ * delta real contra el valor previo y mantiene `ProductVariant.stock`
+ * (total cacheado) sincronizado. Sólo escribe las celdas modificadas
+ * respecto a `previousValues` para no generar StockMovement de 0 unidades.
+ */
+export async function updateVariantWarehouseStock(
+    variantId: string,
+    values: { warehouseId: string; newStock: number }[],
+    previousValues: Record<string, number>
+) {
+    try {
+        const session = await requireAdmin(undefined, 'products.manage');
+
+        const variant = await prisma.productVariant.findUnique({
+            where: { id: variantId },
+            include: { products: { select: { id: true, slug: true } } }
+        });
+        if (!variant) return { success: false, error: 'Variante no encontrada.' };
+
+        for (const { warehouseId, newStock } of values) {
+            if (!Number.isInteger(newStock) || newStock < 0) {
+                return { success: false, error: `Stock inválido para el almacén ${warehouseId}.` };
+            }
+            if (previousValues[warehouseId] === newStock) continue; // sin cambios, no tocar
+            await setWarehouseStock({
+                variant_id: variantId,
+                warehouse_id: warehouseId,
+                newStock,
+                user_id: session.user.id
+            });
+        }
+
+        await auditLog({
+            action: 'variant.update_warehouse_stock',
+            entity_type: 'ProductVariant',
+            entity_id: variantId,
+            metadata: { product_id: variant.products.id, values }
+        });
+
+        revalidatePath(`/[locale]/admin/products/${variant.products.id}/edit`, 'page');
+        revalidatePath(`/[locale]/product/${variant.products.slug}`, 'page');
+        return { success: true };
+    } catch (error: unknown) {
+        if (error instanceof AuthorizationError) return { success: false, error: error.message };
+        const message = error instanceof Error ? error.message : undefined;
+        return { success: false, error: message || 'No se pudo actualizar el stock por almacén.' };
     }
 }
 

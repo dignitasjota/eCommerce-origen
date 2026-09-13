@@ -22,7 +22,8 @@ export const PERMISSIONS = [
     'pages.manage',
     'blog.manage',
     'legal.manage',
-    'audit_logs.view'
+    'audit_logs.view',
+    'warehouses.manage'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -38,7 +39,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
     'pages.manage': 'Páginas',
     'blog.manage': 'Blog',
     'legal.manage': 'Legal',
-    'audit_logs.view': 'Auditoría (solo lectura)'
+    'audit_logs.view': 'Auditoría (solo lectura)',
+    'warehouses.manage': 'Almacenes'
 };
 
 /**
