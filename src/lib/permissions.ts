@@ -23,7 +23,8 @@ export const PERMISSIONS = [
     'blog.manage',
     'legal.manage',
     'audit_logs.view',
-    'warehouses.manage'
+    'warehouses.manage',
+    'invoicing.view'
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -40,7 +41,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
     'blog.manage': 'Blog',
     'legal.manage': 'Legal',
     'audit_logs.view': 'Auditoría (solo lectura)',
-    'warehouses.manage': 'Almacenes'
+    'warehouses.manage': 'Almacenes',
+    'invoicing.view': 'Facturación (Veri*Factu, solo lectura)'
 };
 
 /**

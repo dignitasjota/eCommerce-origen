@@ -479,6 +479,7 @@ model Order {
   addresses_orders_billing_address_idToaddresses  Address?              @relation("orders_billing_address_idToaddresses", fields: [billing_address_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_4")
   shipping_methods                                ShippingMethod?       @relation(fields: [shipping_method_id], references: [id], onUpdate: Restrict, map: "orders_ibfk_5")
   returns                                         Return[]
+  invoice_record                                  InvoiceRecord?
 
   @@index([billing_address_id], map: "billing_address_id")
   @@index([coupon_id], map: "coupon_id")
@@ -896,6 +897,68 @@ model InvoiceCounter {
 
   @@unique([series, year], map: "uq_invoice_series_year")
   @@map("invoice_counters")
+}
+
+/// Base local de cumplimiento Veri*Factu (AEAT) — NO es una integración
+/// certificada: genera el "registro de facturación" encadenado (hash SHA-256
+/// enlazado al anterior, igual espíritu que exige el Reglamento de
+/// facturación) y el contenido del QR normativo, pero:
+///   - NO firma electrónicamente con certificado real (XAdES) — requiere el
+///     certificado de sello/representante de la empresa, que esta plantilla
+///     no puede generar ni simular.
+///   - NO envía nada a la AEAT en tiempo real — `submission_status` queda en
+///     PENDING hasta que se conecte un proveedor homologado (Sage, Holded,
+///     B2Brouter...) o el envío directo al webservice de la AEAT.
+///   - El algoritmo exacto de huella/encadenamiento debe revisarse contra la
+///     especificación técnica oficial vigente (Orden HAC/1177/2024 y anexos)
+///     antes de considerar el sistema conforme.
+/// Ver src/lib/verifactu.ts.
+model InvoiceRecord {
+  id                String  @id @default(uuid()) @db.VarChar(36)
+  order_id          String  @unique(map: "uq_invoice_record_order") @db.VarChar(36)
+  invoice_number    String  @unique(map: "uq_invoice_record_number") @db.VarChar(50)
+  issued_at         DateTime
+  /// 'F1' (completa, con NIF del comprador) | 'F2' (simplificada/ticket).
+  /// No cubre rectificativas (R1-R5) ni otros tipos especiales.
+  invoice_type      String  @db.VarChar(2)
+  seller_tax_id     String  @db.VarChar(20)
+  buyer_tax_id      String? @db.VarChar(20)
+  taxable_base      Decimal @db.Decimal(10, 2)
+  vat_rate          Decimal @db.Decimal(5, 2)
+  vat_amount        Decimal @db.Decimal(10, 2)
+  total_amount      Decimal @db.Decimal(10, 2)
+  description       String  @db.VarChar(500)
+  /// Huella del registro anterior en la cadena — `null` sólo en el primero.
+  previous_hash     String? @db.VarChar(64)
+  /// Huella de ESTE registro (SHA-256 hex, 64 chars) — única, encadena hacia
+  /// adelante. Ningún código de la app expone un UPDATE sobre esta tabla:
+  /// la inmutabilidad es un requisito legal, no sólo una convención.
+  hash              String  @unique(map: "uq_invoice_record_hash") @db.VarChar(64)
+  /// Contenido íntegro codificado en el QR impreso en la factura.
+  qr_payload        String  @db.Text
+  /// PENDING (aún no enviado a ningún sitio) | NOT_APPLICABLE (sistema no
+  /// Veri*Factu) | SUBMITTED | ERROR — hoy sólo se usa PENDING; el resto
+  /// queda preparado para cuando exista un adaptador de envío real.
+  submission_status String  @default("PENDING") @db.VarChar(20)
+  created_at        DateTime @default(now())
+
+  orders Order @relation(fields: [order_id], references: [id], onUpdate: Restrict, map: "invoice_records_ibfk_1")
+
+  @@index([created_at], map: "idx_invoice_record_created")
+  @@map("invoice_records")
+}
+
+/// Puntero singleton (una sola fila, id fijo "default") al último hash de la
+/// cadena de `InvoiceRecord`. Se bloquea con `SELECT ... FOR UPDATE` dentro
+/// de la transacción que crea un registro nuevo, para serializar la
+/// asignación de `previous_hash` bajo concurrencia — a diferencia de
+/// `InvoiceCounter` (un simple incremento atómico vía UPSERT), aquí el valor
+/// nuevo depende del contenido del anterior, así que un UPSERT solo no basta.
+model InvoiceChainState {
+  id        String  @id @default("default") @db.VarChar(20)
+  last_hash String? @db.VarChar(64)
+
+  @@map("invoice_chain_state")
 }
 
 model WebhookEvent {

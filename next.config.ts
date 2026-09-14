@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
   // Salida standalone: la build incluye sólo lo necesario para `node server.js`,
   // sin node_modules completo. Reduce la imagen Docker de ~1.2GB a ~250MB.
   output: 'standalone',
+  // pdfkit resuelve sus fuentes estándar (.afm) en runtime con
+  // `path.join(__dirname, 'data', ...)` sobre su propio código fuente — un
+  // patrón que asume que el paquete vive intacto en node_modules. Si Next lo
+  // empaqueta (Turbopack o Webpack) ese `__dirname` se reescribe a una ruta
+  // virtual del bundle (`/ROOT/...` con Turbopack) que no existe en disco,
+  // y `buildInvoicePdf()` revienta con ENOENT en cuanto se pide la primera
+  // fuente — tanto en `next dev` como en `next start`/producción. Real hasta
+  // este fix: nadie había probado el endpoint de factura con una petición
+  // HTTP real en Next 16. `serverExternalPackages` deja pdfkit fuera del
+  // bundle (require real de Node en runtime), que es justo lo que necesita.
+  serverExternalPackages: ['pdfkit'],
   experimental: {
     serverActions: {
       // Default de Next es 1MB; ImageUploader promete hasta 8MB por imagen

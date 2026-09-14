@@ -43,6 +43,16 @@ export interface InvoiceData {
         address?: string;
         email?: string;
     };
+    /**
+     * Registro de facturación Veri*Factu (opcional — `undefined` si no se
+     * pudo generar, p.ej. sin NIF del vendedor configurado). Ver
+     * src/lib/verifactu.ts. La huella y el QR NO implican firma electrónica
+     * ni envío a la AEAT — ver disclaimer impreso en el pie del documento.
+     */
+    verifactu?: {
+        hash: string;
+        qrImagePng: Buffer;
+    };
 }
 
 const eur = (n: number) => `${n.toFixed(2)} €`;
@@ -54,9 +64,11 @@ const eur = (n: number) => `${n.toFixed(2)} €`;
  * que sea predecible en cualquier sistema. Si se necesita branding del
  * cliente, leer logo/colores desde SiteSettings y pasarlos en `seller`.
  *
- * No incluye sellos electrónicos ni firma digital. Para cumplimiento
- * fiscal estricto (Veri*Factu en España, p.ej.), enviar a un servicio
- * externo de facturación electrónica.
+ * Si se pasa `data.verifactu`, imprime el QR normativo + la huella del
+ * registro de facturación encadenado (ver src/lib/verifactu.ts). Esto es la
+ * base local de cumplimiento, NO una firma electrónica con certificado real
+ * ni un envío a la AEAT — ver el disclaimer que se imprime en el pie del
+ * documento y el comentario de `InvoiceRecord` en el schema.
  */
 export async function buildInvoicePdf(data: InvoiceData): Promise<Buffer> {
     return new Promise((resolve, reject) => {
@@ -157,10 +169,23 @@ export async function buildInvoicePdf(data: InvoiceData): Promise<Buffer> {
             y += 6;
             totalLine('TOTAL:', data.total, true);
 
+            // ─── QR + huella Veri*Factu (si el registro se pudo generar) ──
+            if (data.verifactu) {
+                const qrSize = 70;
+                const qrY = Math.max(y + 20, 600);
+                doc.image(data.verifactu.qrImagePng, 40, qrY, { width: qrSize, height: qrSize });
+                doc.font('Helvetica').fontSize(7).fillColor('#555555');
+                doc.text('Registro de facturación encadenado (base local, no envío en tiempo real):', 120, qrY, { width: 440 });
+                doc.font('Courier').fontSize(7);
+                doc.text(data.verifactu.hash, 120, qrY + 12, { width: 440 });
+            }
+
             // ─── Pie ────────────────────────────────────────────────────
             doc.font('Helvetica').fontSize(8).fillColor('#777777');
             doc.text(
-                `Documento generado automáticamente. Sin valor fiscal hasta ser firmado o conservado según la normativa aplicable.`,
+                data.verifactu
+                    ? 'Documento generado automáticamente. El QR y la huella acreditan un registro local encadenado e inalterado, pero NO constituyen firma electrónica ni envío a la AEAT — pendiente de certificado digital / proveedor homologado para cumplimiento Veri*Factu completo.'
+                    : 'Documento generado automáticamente. Sin valor fiscal hasta ser firmado o conservado según la normativa aplicable.',
                 40,
                 760,
                 { align: 'center', width: 520 }

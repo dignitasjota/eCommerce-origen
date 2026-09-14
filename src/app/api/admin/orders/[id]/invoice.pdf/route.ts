@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import QRCode from 'qrcode';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { ensureInvoiceNumber } from '@/lib/invoice';
@@ -61,15 +62,31 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     });
     const get = (k: string) => settings.find((s) => s.key === k)?.value || '';
 
-    const customerName =
-        order.users?.name ||
-        order.guest_name ||
-        order.addresses_orders_billing_address_idToaddresses
-            ? `${order.addresses_orders_billing_address_idToaddresses?.first_name ?? ''} ${
-                  order.addresses_orders_billing_address_idToaddresses?.last_name ?? ''
-              }`.trim()
-            : 'Cliente';
+    // Bug corregido 2026-09-14: la precedencia de `||` frente a `? :` hacía
+    // que esta condición evaluara TODO el `||` encadenado (name || guest_name
+    // || dirección-existe) y, si era verdadera por CUALQUIER motivo, siempre
+    // renderizara el nombre desde la dirección de facturación — ignorando
+    // `users.name`/`guest_name` aunque existieran. Ahora es una cadena de
+    // fallback real: cuenta > invitado > dirección > "Cliente".
+    const billingName = order.addresses_orders_billing_address_idToaddresses
+        ? `${order.addresses_orders_billing_address_idToaddresses.first_name ?? ''} ${
+              order.addresses_orders_billing_address_idToaddresses.last_name ?? ''
+          }`.trim()
+        : '';
+    const customerName = order.users?.name || order.guest_name || billingName || 'Cliente';
     const customerEmail = order.users?.email || order.guest_email || '';
+
+    // Registro de facturación Veri*Factu (base local, ver src/lib/verifactu.ts)
+    // — puede no existir si `invoice_seller_tax_id` no estaba configurado
+    // cuando se generó el número de factura. La factura sigue siendo válida,
+    // simplemente no lleva QR/huella hasta que se configure y se regenere.
+    const invoiceRecord = await prisma.invoiceRecord.findUnique({ where: { order_id: order.id } });
+    const verifactuData = invoiceRecord
+        ? {
+              hash: invoiceRecord.hash,
+              qrImagePng: await QRCode.toBuffer(invoiceRecord.qr_payload, { type: 'png', width: 200, margin: 1 })
+          }
+        : undefined;
 
     const pdf = await buildInvoicePdf({
         invoice_number: invoiceNumber,
@@ -93,7 +110,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
             tax_id: get('invoice_seller_tax_id') || undefined,
             address: get('invoice_seller_address') || undefined,
             email: get('invoice_seller_email') || undefined
-        }
+        },
+        verifactu: verifactuData
     });
 
     const filename = `${invoiceNumber}.pdf`;

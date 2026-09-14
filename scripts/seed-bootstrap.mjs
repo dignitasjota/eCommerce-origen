@@ -34,7 +34,8 @@ const DEFAULT_SETTINGS = [
     { key: 'feature_contact_enabled', value: 'true', type: 'boolean' },
     { key: 'seo_default_title', value: 'eShop — Tu tienda online', type: 'string' },
     { key: 'seo_default_description', value: 'Bienvenido a nuestra tienda online.', type: 'string' },
-    { key: 'invoice_series', value: 'A', type: 'string' }
+    { key: 'invoice_series', value: 'A', type: 'string' },
+    { key: 'invoice_vat_rate', value: '21', type: 'number' }
 ];
 
 async function ensureSettings() {
@@ -141,12 +142,28 @@ async function ensureDefaultWarehouseAndBackfillStock() {
     }
 }
 
+/**
+ * Fila singleton que ancla el encadenamiento de `InvoiceRecord` (Veri*Factu,
+ * ver src/lib/verifactu.ts). Idempotente: `upsert` con update vacío no toca
+ * `last_hash` si la fila ya existe (no queremos resetear la cadena en cada
+ * arranque).
+ */
+async function ensureInvoiceChainState() {
+    await prisma.invoiceChainState.upsert({
+        where: { id: 'default' },
+        update: {},
+        create: { id: 'default', last_hash: null }
+    });
+    console.log('  · puntero de cadena de facturación (Veri*Factu) verificado');
+}
+
 async function main() {
     console.log('🌱 Bootstrap seed:');
     await ensureSettings();
     await ensureRootCategory();
     await ensureAdmin();
     await ensureDefaultWarehouseAndBackfillStock();
+    await ensureInvoiceChainState();
     console.log('✅ Seed completado.');
 }
 

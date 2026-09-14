@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
+import { createInvoiceRecord } from '@/lib/verifactu';
 
 /**
  * Sistema de numeración correlativa de facturas (compliance fiscal AEAT/UE).
@@ -19,6 +20,11 @@ import prisma from '@/lib/db';
  * Importante: la operación debe ocurrir dentro de la MISMA transacción que
  * la actualización de la orden, para que si la orden hace rollback, el
  * número no quede consumido. `claimNextInvoiceNumber` exige `tx`.
+ *
+ * Desde 2026-09-14, `claimInvoiceNumber` también genera el registro de
+ * facturación encadenado (base local Veri*Factu, ver src/lib/verifactu.ts)
+ * en la misma transacción — un número de factura nunca existe sin su
+ * registro correspondiente en la cadena de huellas.
  */
 
 const NUMBER_PADDING = 7;
@@ -67,6 +73,11 @@ export async function claimInvoiceNumber(
         where: { id: orderId },
         data: { invoice_number: invoiceNumber }
     });
+
+    // Registro de facturación encadenado (base local Veri*Factu — ver
+    // src/lib/verifactu.ts). Debe crearse en la MISMA transacción: si el
+    // claim del número hace rollback, el registro tampoco debe persistir.
+    await createInvoiceRecord(tx, orderId);
 
     return invoiceNumber;
 }

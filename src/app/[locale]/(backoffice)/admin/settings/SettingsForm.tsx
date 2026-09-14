@@ -657,7 +657,30 @@ export default function SettingsForm({ initialSettings, configuredSecrets = [], 
                                         <label className="admin-form-label">Dirección fiscal</label>
                                         <input name="invoice_seller_address" className="admin-form-input" defaultValue={settingsMap['invoice_seller_address'] || ''} placeholder="C/ Mayor 1, 28001 Madrid, España" />
                                     </div>
+                                    <div className="admin-form-group">
+                                        <label className="admin-form-label">Tipo de IVA (%)</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            name="invoice_vat_rate"
+                                            className="admin-form-input"
+                                            defaultValue={settingsMap['invoice_vat_rate'] || '21'}
+                                            placeholder="21"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Asume precios con IVA incluido — se usa sólo para desglosar base/cuota en factura y en el registro Veri*Factu, no para calcular el total a cobrar.</p>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <div className="border-t pt-4 mt-6">
+                                <h4 className="text-sm font-semibold mb-2">Veri*Factu (AEAT) — base local</h4>
+                                <p className="text-xs text-gray-500 mb-3">
+                                    Cada factura genera un registro encadenado (huella + QR) en <code>/admin/invoicing</code>.
+                                    Esto <strong>no es una integración certificada</strong>: no firma con certificado digital real
+                                    ni envía nada a la AEAT. Para cumplimiento completo hace falta un certificado de sello de la
+                                    empresa y/o un proveedor homologado (Sage, Holded, B2Brouter…).
+                                </p>
                             </div>
                         </div>
                     )}

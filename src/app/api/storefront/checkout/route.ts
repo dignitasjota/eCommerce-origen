@@ -169,6 +169,15 @@ export async function POST(request: NextRequest) {
         const total = Math.max(0, subtotal - discount + shippingCost);
         const orderNumber = generateOrderNumber();
 
+        // Desglose informativo de IVA (precios con IVA incluido, práctica
+        // habitual en B2C español) — NO se suma al total, sólo documenta lo
+        // que el total ya contiene. Usado también por el registro de
+        // facturación Veri*Factu (src/lib/verifactu.ts) para que la factura
+        // PDF y ese registro muestren siempre la misma cifra.
+        const { getVatRate, splitVatFromTotal } = await import('@/lib/verifactu');
+        const vatRate = await getVatRate(prisma);
+        const { vatAmount } = splitVatFromTotal(total, vatRate);
+
         // ── 4. Transacción atómica: dirección + asignación de almacén/stock + orden ─
         const order = await prisma.$transaction(async (tx) => {
             const shippingAddress = await tx.address.create({
@@ -236,7 +245,7 @@ export async function POST(request: NextRequest) {
                     subtotal,
                     shipping_cost: shippingCost,
                     discount,
-                    tax: 0,
+                    tax: vatAmount,
                     total,
                     shipping_address_id: shippingAddress.id,
                     billing_address_id: shippingAddress.id,
