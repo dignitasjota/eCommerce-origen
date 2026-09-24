@@ -575,6 +575,8 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
 - ❌ Cambiar `next.config.ts`/`prisma/schema.prisma`/flags de CLI sin volver a arrancar el contenedor o correr el comando exacto que usa el entrypoint — un flag inválido con `set -e` tumba el arranque entero.
 - ❌ Asumir que un endpoint "existe desde hace meses" funciona sin probarlo con una petición HTTP real — `invoice.pdf` llevaba roto desde 2026-05-02 (ver §9.10) sin que nadie lo notara.
 - ❌ Añadir un paquete que lee sus propios assets vía `__dirname`/rutas relativas a su código en runtime (fuentes, plantillas, binarios…) sin meterlo en `serverExternalPackages` de `next.config.ts` — el bundler reescribe ese `__dirname` a una ruta virtual inexistente y el fallo sólo aparece en la primera petición real (`pdfkit`, ver §9.10).
+- ❌ Dar por buena una protección basada en capturar un código de error de Prisma (`P2003`, etc.) sin comprobar que la relación FK implicada realmente puede lanzarlo — `onDelete: Cascade`/`SetNull` en vez de `Restrict` hace que ese catch sea código muerto que nunca se ejecuta (ver §9.11, `deleteWarehouse`).
+- ❌ Aplicar un check de autorización/estado "salvo para admin" en un endpoint que tiene efectos secundarios reales (consumir un contador, crear un registro fiscal) — la excepción para admin debe reservarse a operaciones de sólo lectura (ver §9.11, `invoice.pdf`).
 
 ---
 
@@ -696,7 +698,25 @@ Auditoría del código completo (4 agentes en paralelo, cada uno sobre una porci
 
 Validado con Playwright end-to-end: alta de almacenes, edición de stock por almacén, asignación por prioridad, fallback a drop shipping, 409 sin stock en ningún almacén, restitución al almacén de origen vía webhook; y, para Veri*Factu: configuración → checkout con IVA correcto → registros encadenados (`previous_hash` correcto) → visor admin → verificación de cadena OK → **detección de manipulación** (alterar un registro a mano rompe la verificación) → PDF con QR → CSV. tsc/eslint limpios + build sin errores + suite e2e completa (19 passed/1 skipped/0 failed) en ambos ítems.
 
-<!-- BEGIN:nextjs-agent-rules -->
+### 9.11. Auditoría de bugs post-backlog: checkout, webhooks/RMA, Veri*Factu, almacenes (2026-09-25)
+
+Con el backlog premium cerrado (12/14), revisión en profundidad de las rutas de dinero/stock/fiscal — 4 subagentes en paralelo, cada uno sobre una porción del sistema (checkout/asignación de stock, webhooks/RMA/crones, Veri*Factu, admin de almacenes/variantes), buscando bugs reales de forma independiente del trabajo de implementación. Dos de los cuatro llegaron por separado al mismo hallazgo sobre `deleteWarehouse`, lo que le dio alta confianza antes incluso de corregirlo.
+
+**Corregidos (validados con Playwright contra Node 22 + MariaDB Docker real):**
+
+- **Admin podía generar factura + registro Veri*Factu para un pedido no pagado.** `GET /api/admin/orders/[id]/invoice.pdf` sólo exigía `order.payment_status === 'PAID'` `if (!isAdmin)` — para ADMIN/ORDER_MANAGER, `ensureInvoiceNumber()` se ejecutaba sin condición alguna. Bastaba con abrir el link del PDF de un pedido `PENDING`/`CANCELLED` para consumir un número correlativo real del `InvoiceCounter` y crear un `InvoiceRecord` encadenado para una venta nunca confirmada — rompía la invariante fiscal básica y ensuciaba la cadena de huellas de forma permanente (sin forma de "des-crear" un registro, por diseño). **Fix:** el check de `PAID` aplica siempre, sin excepción de rol. Verificado que ningún componente del frontend enlaza hoy a este endpoint, así que el fix no afecta a ninguna UI visible.
+- **`deleteWarehouse` no protegía contra pérdida de datos.** Ni `WarehouseStock.warehouses` (`onDelete: Cascade`) ni `OrderItem.warehouses` (`onDelete: SetNull`) podían disparar el `P2003` que el `catch` de `deleteWarehouse` esperaba para bloquear el borrado — el mensaje "tiene stock o pedidos asociados, desactívalo en su lugar" era código muerto. Borrar un almacén con stock cascadeaba sus filas `WarehouseStock` sin pasar por `src/lib/warehouse.ts`, así que el total cacheado (`ProductVariant.stock`) nunca se decrementaba — quedaba inflado para siempre, con el storefront anunciando unidades inexistentes. Los `OrderItem.warehouse_id` de pedidos históricos quedaban a `NULL`, perdiendo trazabilidad de origen. **Fix:** `OrderItem.warehouses` pasa a `onDelete: Restrict` (mismo criterio que productos/cupones con pedidos asociados — se desactiva, nunca se borra de verdad) + `deleteWarehouse` exige `stock = 0` en todas las filas `WarehouseStock` del almacén antes de permitir el borrado (el mensaje de error indica cuánto stock y en cuántas variantes).
+
+**Catalogados, sin corregir todavía** (severidad media/baja — no comprometen dinero ni integridad de datos de forma directa, ver `ROADMAP.md` para la lista accionable):
+
+- `setWarehouseStock` (matriz admin) usa `findUnique`+`upsert` en vez de `updateMany` con guardia atómica — condición de carrera real con una venta concurrente sobre la misma fila de `WarehouseStock`.
+- `updateOrderFullStatus` (cambio manual de estado en `/admin/orders`) no revierte puntos de fidelización, stock ni cupón al sacar una orden de `PAID` — sólo lo hacen el webhook de Stripe y el flujo RMA, dejando ese tercer camino de mutación sin los mismos efectos secundarios.
+- `handleChargeRefunded` puede atribuir un reembolso manual de Stripe a un `Return` anterior no relacionado de la misma orden (si hay varias devoluciones RMA), saltándose por error la restitución de stock de ese reembolso.
+- La huella Veri*Factu (`computeHash`) no cubre `buyer_tax_id`/`description`/`qr_payload`/`submission_status` — alterar esos campos directamente en BD no lo detecta `verifyInvoiceChain()`.
+- Puede quedar un `invoice_number` real sin `InvoiceRecord` correspondiente si `invoice_seller_tax_id` no estaba configurado en el momento del pago — `claimInvoiceNumber` consume el número igualmente.
+- `verifyInvoiceChain` ordena sólo por `created_at` sin desempate por `id`, a diferencia de `CURSOR_ORDER_BY` (`(created_at, id)`) que usa el resto del proyecto.
+- `generateVariantMatrix` no siembra `WarehouseStock` para las variantes que crea, a diferencia de `createVariant` (`seedInitialWarehouseStock`) — inconsistente pero no rompe nada (la matriz trata la ausencia de fila como 0).
+- El `catch` alrededor de `allocateAndDecrementStock` en checkout atrapa cualquier excepción como "Stock insuficiente" (409) — un error real de BD ahí se enmascara y no llega a Sentry.
 
 # This is NOT the Next.js you know
 

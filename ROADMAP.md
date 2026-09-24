@@ -234,6 +234,28 @@ A planificar según prioridad de negocio. Los items con (✓ schema) ya tienen e
 
 ---
 
+## Auditoría de bugs post-backlog: checkout, webhooks/RMA, Veri*Factu, almacenes (2026-09-25) 🔴
+
+Tras cerrar multi-warehouse y Veri*Factu, revisión en profundidad (4 subagentes en paralelo, cada uno sobre una porción del sistema: checkout/asignación de stock, webhooks/RMA/crones, Veri*Factu, admin de almacenes/variantes) buscando bugs reales en las rutas de dinero/stock/fiscal. Detalle completo en [`CLAUDE.md §9.11`](./CLAUDE.md#911-auditoría-de-bugs-post-backlog-2026-09-25).
+
+**Corregidos:**
+
+- [x] **Admin podía generar factura + registro Veri*Factu para un pedido no pagado** — `GET /api/admin/orders/[id]/invoice.pdf` sólo exigía `payment_status === 'PAID'` `if (!isAdmin)`; para ADMIN/ORDER_MANAGER `ensureInvoiceNumber()` se ejecutaba sin condición, consumiendo un número correlativo real y creando un `InvoiceRecord` encadenado para una venta nunca confirmada. Corregido: el check aplica siempre, sin excepción de rol. ✅ 2026-09-25
+- [x] **`deleteWarehouse` no protegía contra pérdida de datos** — ni `WarehouseStock.warehouses` (`Cascade`) ni `OrderItem.warehouses` (`SetNull`) podían disparar el `P2003` que el catch esperaba; era código muerto. Borrar un almacén con stock cascadeaba sus filas sin decrementar el total cacheado de `ProductVariant.stock` (quedaba inflado para siempre) y ponía a `NULL` el `warehouse_id` de pedidos históricos. Corregido: `OrderItem.warehouses` pasa a `onDelete: Restrict` (mismo criterio que productos/cupones con pedidos asociados — se desactiva, no se borra) + nueva comprobación de `stock = 0` en todas las filas `WarehouseStock` antes de permitir el borrado. ✅ 2026-09-25
+
+**Catalogados, sin corregir todavía** (severidad media/baja, no comprometen dinero ni integridad de datos de forma directa):
+
+- [ ] `setWarehouseStock` (matriz admin) hace `findUnique`+`upsert` en vez de `updateMany` con guardia atómica — condición de carrera real con una venta concurrente sobre la misma fila.
+- [ ] `updateOrderFullStatus` (cambio manual de estado en el admin) no revierte puntos de fidelización, stock ni cupón al sacar una orden de PAID — sólo lo hacen el webhook de Stripe y el flujo RMA.
+- [ ] `handleChargeRefunded` puede atribuir un reembolso manual de Stripe a un RMA anterior no relacionado de la misma orden si hay varias devoluciones, saltándose la restitución de stock.
+- [ ] La huella Veri*Factu no cubre `buyer_tax_id`/`description`/`qr_payload`/`submission_status` — alterar esos campos directamente en BD no rompe la verificación de cadena.
+- [ ] Hueco entre numeración correlativa y cadena de registros si falta `invoice_seller_tax_id` en el momento del pago (el número se consume igualmente, el registro no se crea).
+- [ ] `verifyInvoiceChain` ordena sólo por `created_at` sin desempate por `id` (inconsistente con el resto del proyecto, que usa `(created_at, id)`).
+- [ ] `generateVariantMatrix` no siembra `WarehouseStock` para variantes nuevas (sí lo hace `createVariant`) — inconsistente pero no rompe nada.
+- [ ] El `catch` de la asignación de stock en checkout enmascara cualquier error real de BD como "Stock insuficiente" (409), sin reportarlo a Sentry.
+
+---
+
 ## Calendario aproximado
 
 Estimación original (auditoría 2026-04-30): 7–10 semanas a "producto vendible y mantenible". Realidad: cerrado en **3 días** de trabajo concentrado (2026-04-30 a 2026-05-02) gracias al alto nivel de automatización y la escala incremental.
