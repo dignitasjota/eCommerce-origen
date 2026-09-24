@@ -331,6 +331,13 @@ model Warehouse {
 /// (para no romper el código de lectura pre-existente). Sólo escribir a
 /// través de src/lib/warehouse.ts, que mantiene ambos en sincronía dentro de
 /// la misma transacción.
+///
+/// `onDelete: Cascade` hacia `Warehouse` es seguro SÓLO porque
+/// `deleteWarehouse` (admin/warehouses/actions.ts) exige `stock=0` en todas
+/// las filas de este almacén antes de permitir el borrado — borrar filas ya
+/// en 0 no desincroniza el total cacheado. Si esa comprobación se quita
+/// alguna vez, el cascade volvería a inflar `ProductVariant.stock` en
+/// silencio (bug real corregido 2026-09-22).
 model WarehouseStock {
   id           String @id @default(uuid()) @db.VarChar(36)
   variant_id   String @db.VarChar(36)
@@ -506,14 +513,19 @@ model OrderItem {
   variant_info String? @db.Text
   /// Almacén desde el que se asignó/decrementó el stock de este ítem en el
   /// checkout (ver allocateAndDecrementStock en src/lib/warehouse.ts). `null`
-  /// en pedidos anteriores a esta funcionalidad o en ítems unlimited_stock
+  /// SÓLO en pedidos anteriores a esta funcionalidad o en ítems unlimited_stock
   /// sin almacén activo — los flujos de restitución (cancelación, RMA,
   /// reembolso) caen a getDefaultWarehouseId() cuando es null.
+  /// `onDelete: Restrict` (no SetNull) a propósito, corregido 2026-09-22: un
+  /// almacén con historial de pedidos NUNCA se borra de verdad, se desactiva
+  /// (`is_active=false`) — mismo criterio que products/coupons con pedidos
+  /// asociados. Perder este `warehouse_id` por un borrado real rompería la
+  /// trazabilidad de "de qué almacén salió esta venta" sin ningún aviso.
   warehouse_id     String?         @db.VarChar(36)
   orders           Order           @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
   products         Product?        @relation(fields: [product_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_2")
   product_variants ProductVariant? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
-  warehouses       Warehouse?      @relation(fields: [warehouse_id], references: [id], onDelete: SetNull, onUpdate: Restrict, map: "order_items_ibfk_4")
+  warehouses       Warehouse?      @relation(fields: [warehouse_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "order_items_ibfk_4")
   return_items     ReturnItem[]
 
   @@index([order_id], map: "order_id")

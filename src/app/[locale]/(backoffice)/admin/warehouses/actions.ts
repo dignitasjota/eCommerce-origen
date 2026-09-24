@@ -111,6 +111,25 @@ export async function deleteWarehouse(id: string) {
             return { success: false, error: 'No se puede eliminar el único almacén activo — el checkout necesita al menos uno.' };
         }
 
+        // Bug real corregido 2026-09-22: `WarehouseStock.warehouses` es
+        // onDelete:Cascade (necesario para poder borrar limpiamente un almacén
+        // sin uso), pero cascadear filas con stock > 0 dejaba el total
+        // cacheado de `ProductVariant.stock` inflado para siempre — nadie
+        // resta ese stock de ningún sitio al borrar. Exigir stock=0 en TODAS
+        // las filas antes de permitir el borrado hace que el cascade sea
+        // seguro (borrar filas ya en 0 no cambia ninguna suma).
+        const stockAgg = await prisma.warehouseStock.aggregate({
+            where: { warehouse_id: id, stock: { gt: 0 } },
+            _sum: { stock: true },
+            _count: true
+        });
+        if (stockAgg._count > 0) {
+            return {
+                success: false,
+                error: `El almacén tiene stock (${stockAgg._sum.stock ?? 0} unidades en ${stockAgg._count} variante(s)) — ajústalo a 0 desde la matriz "Stock por almacén" o desactiva el almacén en su lugar de borrarlo.`
+            };
+        }
+
         await prisma.warehouse.delete({ where: { id } });
 
         await auditLog({ action: 'warehouse.delete', entity_type: 'Warehouse', entity_id: id });
@@ -121,7 +140,7 @@ export async function deleteWarehouse(id: string) {
         if (error instanceof AuthorizationError) return { success: false, error: error.message };
         const { message, code } = errorInfo(error);
         if (code === 'P2003') {
-            return { success: false, error: 'El almacén tiene stock o pedidos asociados; desactívalo en su lugar de borrarlo.' };
+            return { success: false, error: 'El almacén tiene pedidos asociados; desactívalo en su lugar de borrarlo.' };
         }
         return { success: false, error: message || 'No se pudo eliminar el almacén.' };
     }

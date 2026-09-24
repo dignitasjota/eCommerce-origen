@@ -46,8 +46,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         return NextResponse.json({ error: 'Sin permisos' }, { status: 403 });
     }
 
-    // Sólo facturas para órdenes pagadas. Las otras carecen de sentido fiscal.
-    if (order.payment_status !== 'PAID' && !isAdmin) {
+    // Sólo facturas para órdenes pagadas — sin excepción para admin. Generar
+    // el PDF aquí no es una lectura inocua: `ensureInvoiceNumber()` consume
+    // un número real del contador correlativo y crea un `InvoiceRecord`
+    // encadenado (Veri*Factu). Permitirlo para un pedido no pagado rompería
+    // la invariante fiscal de que la numeración corresponde a ventas reales
+    // (bug real encontrado en auditoría 2026-09-22: el bypass `!isAdmin`
+    // dejaba que cualquier admin generara factura+registro abriendo el link
+    // de un pedido PENDING/CANCELLED).
+    if (order.payment_status !== 'PAID') {
         return NextResponse.json(
             { error: 'La factura sólo está disponible cuando el pedido está pagado.' },
             { status: 400 }
