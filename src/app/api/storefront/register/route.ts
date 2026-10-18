@@ -4,6 +4,7 @@ import { hash } from 'bcryptjs';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
 import { registerSchema } from '@/lib/schemas';
+import { BCRYPT_COST } from '@/lib/password';
 
 export async function POST(req: Request) {
     try {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
             );
         }
 
-        const hashedPassword = await hash(password, 12);
+        const hashedPassword = await hash(password, BCRYPT_COST);
 
         // Create the user with CUSTOMER role
         const user = await prisma.user.create({
@@ -67,9 +68,7 @@ export async function POST(req: Request) {
         }
 
         console.error('Registration Error:', error);
-        return NextResponse.json(
-            { error: 'Internal Server Error', details: error.message || error.toString() },
-            { status: 500 }
-        );
+        // Sin `details`: el mensaje crudo (Prisma, bcrypt…) no debe llegar al cliente.
+        return NextResponse.json({ error: 'No se pudo completar el registro.' }, { status: 500 });
     }
 }

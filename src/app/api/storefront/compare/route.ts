@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 import { MAX_COMPARE_ITEMS } from '@/lib/compare';
+import { getQuickAddInfo } from '@/lib/inventory';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
             product_categories: {
                 include: { categories: { include: { category_translations: { where: { locale } } } } }
             },
-            product_variants: { where: { is_active: true }, select: { stock: true } },
+            product_variants: { where: { is_active: true }, select: { id: true, stock: true } },
             reviews: { where: { is_approved: true }, select: { rating: true } }
         }
     });
@@ -66,7 +67,8 @@ export async function GET(req: Request) {
             categories: p.product_categories.map((pc) => pc.categories.category_translations[0]?.name || pc.categories.slug).join(', ') || null,
             availability,
             avgRating,
-            reviewCount: p.reviews.length
+            reviewCount: p.reviews.length,
+            ...getQuickAddInfo(p.product_variants)
         };
     });
 

@@ -107,6 +107,12 @@ jobs:
                   ADMIN_PASSWORD: 'CiTestPass123!'
               run: node ./scripts/seed-bootstrap.mjs
 
+            - name: Seed catálogo e2e (producto + envío)
+              env:
+                  DATABASE_URL: 'mysql://ecommerce:ecommerce@127.0.0.1:3306/ecommerce_test'
+              # Sin catálogo, el spec de checkout se marcaba skipped en CI.
+              run: node ./scripts/dev/seed-e2e.mjs
+
             - name: Build Next.js
               env:
                   DATABASE_URL: 'mysql://ecommerce:ecommerce@127.0.0.1:3306/ecommerce_test'

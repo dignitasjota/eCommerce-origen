@@ -82,9 +82,10 @@ export default async function ProductPage({ params }: Props) {
 
     // Carga producto + sesión en paralelo. `getProduct` está cacheado por React
     // a nivel de request, así que `generateMetadata` reutiliza el mismo fetch.
-    const [product, session] = await Promise.all([
+    const [product, session, activeDropshippingWarehouses] = await Promise.all([
         getProduct(slug, locale),
-        auth()
+        auth(),
+        prisma.warehouse.count({ where: { is_active: true, is_dropshipping: true } })
     ]);
 
     if (!product || !product.is_active) {
@@ -254,6 +255,8 @@ export default async function ProductPage({ params }: Props) {
                         variants={formattedVariants}
                         attributes={availableAttributes}
                         unlimitedStock={product.unlimited_stock}
+                        hasDropshipping={activeDropshippingWarehouses > 0}
+                        productSlug={product.slug}
                     />
 
                     {/* Description */}

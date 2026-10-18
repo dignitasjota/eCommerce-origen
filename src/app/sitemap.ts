@@ -24,6 +24,11 @@ function freshness(updatedAt: Date | null | undefined): {
 
 const clamp = (n: number) => Math.max(0, Math.min(1, +n.toFixed(2)));
 
+// Generado por petición, no en build: en el build de Docker no hay BD
+// (DATABASE_URL placeholder) y el prerender fallaba; además, un sitemap
+// estático quedaba congelado con el catálogo del momento del build.
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 

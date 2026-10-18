@@ -68,8 +68,21 @@ export async function POST(req: Request) {
         });
     }
 
+    // Atributos descriptivos (Talla/Color) del cliente, para no perderlos en
+    // la respuesta — son sólo cosméticos, el precio sale siempre de BD.
+    const attributesByKey = new Map<Key, Record<string, string>>();
+
     for (const it of incoming) {
         if (!it || typeof it.product_id !== 'string') continue;
+        if (it.attributes && typeof it.attributes === 'object') {
+            const clean = Object.fromEntries(
+                Object.entries(it.attributes)
+                    .filter(([k, v]) => typeof k === 'string' && typeof v === 'string')
+                    .slice(0, 10)
+                    .map(([k, v]) => [k.slice(0, 50), String(v).slice(0, 100)])
+            );
+            attributesByKey.set(keyOf(it.product_id, typeof it.variant_id === 'string' ? it.variant_id : null), clean);
+        }
         const qty = Number.isInteger(it.quantity) && it.quantity > 0 ? Math.min(it.quantity, 99) : 0;
         if (qty === 0) continue;
         const variant_id = typeof it.variant_id === 'string' ? it.variant_id : null;
@@ -91,13 +104,32 @@ export async function POST(req: Request) {
     const validProducts = await prisma.product.findMany({
         where: { id: { in: productIds }, is_active: true },
         include: {
-            product_translations: { take: 1 },
+            product_translations: { where: { locale: 'es' }, take: 1 },
             product_images: { take: 1, orderBy: { sort_order: 'asc' } }
         }
     });
     const productById = new Map(validProducts.map((p) => [p.id, p]));
 
-    const targets = Array.from(targetQty.values()).filter((t) => productById.has(t.product_id));
+    // Variantes: deben existir, estar activas y pertenecer a SU producto. Sin
+    // esta validación un variant_id caducado (variante borrada) hacía fallar
+    // el createMany por FK → 500, y como el flag de fusión no se escribía,
+    // el cliente reintentaba (y fallaba) en cada navegación.
+    const variantIds = Array.from(
+        new Set([...targetQty.values()].map((v) => v.variant_id).filter((v): v is string => !!v))
+    );
+    const validVariants = variantIds.length
+        ? await prisma.productVariant.findMany({
+              where: { id: { in: variantIds }, is_active: true },
+              select: { id: true, product_id: true, price: true }
+          })
+        : [];
+    const variantById = new Map(validVariants.map((v) => [v.id, v]));
+
+    const targets = Array.from(targetQty.values()).filter((t) => {
+        if (!productById.has(t.product_id)) return false;
+        if (!t.variant_id) return true;
+        return variantById.get(t.variant_id)?.product_id === t.product_id;
+    });
 
     // Sincronizar DB: borrar lo no presente en `targets` y upsert por (user, product, variant).
     await prisma.$transaction(async (tx) => {
@@ -117,13 +149,20 @@ export async function POST(req: Request) {
     // Construir respuesta enriquecida con name/price/image desde DB.
     const items = targets.map((t) => {
         const p = productById.get(t.product_id)!;
+        const variant = t.variant_id ? variantById.get(t.variant_id) : undefined;
         return {
-            id: t.variant_id ? `${t.product_id}_${t.variant_id}` : t.product_id,
+            // Mismo formato de id que CartContext/AddToCartForm (`-`). Con `_`
+            // el siguiente "añadir" del mismo producto no encontraba la línea
+            // fusionada y la duplicaba.
+            id: t.variant_id ? `${t.product_id}-${t.variant_id}` : t.product_id,
             product_id: t.product_id,
             variant_id: t.variant_id ?? undefined,
+            slug: p.slug,
             name: p.product_translations[0]?.name || p.slug,
-            price: Number(p.price),
+            // Precio de la variante si lo sobrescribe (mismo criterio que el checkout).
+            price: Number(variant?.price ?? p.price),
             image: p.product_images[0]?.url || undefined,
+            attributes: attributesByKey.get(keyOf(t.product_id, t.variant_id)),
             quantity: t.quantity
         };
     });

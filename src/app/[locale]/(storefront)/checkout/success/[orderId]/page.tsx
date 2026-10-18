@@ -1,20 +1,28 @@
+import { cookies } from 'next/headers';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import { notFound } from 'next/navigation';
+import { auth, ADMIN_ROLES } from '@/lib/auth';
+import { ORDER_ACCESS_COOKIE, parseOrderAccessCookie } from '@/lib/order-access';
 
 export const metadata = {
     title: 'Pedido Confirmado | eShop',
+    robots: { index: false, follow: false }
 };
+
+export const dynamic = 'force-dynamic';
 
 interface SuccessPageProps {
     params: Promise<{
         locale: string;
         orderId: string;
     }>;
+    searchParams: Promise<{ session_id?: string | string[] }>;
 }
 
-export default async function CheckoutSuccessPage({ params }: SuccessPageProps) {
+export default async function CheckoutSuccessPage({ params, searchParams }: SuccessPageProps) {
     const { locale, orderId } = await params;
+    const { session_id: sessionIdParam } = await searchParams;
 
     const order = await prisma.order.findUnique({
         where: { id: orderId },
@@ -33,6 +41,19 @@ export default async function CheckoutSuccessPage({ params }: SuccessPageProps) 
     });
 
     if (!order) {
+        notFound();
+    }
+
+    // Acceso: dueño del pedido, admin, el navegador que lo creó (cookie
+    // puesta por el checkout) o el retorno de Stripe con su session_id. Se
+    // responde 404 (no 403) para no confirmar que el pedido existe.
+    const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+    const isAdmin = !!session?.user?.role && (ADMIN_ROLES as readonly string[]).includes(session.user.role);
+    const isOwner = !!order.user_id && order.user_id === session?.user?.id;
+    const hasAccessCookie = parseOrderAccessCookie(cookieStore.get(ORDER_ACCESS_COOKIE)?.value).includes(order.id);
+    const stripeSessionId = typeof sessionIdParam === 'string' ? sessionIdParam : undefined;
+    const matchesStripeSession = !!stripeSessionId && !!order.payment_id && order.payment_id === stripeSessionId;
+    if (!isAdmin && !isOwner && !hasAccessCookie && !matchesStripeSession) {
         notFound();
     }
 

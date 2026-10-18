@@ -43,6 +43,7 @@ export default async function UsersPage({ params, searchParams }: Props) {
                 role: true,
                 phone: true,
                 permissions: true,
+                is_active: true,
                 created_at: true,
                 _count: { select: { orders: true } },
                 addresses: {

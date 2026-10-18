@@ -1,8 +1,10 @@
 // Service worker básico: cachea el shell estático y permite navegar por la
-// tienda offline con la última versión vista. Deliberadamente NO toca
-// /admin, /api ni /auth — esos datos deben ser siempre frescos (stock,
-// pedidos, sesión), cachearlos sería peligroso.
-const CACHE_NAME = 'eshop-cache-v1';
+// tienda offline con la última versión vista. Deliberadamente NO toca rutas
+// con datos personales o transaccionales (admin, api, auth, cuenta, checkout,
+// carrito, wishlist): en un equipo compartido quedarían en Cache Storage y se
+// servirían offline tras cerrar sesión. v2 purga lo que v1 hubiera guardado.
+const CACHE_NAME = 'eshop-cache-v2';
+const PRIVATE_PATH_RE = /^\/(?:(?:es|en)\/)?(?:admin|api|auth|account|checkout|cart|wishlist)(?:\/|$)/;
 const OFFLINE_FALLBACK_URL = '/';
 
 self.addEventListener('install', (event) => {
@@ -25,7 +27,7 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) return;
-    if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/api') || url.pathname.startsWith('/auth')) {
+    if (PRIVATE_PATH_RE.test(url.pathname)) {
         return;
     }
 
@@ -52,8 +54,12 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                    // Sólo respuestas 200 propias: no cachear errores ni redirects
+                    // (p.ej. el redirect a /auth/login de una página protegida).
+                    if (response.ok && !response.redirected) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                    }
                     return response;
                 })
                 .catch(() => caches.match(request).then((cached) => cached || caches.match(OFFLINE_FALLBACK_URL)))

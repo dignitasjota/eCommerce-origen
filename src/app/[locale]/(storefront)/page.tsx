@@ -7,6 +7,7 @@ import HomeCarousel from '@/components/storefront/HomeCarousel';
 import NewsletterForm from '@/components/storefront/NewsletterForm';
 import RecentlyViewed from '@/components/storefront/RecentlyViewed';
 import { AB_HERO_COOKIE, getHeroAbSettings, isAbVariant } from '@/lib/ab-testing';
+import { getQuickAddInfo } from '@/lib/inventory';
 import styles from './page.module.css';
 
 type Props = {
@@ -40,7 +41,8 @@ async function HomePageContent({ locale }: { locale: string }) {
         take: 8,
         include: {
             product_translations: { where: { locale } },
-            product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+            product_images: { take: 1, orderBy: { sort_order: 'asc' } },
+            product_variants: { where: { is_active: true }, select: { id: true } }
         }
     });
 
@@ -82,7 +84,8 @@ async function HomePageContent({ locale }: { locale: string }) {
         slug: p.slug,
         name: p.product_translations[0]?.name || p.slug,
         price: Number(p.price).toFixed(2),
-        image: p.product_images[0]?.url || null
+        image: p.product_images[0]?.url || null,
+        ...getQuickAddInfo(p.product_variants)
     }));
 
     return (
@@ -190,7 +193,7 @@ async function HomePageContent({ locale }: { locale: string }) {
                                             <span className="card-price">{product.price} €</span>
                                         </div>
                                         <AddToCartClientButton
-                                            product={{ id: product.id, name: product.name, price: product.price, image: product.image || undefined }}
+                                            product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image || undefined, variantId: product.variantId, requiresOptions: product.requiresOptions }}
                                             variantClass={`btn btn-primary ${styles.addToCartBtn}`}
                                             style={{}}
                                         />

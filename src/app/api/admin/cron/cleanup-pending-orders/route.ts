@@ -12,7 +12,7 @@ import { auditLogServer } from '@/lib/audit';
  *        https://tienda.cliente.com/api/admin/cron/cleanup-pending-orders
  *
  * Comportamiento:
- *   1. Selecciona órdenes con status='PENDING_PAYMENT' y created_at < now-30m.
+ *   1. Selecciona órdenes con status='PENDING_PAYMENT' y created_at < now-45m.
  *   2. Por cada una, en transacción:
  *      - Suma el stock decrementado de vuelta a cada ProductVariant.
  *      - Decrementa coupon.used_count si la orden tenía cupón.
@@ -26,7 +26,10 @@ import { auditLogServer } from '@/lib/audit';
  */
 export const dynamic = 'force-dynamic';
 
-const TIMEOUT_MINUTES = 30;
+// Mayor que la caducidad de la Checkout Session de Stripe (31 min, ver
+// STRIPE_SESSION_TTL_MINUTES en el checkout): así ningún cliente puede pagar
+// una sesión todavía viva sobre un pedido que este cron ya canceló.
+const TIMEOUT_MINUTES = 45;
 const MAX_BATCH = 100; // tope por ejecución para no abrazar la BD
 
 export async function POST(req: Request) {
@@ -75,9 +78,11 @@ export async function POST(req: Request) {
                 }
 
                 // 2. Decrementar `used_count` del cupón si aplica.
+                // Guardia `gt: 0` (igual que el webhook): sin ella un cupón
+                // reseteado a mano podía acabar con used_count negativo.
                 if (order.coupon_id) {
-                    await tx.coupon.update({
-                        where: { id: order.coupon_id },
+                    await tx.coupon.updateMany({
+                        where: { id: order.coupon_id, used_count: { gt: 0 } },
                         data: { used_count: { decrement: 1 } }
                     });
                 }

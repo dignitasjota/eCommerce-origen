@@ -22,6 +22,8 @@ interface CompareProduct {
     availability: string;
     avgRating: number | null;
     reviewCount: number;
+    variantId: string | null;
+    requiresOptions: boolean;
 }
 
 function formatDimensions(raw: string | null): string | null {
@@ -138,7 +140,7 @@ export default function ComparePage() {
                                             {p.name}
                                         </Link>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                            <AddToCartClientButton product={{ id: p.id, name: p.name, price: p.price, image: p.image || undefined }} />
+                                            <AddToCartClientButton product={{ id: p.id, slug: p.slug, name: p.name, price: p.price, image: p.image || undefined, variantId: p.variantId, requiresOptions: p.requiresOptions }} />
                                             <button
                                                 className="btn btn-outline"
                                                 style={{ width: '100%' }}

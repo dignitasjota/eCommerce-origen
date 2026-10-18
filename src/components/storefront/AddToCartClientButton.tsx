@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useCart } from '@/context/CartContext';
+import { useRouter } from '@/i18n/navigation';
 import { useState } from 'react';
 
 interface Props {
@@ -10,7 +11,15 @@ interface Props {
         name: string;
         price: string | number;
         image?: string;
-        variantId?: string;
+        slug?: string;
+        /**
+         * Variante a añadir. Debe venir SIEMPRE que el producto tenga una única
+         * variante activa (ver `getQuickAddInfo` en src/lib/inventory.ts): sin
+         * ella el checkout no puede asignar almacén ni descontar stock.
+         */
+        variantId?: string | null;
+        /** El producto tiene varias variantes: hay que elegir en la ficha. */
+        requiresOptions?: boolean;
     };
     variantClass?: string;
     style?: React.CSSProperties;
@@ -19,16 +28,26 @@ interface Props {
 export default function AddToCartClientButton({ product, variantClass = "btn btn-primary", style }: Props) {
     const t = useTranslations('product');
     const { addItem } = useCart();
+    const router = useRouter();
     const [showToast, setShowToast] = useState(false);
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
+        // Producto con matriz de variantes: el botón rápido no sabe qué talla/
+        // color quiere el cliente — lo llevamos a la ficha para que elija.
+        if (product.requiresOptions && product.slug) {
+            router.push(`/product/${product.slug}`);
+            return;
+        }
+
+        const variantId = product.variantId ?? undefined;
         addItem({
-            id: product.variantId ? `${product.id}-${product.variantId}` : product.id,
+            id: variantId ? `${product.id}-${variantId}` : product.id,
             product_id: product.id,
-            variant_id: product.variantId,
+            variant_id: variantId,
+            slug: product.slug,
             name: product.name,
             price: Number(product.price),
             quantity: 1,
@@ -42,7 +61,7 @@ export default function AddToCartClientButton({ product, variantClass = "btn btn
     return (
         <>
             <button className={variantClass} style={style || { width: '100%', marginTop: '1rem' }} onClick={handleAddToCart}>
-                {t('addToCart')}
+                {product.requiresOptions ? 'Elegir opciones' : t('addToCart')}
             </button>
 
             {/* DaisyUI Toast - Visibilidad Alta */}
@@ -57,4 +76,3 @@ export default function AddToCartClientButton({ product, variantClass = "btn btn
         </>
     );
 }
-

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getPublicAppUrl } from '@/lib/app-url';
 import prisma from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -26,8 +27,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const token = (searchParams.get('token') || '').trim();
     const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`;
+        getPublicAppUrl(req);
 
     if (!token || token.length !== 64) {
         return NextResponse.redirect(`${baseUrl}/?newsletter=invalid`, 302);

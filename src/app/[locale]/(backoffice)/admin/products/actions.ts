@@ -10,6 +10,8 @@ import { requireAdmin, AuthorizationError } from '@/lib/auth';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { auditLog } from '@/lib/audit';
 import { saveUploadedImage } from '@/lib/uploads';
+import { recordStockMovement } from '@/lib/stock';
+import { adjustVariantTotalStock, seedInitialWarehouseStock } from '@/lib/warehouse';
 
 interface ImageOrderEntry {
     id: string;
@@ -108,7 +110,7 @@ async function handleImagesUpload(formData: FormData, productId: string) {
 }
 
 export async function createProduct(formData: FormData) {
-    await requireAdmin(undefined, 'products.manage');
+    const session = await requireAdmin(undefined, 'products.manage');
     const slug = formData.get('slug') as string;
     const sku = formData.get('sku') as string;
     const priceStr = formData.get('price') as string;
@@ -125,30 +127,52 @@ export async function createProduct(formData: FormData) {
     const locale = 'es';
     const productId = crypto.randomUUID();
 
-    await prisma.product.create({
-        data: {
-            id: productId,
-            slug,
-            sku,
-            price,
-            is_active: isActive,
-            unlimited_stock: unlimitedStock,
-            product_translations: {
-                create: {
-                    id: crypto.randomUUID(),
-                    locale,
-                    name,
-                    description
-                }
-            },
-            product_variants: {
-                create: {
-                    id: crypto.randomUUID(),
-                    sku: sku, // base variant mirrors product sku
-                    price: price,
-                    stock: isNaN(stock) ? 0 : stock
+    const initialStock = Number.isInteger(stock) && stock > 0 ? stock : 0;
+    const variantId = crypto.randomUUID();
+
+    // Producto + variante base + desglose por almacén en una sola transacción:
+    // sin la fila de WarehouseStock el checkout (que asigna contra almacenes)
+    // rechazaba con 409 un producto que la tienda mostraba "en stock".
+    await prisma.$transaction(async (tx) => {
+        await tx.product.create({
+            data: {
+                id: productId,
+                slug,
+                sku,
+                price,
+                is_active: isActive,
+                unlimited_stock: unlimitedStock,
+                product_translations: {
+                    create: {
+                        id: crypto.randomUUID(),
+                        locale,
+                        name,
+                        description
+                    }
+                },
+                product_variants: {
+                    create: {
+                        id: variantId,
+                        sku: sku, // base variant mirrors product sku
+                        price: price,
+                        stock: initialStock
+                    }
                 }
             }
+        });
+        const seeded = await seedInitialWarehouseStock(tx, { variant_id: variantId, stock: initialStock });
+        if (initialStock > 0) {
+            await recordStockMovement(
+                {
+                    variant_id: variantId,
+                    warehouse_id: seeded.warehouse_id,
+                    quantity: initialStock,
+                    reason: 'RESTOCK',
+                    note: 'Stock inicial al crear producto',
+                    user_id: session.user.id
+                },
+                tx
+            );
         }
     });
 
@@ -165,7 +189,7 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(id: string, formData: FormData) {
-    await requireAdmin(undefined, 'products.manage');
+    const session = await requireAdmin(undefined, 'products.manage');
     const slug = formData.get('slug') as string;
     const sku = formData.get('sku') as string;
     const priceStr = formData.get('price') as string;
@@ -213,24 +237,32 @@ export async function updateProduct(id: string, formData: FormData) {
         })
     ]);
 
-    // Handle single variant stock if it exists or create one if it doesn't
-    const variants = await prisma.productVariant.findMany({ where: { product_id: id } });
-    if (variants.length > 0) {
-        // update the first variant
-        await prisma.productVariant.update({
-            where: { id: variants[0].id },
-            data: { stock: isNaN(stock) ? 0 : stock }
-        });
+    // Stock de la variante base. Con stock ilimitado no se toca (el campo ni
+    // se muestra). El total se aplica como diferencia sobre el almacén físico
+    // por defecto (adjustVariantTotalStock) — nunca escribiendo
+    // ProductVariant.stock a pelo, que dejaba WarehouseStock desincronizado.
+    const variants = await prisma.productVariant.findMany({
+        where: { product_id: id },
+        orderBy: { sku: 'asc' },
+        select: { id: true, sku: true }
+    });
+    const baseVariant = variants.find((v) => v.sku === sku) ?? variants[0];
+    const newTotal = Number.isInteger(stock) && stock > 0 ? stock : 0;
+    if (baseVariant) {
+        if (!unlimitedStock) {
+            await prisma.$transaction((tx) =>
+                adjustVariantTotalStock(tx, { variant_id: baseVariant.id, newTotal, user_id: session.user.id })
+            );
+        }
     } else {
         // create a base variant if somehow missing
-        await prisma.productVariant.create({
-            data: {
-                id: crypto.randomUUID(),
-                product_id: id,
-                sku: sku,
-                price: price,
-                stock: isNaN(stock) ? 0 : stock
-            }
+        const variantId = crypto.randomUUID();
+        const initial = unlimitedStock ? 0 : newTotal;
+        await prisma.$transaction(async (tx) => {
+            await tx.productVariant.create({
+                data: { id: variantId, product_id: id, sku, price, stock: initial }
+            });
+            await seedInitialWarehouseStock(tx, { variant_id: variantId, stock: initial });
         });
     }
 

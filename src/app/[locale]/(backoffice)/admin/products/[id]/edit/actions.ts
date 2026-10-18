@@ -41,7 +41,6 @@ export async function createVariant(productId: string, input: VariantInput) {
         if (!product) return { success: false, error: 'Producto no encontrado.' };
 
         const variantId = crypto.randomUUID();
-        let seededWarehouseId: string | null = null;
         await prisma.$transaction(async (tx) => {
             await tx.productVariant.create({
                 data: {
@@ -54,22 +53,22 @@ export async function createVariant(productId: string, input: VariantInput) {
                 }
             });
             const seeded = await seedInitialWarehouseStock(tx, { variant_id: variantId, stock: data.stock });
-            seededWarehouseId = seeded.warehouse_id;
+            // Stock inicial como RESTOCK, DENTRO de la transacción: si algo
+            // falla después, no queda un movimiento de una variante que no existe.
+            if (data.stock > 0) {
+                await recordStockMovement(
+                    {
+                        variant_id: variantId,
+                        warehouse_id: seeded.warehouse_id,
+                        quantity: data.stock,
+                        reason: 'RESTOCK',
+                        note: 'Stock inicial al crear variante',
+                        user_id: session.user.id
+                    },
+                    tx
+                );
+            }
         });
-
-        // Registrar el stock inicial como RESTOCK (entrada manual del admin).
-        // El desglose por almacén ya se creó arriba (seedInitialWarehouseStock);
-        // aquí sólo dejamos el movimiento de auditoría con ese mismo almacén.
-        if (data.stock > 0) {
-            await recordStockMovement({
-                variant_id: variantId,
-                warehouse_id: seededWarehouseId,
-                quantity: data.stock,
-                reason: 'RESTOCK',
-                note: 'Stock inicial al crear variante',
-                user_id: session.user.id
-            });
-        }
         await auditLog({
             action: 'variant.create',
             entity_type: 'ProductVariant',
@@ -347,6 +346,9 @@ export async function generateVariantMatrix(
                 await tx.productVariantOption.createMany({
                     data: combo.map((optionId) => ({ variant_id: variant.id, variant_option_id: optionId }))
                 });
+                // Misma invariante que createVariant: toda variante nace con su
+                // fila de WarehouseStock (a 0) en el almacén por defecto.
+                await seedInitialWarehouseStock(tx, { variant_id: variant.id, stock: 0 });
                 created++;
             }
         });

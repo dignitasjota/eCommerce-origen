@@ -49,6 +49,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
     const [phone, setPhone] = useState('');
     const [role, setRole] = useState('CUSTOMER');
     const [password, setPassword] = useState('');
+    const [isActive, setIsActive] = useState(true);
     const [permissions, setPermissions] = useState<Permission[]>(DEFAULT_ORDER_MANAGER_PERMISSIONS);
 
     const togglePermission = (key: Permission) => {
@@ -75,6 +76,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             setEmail(user.email || '');
             setPhone(user.phone || '');
             setRole(user.role || 'CUSTOMER');
+            setIsActive(user.is_active);
             setPassword(''); // Nunca mostramos la contraseña al editar, la dejamos blanca para indicar "no cambiar"
             setPermissions(parsePermissions(user.permissions));
 
@@ -100,6 +102,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
             setEmail('');
             setPhone('');
             setRole(activeTab === 'customers' ? 'CUSTOMER' : 'ADMIN');
+            setIsActive(true);
             setPassword('');
             setPermissions(DEFAULT_ORDER_MANAGER_PERMISSIONS);
             resetAddressFields();
@@ -132,6 +135,7 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
         formData.append('email', email);
         formData.append('phone', phone);
         formData.append('role', role);
+        formData.append('is_active', isActive ? 'true' : 'false');
         if (password) {
             formData.append('password', password);
         } else if (!editingUser) {
@@ -254,7 +258,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
                                     <tbody>
                                         {filteredUsers.map((u) => (
                                             <tr key={u.id}>
-                                                <td className="font-bold">{u.name || '—'}</td>
+                                                <td className="font-bold">
+                                                    {u.name || '—'}
+                                                    {!u.is_active && <span className="admin-badge inactive" style={{ marginLeft: '0.5rem' }}>Bloqueado</span>}
+                                                </td>
                                                 <td>{u.email}</td>
                                                 <td>{u.phone || '—'}</td>
                                                 <td>
@@ -336,7 +343,10 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
                                     <tbody>
                                         {filteredUsers.map((u) => (
                                             <tr key={u.id}>
-                                                <td className="font-bold">{u.name || '—'}</td>
+                                                <td className="font-bold">
+                                                    {u.name || '—'}
+                                                    {!u.is_active && <span className="admin-badge inactive" style={{ marginLeft: '0.5rem' }}>Bloqueado</span>}
+                                                </td>
                                                 <td>{u.email}</td>
                                                 <td>{u.phone || '—'}</td>
                                                 <td>
@@ -431,6 +441,20 @@ export default function UsersManager({ initialUsers }: { initialUsers: AdminUser
                                     <option value="ORDER_MANAGER">Gestor de Pedidos (Acceso parcial a Backoffice)</option>
                                     <option value="ADMIN">Administrador Global (Acceso Total)</option>
                                 </select>
+                            </div>
+
+                            <div className="admin-form-group">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={isActive}
+                                        onChange={(e) => setIsActive(e.target.checked)}
+                                    />
+                                    <span>Cuenta activa</span>
+                                </label>
+                                <p style={{ fontSize: '0.8rem', color: 'gray', marginTop: '0.25rem' }}>
+                                    Desmarcado: la cuenta no puede iniciar sesión y cualquier sesión abierta deja de ser válida.
+                                </p>
                             </div>
 
                             {role === 'ORDER_MANAGER' && (

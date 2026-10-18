@@ -51,3 +51,18 @@ export function sanitizeText(value: string | null | undefined): string {
     if (!value) return '';
     return DOMPurify.sanitize(value, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }) as unknown as string;
 }
+
+/**
+ * Escapa texto para interpolarlo dentro de HTML (plantillas de email). A
+ * diferencia de `sanitizeText`, no elimina nada: convierte `<`, `>`, `&`,
+ * `"` y `'` en entidades, así el texto llega íntegro pero sin poder inyectar
+ * etiquetas ni atributos.
+ */
+export function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
