@@ -67,6 +67,9 @@ test.describe('Storefront — checkout COD', () => {
 
         // Verificar redirección a /checkout/success/...
         await page.waitForURL(/\/checkout\/success\//, { timeout: 15_000 });
-        await expect(page.locator('h1, h2')).toContainText(/gracias|exitoso|recibido|confirmado/i);
+        // `h1` concreto: con 'h1, h2' el locator resolvía también el título del
+        // CartDrawer y el del resumen (strict mode violation). El spec nunca
+        // había llegado hasta aquí porque en CI no había catálogo (skipped).
+        await expect(page.getByRole('heading', { level: 1 })).toContainText(/gracias|exitoso|recibido|confirmado/i);
     });
 });

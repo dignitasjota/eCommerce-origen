@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import crypto from 'crypto';
 import { unlink } from 'fs/promises';
@@ -140,7 +141,16 @@ export async function deleteCategory(id: string) {
         });
         await auditLog({ action: 'category.delete', entity_type: 'Category', entity_id: id });
         revalidatePath('/', 'layout');
-    } catch (e: any) {
-        throw new Error('No se puede eliminar la categoría si tiene productos asociados. Debe eliminarlos primero.');
+    } catch (e: unknown) {
+        // Sólo P2003 (FK) significa "tiene elementos asociados"; antes
+        // cualquier fallo (BD caída, id inexistente…) mostraba ese mensaje.
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
+            throw new Error('No se puede eliminar la categoría: tiene productos o subcategorías asociados.');
+        }
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+            throw new Error('La categoría ya no existe.');
+        }
+        console.error('[categories] delete error:', e);
+        throw new Error('No se pudo eliminar la categoría.');
     }
 }

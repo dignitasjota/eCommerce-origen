@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getPublicAppUrl } from '@/lib/app-url';
 import { randomBytes } from 'crypto';
 import prisma from '@/lib/db';
 import { sendEmail } from '@/lib/email';
@@ -74,8 +75,7 @@ export async function POST(req: Request) {
         const siteName = siteSetting?.value || 'eShop';
 
         const baseUrl =
-            process.env.NEXT_PUBLIC_APP_URL ||
-            `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`;
+            getPublicAppUrl(req);
         const confirmUrl = `${baseUrl}/api/storefront/newsletter/confirm?token=${token}`;
 
         try {

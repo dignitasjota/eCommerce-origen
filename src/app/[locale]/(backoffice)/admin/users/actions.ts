@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import { requireAdmin } from '@/lib/auth';
 import { auditLog } from '@/lib/audit';
 import { isPermission } from '@/lib/permissions';
+import { BCRYPT_COST } from '@/lib/password';
 
 /**
  * `permissions` sólo tiene sentido para ORDER_MANAGER — ADMIN tiene acceso
@@ -26,7 +27,7 @@ function extractPermissions(formData: FormData, role: string): string | null {
 export async function createUser(formData: FormData) {
     await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
+    const email = ((formData.get('email') as string) || '').trim().toLowerCase();
     const phone = formData.get('phone') as string;
     const role = formData.get('role') as 'ADMIN' | 'ORDER_MANAGER' | 'CUSTOMER';
     const password = formData.get('password') as string;
@@ -35,7 +36,7 @@ export async function createUser(formData: FormData) {
         throw new Error('El email y la contraseña son obligatorios');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_COST);
 
     const addressData = role === 'CUSTOMER' ? {
         first_name: formData.get('first_name') as string,
@@ -57,6 +58,7 @@ export async function createUser(formData: FormData) {
                 phone,
                 role,
                 permissions,
+                is_active: formData.get('is_active') !== 'false',
                 password_hash: hashedPassword,
                 ...(addressData && addressData.address1 ? {
                     addresses: {
@@ -84,9 +86,9 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: string, formData: FormData) {
-    await requireAdmin(['ADMIN']);
+    const session = await requireAdmin(['ADMIN']);
     const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
+    const email = ((formData.get('email') as string) || '').trim().toLowerCase();
     const phone = formData.get('phone') as string;
     const role = formData.get('role') as 'ADMIN' | 'ORDER_MANAGER' | 'CUSTOMER';
     const password = formData.get('password') as string;
@@ -109,10 +111,15 @@ export async function updateUser(id: string, formData: FormData) {
         phone,
         role,
         permissions: extractPermissions(formData, role),
+        is_active: formData.get('is_active') !== 'false',
     };
 
+    if (session.user.id === id && (!dataToUpdate.is_active || role !== 'ADMIN')) {
+        throw new Error('No puedes desactivar ni quitarte el rol de administrador a ti mismo.');
+    }
+
     if (password) {
-        dataToUpdate.password_hash = await bcrypt.hash(password, 10);
+        dataToUpdate.password_hash = await bcrypt.hash(password, BCRYPT_COST);
     }
 
     try {
@@ -147,7 +154,7 @@ export async function updateUser(id: string, formData: FormData) {
             action: 'user.update',
             entity_type: 'User',
             entity_id: id,
-            metadata: { email, role, password_changed: !!password, permissions: dataToUpdate.permissions }
+            metadata: { email, role, is_active: dataToUpdate.is_active, password_changed: !!password, permissions: dataToUpdate.permissions }
         });
         revalidatePath('/es/admin/users');
     } catch (error: any) {

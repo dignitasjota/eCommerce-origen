@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCart } from '@/context/CartContext';
 import { isLowStock } from '@/lib/inventory';
@@ -33,36 +33,54 @@ interface AddToCartFormProps {
     variants: Variant[];
     attributes: Attribute[];
     unlimitedStock: boolean;
+    /** Hay algún almacén de drop shipping activo: capacidad virtual, nunca "agotado". */
+    hasDropshipping?: boolean;
+    productSlug?: string;
 }
 
-export default function AddToCartForm({ productId, productName, image, basePrice, variants, attributes, unlimitedStock }: AddToCartFormProps) {
+export default function AddToCartForm({ productId, productName, image, basePrice, variants, attributes, unlimitedStock, hasDropshipping = false, productSlug }: AddToCartFormProps) {
     const t = useTranslations('product');
     const { addItem } = useCart();
-    const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+    // Primera opción de cada atributo preseleccionada desde el estado inicial
+    // (antes se hacía en un useEffect: el primer render no tenía selección y
+    // mostraba el botón en estado incorrecto hasta el segundo render).
+    const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
+        const initial: Record<string, string> = {};
+        // Preferimos las opciones de una variante real (con stock si la hay)
+        // para no arrancar en una combinación inexistente.
+        const complete = variants.filter(v => v.options.length === attributes.length && v.options.length > 0);
+        const preferred = complete.find(v => v.stock > 0) ?? complete[0];
+        if (preferred) {
+            preferred.options.forEach(opt => { initial[opt.attributeId] = opt.optionId; });
+            return initial;
+        }
+        attributes.forEach(attr => {
+            if (attr.options.length > 0) initial[attr.id] = attr.options[0].id;
+        });
+        return initial;
+    });
     const [quantity, setQuantity] = useState(1);
     const [showToast, setShowToast] = useState(false);
 
-    // Automatically select first option for each attribute if available
-    useEffect(() => {
-        if (attributes.length > 0 && Object.keys(selectedOptions).length === 0) {
-            const initial: Record<string, string> = {};
-            attributes.forEach(attr => {
-                if (attr.options.length > 0) {
-                    initial[attr.id] = attr.options[0].id;
-                }
-            });
-            setSelectedOptions(initial);
-        }
-    }, [attributes]);
 
     // Find the variant that matches selected options
-    const selectedVariant = variants.find(v => {
-        return v.options.every(opt => selectedOptions[opt.attributeId] === opt.optionId);
-    });
+    // Coincidencia EXACTA: misma cantidad de opciones que atributos y todas
+    // seleccionadas. Antes bastaba con `every`, que es `true` sobre un array
+    // vacío — la variante base (sin opciones) "coincidía" con cualquier
+    // selección y, según el orden de la BD, se añadía al carrito en lugar de
+    // la talla/color elegidos.
+    const selectedVariant = variants.find(v =>
+        v.options.length === attributes.length &&
+        v.options.every(opt => selectedOptions[opt.attributeId] === opt.optionId)
+    );
 
     const currentPrice = selectedVariant?.price || basePrice;
-    const isOutOfStock = selectedVariant ? selectedVariant.stock <= 0 : false;
-    const showLowStock = selectedVariant ? isLowStock(selectedVariant.stock, unlimitedStock) : false;
+    // `stock` es el total de almacenes físicos: con stock ilimitado o con un
+    // almacén de drop shipping activo (capacidad virtual) nunca está agotado.
+    const alwaysAvailable = unlimitedStock || hasDropshipping;
+    const noMatchingVariant = variants.length > 0 && !selectedVariant;
+    const isOutOfStock = noMatchingVariant || (!!selectedVariant && !alwaysAvailable && selectedVariant.stock <= 0);
+    const showLowStock = selectedVariant ? isLowStock(selectedVariant.stock, alwaysAvailable) : false;
 
     const handleOptionChange = (attributeId: string, optionId: string) => {
         setSelectedOptions(prev => ({
@@ -83,6 +101,7 @@ export default function AddToCartForm({ productId, productName, image, basePrice
             id: selectedVariant ? `${productId}-${selectedVariant.id}` : productId,
             product_id: productId,
             variant_id: selectedVariant?.id,
+            slug: productSlug,
             name: productName,
             price: Number(currentPrice),
             quantity,
@@ -139,7 +158,7 @@ export default function AddToCartForm({ productId, productName, image, basePrice
                     >-</button>
                     <span style={{ width: '3rem', textAlign: 'center', fontWeight: 'bold' }}>{quantity}</span>
                     <button
-                        onClick={() => setQuantity(quantity + 1)}
+                        onClick={() => setQuantity(Math.min(99, quantity + 1))}
                         style={{ padding: '0.75rem 1rem', background: 'transparent', border: 'none', cursor: 'pointer' }}
                     >+</button>
                 </div>
@@ -149,7 +168,7 @@ export default function AddToCartForm({ productId, productName, image, basePrice
                     className="btn btn-primary"
                     style={{ flex: 1, padding: '0.75rem 2rem', fontSize: '1.1rem' }}
                 >
-                    {isOutOfStock ? 'Agotado' : t('addToCart')}
+                    {noMatchingVariant ? 'Combinación no disponible' : isOutOfStock ? 'Agotado' : t('addToCart')}
                 </button>
             </div>
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getPublicAppUrl } from '@/lib/app-url';
 import { randomBytes, randomUUID } from 'crypto';
 import prisma from '@/lib/db';
 import { auth } from '@/lib/auth';
@@ -8,6 +9,12 @@ import { getStripe, isStripePaymentMethod } from '@/lib/stripe';
 import { allocateAndDecrementStock } from '@/lib/warehouse';
 import { captureError } from '@/lib/sentry';
 import { checkoutSchema } from '@/lib/schemas/checkout';
+import { ORDER_ACCESS_COOKIE, ORDER_ACCESS_COOKIE_OPTIONS, buildOrderAccessCookie } from '@/lib/order-access';
+
+/** Debe ser < PENDING_PAYMENT_TIMEOUT_MINUTES del cron cleanup-pending-orders (45). */
+const STRIPE_SESSION_TTL_MINUTES = 31;
+/** Importe mínimo que Stripe acepta para un cobro en EUR. */
+const STRIPE_MIN_AMOUNT_EUR = 0.5;
 
 /**
  * Genera un identificador de pedido público no predecible.
@@ -20,6 +27,16 @@ function generateOrderNumber(): string {
     const yyyymm = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
     const suffix = randomBytes(4).toString('hex').toUpperCase();
     return `ORD-${yyyymm}-${suffix}`;
+}
+
+/** Vincula el pedido a este navegador (ver src/lib/order-access.ts). */
+function withOrderAccess(request: NextRequest, response: NextResponse, orderId: string): NextResponse {
+    response.cookies.set(
+        ORDER_ACCESS_COOKIE,
+        buildOrderAccessCookie(request.cookies.get(ORDER_ACCESS_COOKIE)?.value, orderId),
+        ORDER_ACCESS_COOKIE_OPTIONS
+    );
+    return response;
 }
 
 interface ValidatedItem {
@@ -89,9 +106,13 @@ export async function POST(request: NextRequest) {
                 where: { id: productId },
                 include: {
                     product_translations: { where: { locale: orderLocale } },
+                    // Sin variant_id sólo aceptamos productos con UNA variante
+                    // activa (take: 2 para detectar ambigüedad). Antes se cogía
+                    // la de UUID más bajo (`orderBy id asc`) — arbitraria en
+                    // productos con matriz, y con otro precio/stock posible.
                     product_variants: variantId
                         ? { where: { id: variantId } }
-                        : { take: 1, orderBy: { id: 'asc' } }
+                        : { where: { is_active: true }, take: 2 }
                 }
             });
 
@@ -108,6 +129,12 @@ export async function POST(request: NextRequest) {
             // significa que esa variant_id no existe o no pertenece al producto.
             if (variantId && variant.id !== variantId) {
                 return NextResponse.json({ error: 'Variante no válida.' }, { status: 400 });
+            }
+            if (!variantId && product.product_variants.length > 1) {
+                return NextResponse.json(
+                    { error: `Elige una opción de ${product.product_translations[0]?.name || product.slug} en la ficha del producto.` },
+                    { status: 400 }
+                );
             }
 
             // Stock: si el producto es unlimited_stock NO bloqueamos ni decrementamos.
@@ -128,7 +155,11 @@ export async function POST(request: NextRequest) {
 
             validatedItems.push({
                 product_id: product.id,
-                variant_id: variantId ? variant.id : null,
+                // SIEMPRE la variante resuelta en servidor: con `null` (cuando
+                // el cliente no enviaba variant_id, p.ej. el botón rápido de
+                // las tarjetas del catálogo) la asignación de almacén de más
+                // abajo se saltaba y el pedido no comprobaba ni descontaba stock.
+                variant_id: variant.id,
                 name: product.product_translations[0]?.name || product.slug,
                 sku: variant.sku,
                 price,
@@ -166,8 +197,18 @@ export async function POST(request: NextRequest) {
         }
         const discount = resolvedCoupon?.discount ?? 0;
 
-        const total = Math.max(0, subtotal - discount + shippingCost);
+        const total = Math.round(Math.max(0, subtotal - discount + shippingCost) * 100) / 100;
         const orderNumber = generateOrderNumber();
+
+        // Stripe rechaza cobros por debajo de 0,50 € (p.ej. cupón del 100 % +
+        // envío gratis → 0 €). Antes la orden se creaba igual, Stripe fallaba
+        // con 502 y el stock quedaba reservado hasta que el cron la limpiara.
+        if (isStripePaymentMethod(paymentMethod) && total < STRIPE_MIN_AMOUNT_EUR) {
+            return NextResponse.json(
+                { error: `El importe mínimo para pagar con tarjeta es ${STRIPE_MIN_AMOUNT_EUR.toFixed(2)} €. Elige otro método de pago.` },
+                { status: 400 }
+            );
+        }
 
         // Desglose informativo de IVA (precios con IVA incluido, práctica
         // habitual en B2C español) — NO se suma al total, sólo documenta lo
@@ -283,11 +324,16 @@ export async function POST(request: NextRequest) {
             try {
                 const stripe = await getStripe();
                 const baseUrl =
-                    process.env.NEXT_PUBLIC_APP_URL ||
-                    `${request.headers.get('x-forwarded-proto') || 'https'}://${request.headers.get('host')}`;
+                    getPublicAppUrl(request);
 
                 const stripeSession = await stripe.checkout.sessions.create({
                     mode: 'payment',
+                    // La reserva de stock/cupón la libera el cron
+                    // cleanup-pending-orders a los PENDING_PAYMENT_TIMEOUT_MINUTES.
+                    // Sin `expires_at` la sesión vivía 24 h (default de Stripe):
+                    // el cliente podía pagar un pedido ya cancelado y sin stock.
+                    // 31 min = mínimo que acepta Stripe (30) + margen de reloj.
+                    expires_at: Math.floor(Date.now() / 1000) + STRIPE_SESSION_TTL_MINUTES * 60,
                     payment_method_types: ['card'],
                     customer_email: customerEmail,
                     line_items: [
@@ -339,11 +385,15 @@ export async function POST(request: NextRequest) {
                     });
                 }
 
-                return NextResponse.json({
-                    success: true,
-                    orderId: order.id,
-                    checkoutUrl: stripeSession.url
-                });
+                return withOrderAccess(
+                    request,
+                    NextResponse.json({
+                        success: true,
+                        orderId: order.id,
+                        checkoutUrl: stripeSession.url
+                    }),
+                    order.id
+                );
             } catch (stripeError: any) {
                 console.error('Stripe checkout error:', stripeError);
                 // Marcar la orden como cancelada para que el cron la limpie
@@ -377,7 +427,7 @@ export async function POST(request: NextRequest) {
             console.error('Non-blocking error sending confirmation email:', emailError);
         }
 
-        return NextResponse.json({ success: true, orderId: order.id });
+        return withOrderAccess(request, NextResponse.json({ success: true, orderId: order.id }), order.id);
 
     } catch (error: any) {
         console.error('Checkout error:', error);

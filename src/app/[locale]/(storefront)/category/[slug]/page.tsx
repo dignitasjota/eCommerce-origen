@@ -7,7 +7,7 @@ import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
 import ProductFilters, { type SortKey } from '@/components/storefront/ProductFilters';
 import CompareButton from '@/components/storefront/CompareButton';
-import { LOW_STOCK_THRESHOLD } from '@/lib/inventory';
+import { LOW_STOCK_THRESHOLD, getQuickAddInfo } from '@/lib/inventory';
 
 const VALID_SORTS = ['newest', 'price-asc', 'price-desc', 'featured'] as const;
 function asNonNegativeFloat(v: string | string[] | undefined): string | undefined {
@@ -83,7 +83,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             include: {
                 product_translations: { where: { locale } },
                 product_images: { take: 1, orderBy: { sort_order: 'asc' } },
-                product_variants: { where: { is_active: true }, select: { stock: true } }
+                product_variants: { where: { is_active: true }, select: { id: true, stock: true } }
             }
         }),
         prisma.product.count({ where: whereClause })
@@ -97,6 +97,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             name: p.product_translations[0]?.name || p.slug,
             price: Number(p.price).toFixed(2),
             image: p.product_images[0]?.url || null,
+            ...getQuickAddInfo(p.product_variants),
             lowStockUnits: !p.unlimited_stock && totalStock > 0 && totalStock <= LOW_STOCK_THRESHOLD ? totalStock : null
         };
     });
@@ -199,7 +200,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
                                 <div style={{ marginTop: '0.5rem', fontWeight: '600', color: 'var(--color-primary)' }}>
                                     <span className="card-price">{product.price} €</span>
                                 </div>
-                                <AddToCartClientButton product={{ id: product.id, name: product.name, price: product.price, image: product.image || undefined }} />
+                                <AddToCartClientButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image || undefined, variantId: product.variantId, requiresOptions: product.requiresOptions }} />
                             </div>
                         </Link>
                     ))}

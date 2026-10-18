@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getPublicAppUrl } from '@/lib/app-url';
 import prisma from '@/lib/db';
 import { verifyCronAuth, CronAuthError } from '@/lib/cron-auth';
 import { sendEmail } from '@/lib/email';
@@ -13,9 +14,10 @@ import { auditLogServer } from '@/lib/audit';
  *        https://tienda.cliente.com/api/admin/cron/abandoned-carts
  *
  * Estrategia simple SIN columna nueva (`last_reminder_at` requeriría migración):
- *   - Seleccionamos `cart_items` con `updated_at` en la VENTANA [24h-26h].
- *   - Esa ventana sólo coincide una vez en la vida útil del cart_item, así
- *     que evitamos duplicados sin necesidad de marcar nada.
+ *   - Seleccionamos `cart_items` con `updated_at` en la VENTANA [24h-72h].
+ *   - Deduplicamos con el AuditLog `cart.abandonment_reminder` (un aviso
+ *     por usuario cada REMINDER_COOLDOWN_DAYS), así una ejecución fallida no
+ *     hace que se pierdan recordatorios.
  *   - Excluimos usuarios que han hecho un Order en las últimas 26h
  *     (asumimos que ya completaron).
  *
@@ -24,8 +26,15 @@ import { auditLogServer } from '@/lib/audit';
  */
 export const dynamic = 'force-dynamic';
 
-const WINDOW_FROM_H = 26;
+// Ventana amplia (24-72 h) + deduplicación por AuditLog: la antigua ventana
+// de 2 h (24-26 h) dependía de que TODAS las ejecuciones horarias corrieran;
+// si una fallaba o se saltaba, esos carritos nunca recibían el recordatorio.
+// Ahora el "estado" es el propio AuditLog `cart.abandonment_reminder` que ya
+// se escribía: un usuario con recordatorio en los últimos REMINDER_COOLDOWN_DAYS
+// no recibe otro. Sin migración.
+const WINDOW_FROM_H = 72;
 const WINDOW_TO_H = 24;
+const REMINDER_COOLDOWN_DAYS = 7;
 const MAX_BATCH = 200;
 
 export async function POST(req: Request) {
@@ -123,12 +132,24 @@ export async function POST(req: Request) {
         if (o.user_id) byUser.delete(o.user_id);
     }
 
+    const alreadyReminded = await prisma.auditLog.findMany({
+        where: {
+            action: 'cart.abandonment_reminder',
+            entity_type: 'User',
+            entity_id: { in: Array.from(byUser.keys()) },
+            created_at: { gte: new Date(now - REMINDER_COOLDOWN_DAYS * 86_400_000) }
+        },
+        select: { entity_id: true }
+    });
+    for (const r of alreadyReminded) {
+        if (r.entity_id) byUser.delete(r.entity_id);
+    }
+
     // Cargar siteName para personalizar el email.
     const siteSetting = await prisma.siteSetting.findUnique({ where: { key: 'site_name' } });
     const siteName = siteSetting?.value || 'eShop';
     const baseUrl =
-        process.env.NEXT_PUBLIC_APP_URL ||
-        `${req.headers.get('x-forwarded-proto') || 'https'}://${req.headers.get('host')}`;
+        getPublicAppUrl(req);
     const cartUrl = `${baseUrl}/cart`;
 
     let sent = 0;
@@ -136,7 +157,9 @@ export async function POST(req: Request) {
 
     for (const [userId, payload] of byUser) {
         try {
-            await sendEmail({
+            // sendEmail nunca lanza: devuelve success=false. Sólo registramos
+            // el recordatorio (que deduplica envíos futuros) si salió de verdad.
+            const result = await sendEmail({
                 to: payload.email,
                 subject: `${payload.name || 'Hola'}, te dejaste algo en el carrito de ${siteName}`,
                 html: getAbandonedCartEmailHtml(
@@ -146,6 +169,7 @@ export async function POST(req: Request) {
                     siteName
                 )
             });
+            if (!result.success) throw new Error(result.error || 'email no enviado');
             await auditLogServer({
                 action: 'cart.abandonment_reminder',
                 entity_type: 'User',

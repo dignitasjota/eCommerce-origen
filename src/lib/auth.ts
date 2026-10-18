@@ -82,10 +82,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 }
 
                 const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
+                    // El registro guarda el email en minúsculas (registerSchema).
+                    where: { email: (credentials.email as string).trim().toLowerCase() },
                 });
 
-                if (!user || !user.password_hash) {
+                // `is_active=false` = cuenta bloqueada por un admin. Antes no se
+                // comprobaba en ningún sitio: desactivar no impedía entrar.
+                if (!user || !user.password_hash || !user.is_active) {
                     return null;
                 }
 
@@ -97,6 +100,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 if (!isPasswordValid) {
                     return null;
                 }
+
+                await prisma.user
+                    .update({ where: { id: user.id }, data: { last_login_at: new Date() } })
+                    .catch(() => { /* best-effort */ });
 
                 return {
                     id: user.id,
@@ -113,7 +120,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (user) {
                 token.id = user.id as string;
                 token.role = user.role as string;
+                return token;
             }
+            // Revalidación contra BD en cada lectura de sesión (auth()): el rol
+            // y el estado viajaban congelados en el JWT, así que un usuario
+            // desactivado, borrado o degradado de ADMIN seguía operando con
+            // sus permisos antiguos hasta que caducara el token (30 días).
+            // `null` invalida la sesión.
+            if (!token.id) return null;
+            const dbUser = await prisma.user.findUnique({
+                where: { id: token.id as string },
+                select: { role: true, is_active: true }
+            });
+            if (!dbUser || !dbUser.is_active) return null;
+            token.role = dbUser.role;
             return token;
         },
         async session({ session, token }) {

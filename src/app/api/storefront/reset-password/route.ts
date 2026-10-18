@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rate-limit';
 import { verifyResetToken } from '@/lib/password-reset-token';
 import { resetPasswordSchema } from '@/lib/schemas/auth';
+import { BCRYPT_COST } from '@/lib/password';
 
 export async function POST(req: Request) {
     try {
@@ -38,8 +39,8 @@ export async function POST(req: Request) {
             where: { id: payload.id }
         });
 
-        if (!user) {
-            return NextResponse.json({ error: 'Usuario no encontrado. Es posible que la cuenta fuera eliminada.' }, { status: 404 });
+        if (!user || !user.is_active) {
+            return NextResponse.json({ error: 'El enlace es inválido, ha expirado o está corrompido.' }, { status: 400 });
         }
 
         // Validación estricta anti-reuso: si el prefijo del hash cambió en BD, el token es material quemado.
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
         }
 
         // Encriptar la nueva clave usando el mismo standard del registro (Fase 3)
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, BCRYPT_COST);
 
         // Actualizar Base de Datos de forma asíncrona
         await prisma.user.update({

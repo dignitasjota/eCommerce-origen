@@ -43,7 +43,9 @@ export default function ProductsManager({ products }: { products: AdminProduct[]
             setIsActive(product.is_active);
             setUnlimitedStock(product.unlimited_stock !== false); // default to true if undefined
             setDescription(product.product_translations[0]?.description || '');
-            setStock(product.product_variants?.[0]?.stock?.toString() || '0');
+            // Variante base = la que replica el SKU del producto (mismo criterio que updateProduct).
+            const baseVariant = product.product_variants?.find((v: { sku: string }) => v.sku === product.sku) ?? product.product_variants?.[0];
+            setStock(baseVariant?.stock?.toString() || '0');
         } else {
             setName('');
             setSlug('');
@@ -210,7 +212,7 @@ export default function ProductsManager({ products }: { products: AdminProduct[]
                                 const translation = product.product_translations[0];
                                 const category = product.product_categories[0]?.categories?.category_translations[0];
                                 const image = product.product_images?.length ? product.product_images[0] : null;
-                                const prodStock = product.product_variants?.[0]?.stock || 0;
+                                const prodStock = (product.product_variants ?? []).reduce((acc: number, v: { stock: number }) => acc + (v.stock || 0), 0);
 
                                 return (
                                     <tr key={product.id}>

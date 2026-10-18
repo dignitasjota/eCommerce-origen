@@ -136,11 +136,27 @@ export async function restockToWarehouse(
  * almacén por defecto. No registra `StockMovement` — el caller (createVariant)
  * ya lo hace tras esta llamada, con el mismo `warehouse_id` devuelto aquí.
  */
+/**
+ * Almacén FÍSICO por defecto (activo, no drop shipping, menor `priority`).
+ * Es donde se siembra/ajusta el stock introducido desde los formularios que
+ * sólo conocen un total (alta de producto/variante): un almacén de drop
+ * shipping no tiene contador local, así que meter ahí unidades no tendría
+ * efecto en el checkout. Fallback al almacén por defecto si no hay físicos.
+ */
+export async function getDefaultPhysicalWarehouseId(client: Client): Promise<string | null> {
+    const warehouse = await client.warehouse.findFirst({
+        where: { is_active: true, is_dropshipping: false },
+        orderBy: [{ priority: 'asc' }, { created_at: 'asc' }],
+        select: { id: true }
+    });
+    return warehouse?.id ?? (await getDefaultWarehouseId(client));
+}
+
 export async function seedInitialWarehouseStock(
     tx: Prisma.TransactionClient,
     { variant_id, stock }: { variant_id: string; stock: number }
 ): Promise<{ warehouse_id: string | null }> {
-    const warehouse_id = await getDefaultWarehouseId(tx);
+    const warehouse_id = await getDefaultPhysicalWarehouseId(tx);
     if (warehouse_id) {
         await tx.warehouseStock.create({ data: { variant_id, warehouse_id, stock } });
     }
@@ -154,18 +170,66 @@ export async function seedInitialWarehouseStock(
  * `StockMovement` (RESTOCK si sube, ADJUSTMENT si baja) — mismo criterio que
  * el editor de variantes plano ya usaba antes de esta funcionalidad.
  */
-export async function setWarehouseStock(params: {
+interface SetWarehouseStockParams {
     variant_id: string;
     warehouse_id: string;
     newStock: number;
     user_id?: string | null;
     note?: string | null;
-}): Promise<void> {
+}
+
+export async function setWarehouseStock(params: SetWarehouseStockParams): Promise<void> {
+    await prisma.$transaction((tx) => setWarehouseStockTx(tx, params));
+}
+
+/**
+ * Ajusta el TOTAL de stock de una variante (lo único que conocen el alta y la
+ * edición rápida de producto en /admin/products) aplicando la diferencia al
+ * almacén físico por defecto. Antes esos formularios escribían
+ * `ProductVariant.stock` directamente, sin `WarehouseStock`: la tienda
+ * mostraba unidades que el checkout no podía asignar (409) y el total
+ * cacheado quedaba desincronizado. Si la diferencia dejaría ese almacén en
+ * negativo (stock repartido entre varios), se rechaza: hay que usar la matriz
+ * "Stock por almacén".
+ */
+export async function adjustVariantTotalStock(
+    tx: Prisma.TransactionClient,
+    { variant_id, newTotal, user_id }: { variant_id: string; newTotal: number; user_id?: string | null }
+): Promise<void> {
+    if (!Number.isInteger(newTotal) || newTotal < 0) throw new Error('Stock inválido');
+
+    const variant = await tx.productVariant.findUnique({ where: { id: variant_id }, select: { stock: true } });
+    if (!variant) throw new Error('Variante no encontrada');
+    const delta = newTotal - variant.stock;
+    if (delta === 0) return;
+
+    const warehouse_id = await getDefaultPhysicalWarehouseId(tx);
+    if (!warehouse_id) throw new Error('No hay ningún almacén activo donde registrar el stock.');
+
+    const row = await tx.warehouseStock.findUnique({
+        where: { variant_id_warehouse_id: { variant_id, warehouse_id } },
+        select: { stock: true }
+    });
+    const target = (row?.stock ?? 0) + delta;
+    if (target < 0) {
+        throw new Error('El stock de este producto está repartido entre varios almacenes — ajústalo desde "Stock por almacén" en la ficha del producto.');
+    }
+
+    await setWarehouseStockTx(tx, {
+        variant_id,
+        warehouse_id,
+        newStock: target,
+        user_id,
+        note: 'Ajuste desde el formulario de producto'
+    });
+}
+
+export async function setWarehouseStockTx(tx: Prisma.TransactionClient, params: SetWarehouseStockParams): Promise<void> {
     if (!Number.isInteger(params.newStock) || params.newStock < 0) {
         throw new Error('Stock inválido');
     }
 
-    await prisma.$transaction(async (tx) => {
+    {
         const existing = await tx.warehouseStock.findUnique({
             where: { variant_id_warehouse_id: { variant_id: params.variant_id, warehouse_id: params.warehouse_id } }
         });
@@ -190,5 +254,5 @@ export async function setWarehouseStock(params: {
             },
             tx
         );
-    });
+    }
 }

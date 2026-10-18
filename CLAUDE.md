@@ -312,7 +312,7 @@ Todos los endpoints `POST /api/admin/cron/*` requieren cabecera `x-cron-secret: 
 
 #### `cleanup-pending-orders` (frecuencia: cada 5 min)
 
-Limpia órdenes `PENDING_PAYMENT` con `created_at < now-30min`. Por cada una en transacción:
+Limpia órdenes `PENDING_PAYMENT` con `created_at < now-45min` (la Checkout Session de Stripe caduca a los 31 min, ver §9.12). Por cada una en transacción:
 - Restituye stock al almacén de origen con `restockToWarehouse()` (`src/lib/warehouse.ts`) y registra `StockMovement RESERVATION_RELEASE`.
 - Decrementa `coupon.used_count` si tenía cupón.
 - Marca orden `CANCELLED + payment_status FAILED` (con guard `where: { status: 'PENDING_PAYMENT' }` para idempotencia).
@@ -556,7 +556,7 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
     return NextResponse.json({ ok: true, processed, failures });
   }
   ```
-- **Cambio de stock (admin o sistema):** siempre `productVariant.update({ stock: { increment/decrement } })` + `recordStockMovement({ variant_id, quantity ±, reason, reference_id, user_id })`. El log es opcional pero recomendado para reportes.
+- **Cambio de stock (admin o sistema):** siempre a través de `src/lib/warehouse.ts` (`allocateAndDecrementStock`, `restockToWarehouse`, `setWarehouseStock`/`setWarehouseStockTx`, `adjustVariantTotalStock` para formularios que sólo conocen un total). Nunca `productVariant.update({ stock })` directo: desincroniza `WarehouseStock` (ver §9.12).
 - **Manager cliente típico:** `useRouter()` de `@/i18n/navigation`, `await action(...)` + `closeModal()` + `router.refresh()`. Nada de `window.location.reload()`.
 - **Página storefront con metadata + datos:** envolver el fetch principal en `cache()` de React para que `generateMetadata` y la página compartan el mismo round-trip a DB.
 
@@ -576,6 +576,8 @@ Los endpoints `POST /api/admin/cron/*` (ver §5.6) ya están implementados pero 
 - ❌ Asumir que un endpoint "existe desde hace meses" funciona sin probarlo con una petición HTTP real — `invoice.pdf` llevaba roto desde 2026-05-02 (ver §9.10) sin que nadie lo notara.
 - ❌ Añadir un paquete que lee sus propios assets vía `__dirname`/rutas relativas a su código en runtime (fuentes, plantillas, binarios…) sin meterlo en `serverExternalPackages` de `next.config.ts` — el bundler reescribe ese `__dirname` a una ruta virtual inexistente y el fallo sólo aparece en la primera petición real (`pdfkit`, ver §9.10).
 - ❌ Dar por buena una protección basada en capturar un código de error de Prisma (`P2003`, etc.) sin comprobar que la relación FK implicada realmente puede lanzarlo — `onDelete: Cascade`/`SetNull` en vez de `Restrict` hace que ese catch sea código muerto que nunca se ejecuta (ver §9.11, `deleteWarehouse`).
+- ❌ Construir URLs que salen por email desde las cabeceras `Host`/`X-Forwarded-*` — usar `getPublicAppUrl()` (`src/lib/app-url.ts`).
+- ❌ Un ítem de checkout sin `variant_id` resuelto en servidor: sin variante no hay asignación de almacén ni descuento de stock (ver §9.12).
 - ❌ Aplicar un check de autorización/estado "salvo para admin" en un endpoint que tiene efectos secundarios reales (consumir un contador, crear un registro fiscal) — la excepción para admin debe reservarse a operaciones de sólo lectura (ver §9.11, `invoice.pdf`).
 
 ---
@@ -725,3 +727,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+### 9.12. Auditoría completa de la aplicación (2026-10-19)
+
+Revisión de todo el código seguida de corrección de 17 hallazgos + menores, validada con `tsc` limpio, ESLint sin hallazgos nuevos, `npm run build` y la suite Playwright contra MariaDB 10.11 real (**20 passed / 0 skipped / 0 failed** — el spec de checkout se ejecuta por primera vez gracias a `scripts/dev/seed-e2e.mjs`, ahora también en CI).
+
+**Stock y dinero:**
+- El checkout guardaba `variant_id: null` si el cliente no lo enviaba (el botón rápido de las tarjetas nunca lo enviaba) y se saltaba la asignación de almacén: **pedidos sin comprobar ni descontar stock**. Ahora siempre usa la variante resuelta en servidor y exige elegir variante si el producto tiene varias; las tarjetas usan `getQuickAddInfo()` (`src/lib/inventory.ts`).
+- `createProduct`/`updateProduct` escribían `ProductVariant.stock` sin `WarehouseStock` → la tienda mostraba stock que el checkout rechazaba (409). Ahora pasan por `seedInitialWarehouseStock`/`adjustVariantTotalStock`. `generateVariantMatrix` también siembra la fila de almacén.
+- La Checkout Session de Stripe vivía 24 h y el cron cancelaba a los 30 min → se podía pagar un pedido ya liberado. Ahora `expires_at` = 31 min, cron a 45 min, y el webhook re-reserva stock/cupón si llega un pago sobre un pedido liberado (detectado por el `StockMovement RESERVATION_RELEASE`), con `AuditLog order.paid_after_release[_stock_shortfall]`.
+- La ficha mostraba "Agotado" en productos `unlimited_stock` o servidos por drop shipping; y la variante base (sin opciones) "coincidía" con cualquier selección (`every` sobre array vacío).
+- Reembolso total vía RMA no revertía puntos de fidelización. Cron de pedidos vencidos sin guardia `gt: 0` en el cupón. Pago Stripe por debajo de 0,50 € ahora se rechaza antes de crear la orden.
+
+**Seguridad:** host header injection en el enlace de reset (todas las URLs públicas salen ahora de `getPublicAppUrl()`); open redirect en `callbackUrl` del login; `User.is_active` no se comprobaba en ningún sitio (ahora en `authorize` y el callback `jwt` revalida rol/estado contra BD en cada `auth()`, y el panel de usuarios tiene el control "Cuenta activa"); formulario de contacto sin rate limit ni escape HTML (`escapeHtml()` en `src/lib/sanitize.ts`); `/checkout/success/[orderId]` abierto a cualquiera con el UUID (ahora dueño, admin, cookie `eshop_order_access` del navegador que lo creó o `session_id` de Stripe); el service worker cacheaba `/account` y `/checkout` (cache `v2`).
+
+**Funcionales:** email de confirmación con nombres "Producto" y `#ORD-2026` truncado; enlace del carrito a la ficha por `product_id` (404) y envío hardcodeado (ahora método por defecto real); fusión de carrito con variante caducada → 500 en bucle, id con `_` en vez de `-` (duplicaba líneas) y precio sin override de variante; reducer del carrito mutaba estado (cantidades dobles en StrictMode).
+
+**Menores:** `checkout.session.completed` sin `payment_status === 'paid'` ya no confirma; `register` no filtra `error.message`; `deleteCategory` distingue P2003; `StockMovement` de `createVariant` dentro de la transacción; coste bcrypt único (`BCRYPT_COST`, `src/lib/password.ts`); cron de carritos abandonados con ventana 24-72 h y deduplicación por `AuditLog` (y sólo registra si el email salió de verdad).
+
+**Nota de entorno:** Prisma 7.4 bloquea `prisma db push` lanzado por un agente de IA sin consentimiento explícito. Para la BD efímera de validación se usó `prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script` aplicado con el cliente `mariadb`. Además, `next start` carga el `.env` local: para e2e hay que vaciar `SMTP_*` explícitamente o los emails de prueba intentan autenticarse contra el SMTP real.

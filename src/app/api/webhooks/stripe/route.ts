@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { getStripe, getStripeWebhookSecret } from '@/lib/stripe';
 import { captureError } from '@/lib/sentry';
@@ -129,10 +130,34 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         return; // ya marcada (probablemente por otro evento previo)
     }
 
+    // `checkout.session.completed` también llega con métodos asíncronos
+    // (SEPA, Bizum…) ANTES de cobrar, con payment_status 'unpaid'. En ese
+    // caso esperamos a `async_payment_succeeded`, que trae 'paid'.
+    if (session.payment_status !== 'paid' && session.payment_status !== 'no_payment_required') {
+        console.info(`[stripe-webhook] sesión ${session.id} completada sin cobro aún (${session.payment_status}) — se espera async_payment_succeeded`);
+        return;
+    }
+
     const paymentIntentId =
         typeof session.payment_intent === 'string'
             ? session.payment_intent
             : session.payment_intent?.id ?? null;
+
+    // Pago confirmado sobre un pedido cuya reserva YA se liberó (cron de
+    // pedidos vencidos o evento expired previo). El dinero está cobrado, así
+    // que la orden pasa igualmente a PAID, pero hay que volver a reservar
+    // stock y cupón — si no, la venta queda confirmada sin unidades
+    // descontadas. Lo que no se pueda reasignar queda trazado para revisión.
+    // Se exige además el rastro de la liberación (StockMovement
+    // RESERVATION_RELEASE que dejan tanto el cron como revertOrderReservation):
+    // un CANCELLED puesto a mano desde el admin NO restituye stock, y
+    // re-reservar ahí descontaría las unidades dos veces.
+    const reservationReleased =
+        order.status === 'CANCELLED' &&
+        (await prisma.stockMovement.count({
+            where: { reference_id: order.id, reason: 'RESERVATION_RELEASE' }
+        })) > 0;
+    const stockShortfalls: string[] = [];
 
     // Actualización de orden + asignación de invoice_number en una sola
     // transacción: si algo falla, ni la orden queda PAID ni se consume un
@@ -140,6 +165,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     try {
         const { claimInvoiceNumber } = await import('@/lib/invoice');
         await prisma.$transaction(async (tx) => {
+            if (reservationReleased) {
+                await reReserveReleasedOrder(tx, order.id, order.order_number, order.coupon_id, stockShortfalls);
+            }
             await tx.order.update({
                 where: { id: orderId },
                 data: {
@@ -155,6 +183,22 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     } catch (e) {
         console.error('[stripe-webhook] error confirmando orden:', e);
         throw e; // Re-throw para que Stripe reintente
+    }
+
+    if (reservationReleased) {
+        const { auditLogServer } = await import('@/lib/audit');
+        await auditLogServer({
+            action: stockShortfalls.length > 0 ? 'order.paid_after_release_stock_shortfall' : 'order.paid_after_release',
+            entity_type: 'Order',
+            entity_id: order.id,
+            metadata: { order_number: order.order_number, shortfalls: stockShortfalls }
+        });
+        if (stockShortfalls.length > 0) {
+            captureError(new Error(`Pedido ${order.order_number} pagado sin stock para: ${stockShortfalls.join(', ')}`), {
+                tags: { area: 'webhook', reason: 'paid_after_release_stock_shortfall' },
+                extra: { order_id: order.id }
+            });
+        }
     }
 
     // Email de confirmación (best-effort, fuera de la actualización).
@@ -188,6 +232,46 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
         }
     } catch (emailError) {
         console.error('[stripe-webhook] error enviando email confirmación:', emailError);
+    }
+}
+
+/**
+ * Vuelve a reservar stock (por prioridad de almacén, igual que el checkout) y
+ * el uso del cupón de un pedido cuya reserva se liberó antes de recibir el
+ * pago. Un ítem que no encuentra almacén con stock NO aborta la transacción
+ * (el cobro ya existe): se apunta en `shortfalls` para gestión manual.
+ */
+async function reReserveReleasedOrder(
+    tx: Prisma.TransactionClient,
+    orderId: string,
+    orderNumber: string,
+    couponId: string | null,
+    shortfalls: string[]
+) {
+    const { allocateAndDecrementStock } = await import('@/lib/warehouse');
+    const items = await tx.orderItem.findMany({
+        where: { order_id: orderId },
+        select: { id: true, variant_id: true, quantity: true, name: true, products: { select: { unlimited_stock: true } } }
+    });
+    for (const item of items) {
+        if (!item.variant_id) continue;
+        try {
+            const allocation = await allocateAndDecrementStock(tx, {
+                variant_id: item.variant_id,
+                quantity: item.quantity,
+                enforceStock: !item.products?.unlimited_stock,
+                reference_id: orderId,
+                note: `Order ${orderNumber} — re-reserva tras pago tardío`
+            });
+            await tx.orderItem.update({ where: { id: item.id }, data: { warehouse_id: allocation.warehouse_id } });
+        } catch {
+            // allocateAndDecrementStock sólo lanza su propio Error tras updateMany
+            // con count 0 (no un error SQL) — la transacción sigue siendo usable.
+            shortfalls.push(`${item.quantity}× ${item.name}`);
+        }
+    }
+    if (couponId) {
+        await tx.coupon.update({ where: { id: couponId }, data: { used_count: { increment: 1 } } });
     }
 }
 
@@ -308,9 +392,15 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
         // importe TOTAL (para que el listado de pedidos no la siga mostrando
         // como pagada cuando en realidad ya no queda nada cobrado).
         if (isFullRefund) {
-            await prisma.order.updateMany({
-                where: { id: order.id, payment_status: { not: 'REFUNDED' } },
-                data: { status: 'REFUNDED', payment_status: 'REFUNDED' }
+            // Los puntos de fidelización SÍ hay que revertirlos aquí: el flujo
+            // RMA no los toca, y sin esto el cliente conservaba los puntos de
+            // un pedido que se le había devuelto íntegro.
+            await prisma.$transaction(async (tx) => {
+                const claim = await tx.order.updateMany({
+                    where: { id: order.id, payment_status: { not: 'REFUNDED' } },
+                    data: { status: 'REFUNDED', payment_status: 'REFUNDED' }
+                });
+                if (claim.count === 1) await reversePointsForOrder(tx, order.id);
             });
         }
         return;

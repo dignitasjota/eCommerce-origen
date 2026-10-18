@@ -6,6 +6,8 @@ export interface CartItem {
     id: string; // Un identificador único para el item en el carrito (product_id + variant_id opcional)
     product_id: string;
     variant_id?: string;
+    /** Slug del producto para enlazar a su ficha desde el carrito. */
+    slug?: string;
     name: string;
     price: number;
     quantity: number;
@@ -53,8 +55,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
             const existingItemIndex = state.items.findIndex(i => i.id === action.payload.id);
             if (existingItemIndex > -1) {
                 // Item exists, update quantity
-                newItems = [...state.items];
-                newItems[existingItemIndex].quantity += action.payload.quantity;
+                // Inmutable: mutar el objeto existente hacía que React (que en
+                // StrictMode ejecuta el reducer dos veces) sumara la cantidad doble.
+                newItems = state.items.map((item, i) =>
+                    i === existingItemIndex
+                        ? { ...item, quantity: Math.min(99, item.quantity + action.payload.quantity) }
+                        : item
+                );
             } else {
                 // New item
                 newItems = [...state.items, action.payload];
@@ -81,7 +88,6 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         }
         case 'SET_CART': {
             newItems = action.payload;
-            state.isInitialized = true;
             break;
         }
         default:
@@ -101,6 +107,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
     return {
         ...state,
+        isInitialized: state.isInitialized || action.type === 'SET_CART',
         items: newItems,
         ...totals,
     };
@@ -164,7 +171,8 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, userId }) 
         const itemsToSend = state.items.map((i) => ({
             product_id: i.product_id,
             variant_id: i.variant_id ?? null,
-            quantity: i.quantity
+            quantity: i.quantity,
+            attributes: i.attributes
         }));
 
         (async () => {

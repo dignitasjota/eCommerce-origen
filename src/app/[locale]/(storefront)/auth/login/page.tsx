@@ -7,6 +7,23 @@ import { Link } from '@/i18n/navigation';
 import { Suspense } from 'react';
 import { ADMIN_ROLES } from '@/lib/auth-roles';
 
+/**
+ * Sólo rutas internas: `/algo`, nunca `//evil.com`, `/\\evil.com` ni URLs
+ * absolutas. Sin esto `?callbackUrl=https://evil.com` redirigía fuera de la
+ * tienda justo después de autenticarse (open redirect usable en phishing).
+ */
+function safeCallbackUrl(raw: string | null): string | null {
+    if (!raw) return null;
+    if (!raw.startsWith('/') || raw.startsWith('//') || raw.startsWith('/\\')) return null;
+    try {
+        const parsed = new URL(raw, 'http://internal.invalid');
+        if (parsed.origin !== 'http://internal.invalid') return null;
+        return parsed.pathname + parsed.search + parsed.hash;
+    } catch {
+        return null;
+    }
+}
+
 function LoginFormContent() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -19,7 +36,7 @@ function LoginFormContent() {
     // una página protegida (p. ej. /admin/orders sin sesión). Si NO hay uno
     // (el usuario entró directo a /auth/login), el destino por defecto
     // depende del rol — se decide más abajo tras conocer la sesión.
-    const explicitCallbackUrl = searchParams.get('callbackUrl');
+    const explicitCallbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
     const callbackUrl = explicitCallbackUrl || '/account';
 
     const handleSubmit = async (e: React.FormEvent) => {

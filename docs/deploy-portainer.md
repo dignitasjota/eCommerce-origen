@@ -414,7 +414,7 @@ La plantilla expone 2 endpoints `POST /api/admin/cron/*` que **no se ejecutan so
 
 ### Cron 1: limpieza de pedidos `PENDING_PAYMENT` vencidos
 
-`POST /api/admin/cron/cleanup-pending-orders` — frecuencia recomendada: **cada 5 minutos**. Libera stock + cupón y marca CANCELLED órdenes Stripe abandonadas hace > 30 min.
+`POST /api/admin/cron/cleanup-pending-orders` — frecuencia recomendada: **cada 5 minutos**. Libera stock + cupón y marca CANCELLED órdenes Stripe abandonadas hace > 45 min (la Checkout Session de Stripe caduca a los 31 min).
 
 ### Cron 2: emails de carrito abandonado
 

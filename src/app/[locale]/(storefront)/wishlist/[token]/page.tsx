@@ -4,6 +4,7 @@ import Image from 'next/image';
 import prisma from '@/lib/db';
 import { Link } from '@/i18n/navigation';
 import AddToCartClientButton from '@/components/storefront/AddToCartClientButton';
+import { getQuickAddInfo } from '@/lib/inventory';
 
 // Enlace personal — nunca debe indexarse ni aparecer en buscadores.
 export const metadata = {
@@ -44,7 +45,8 @@ export default async function SharedWishlistPage({ params }: Props) {
             products: {
                 include: {
                     product_translations: { where: { locale } },
-                    product_images: { take: 1, orderBy: { sort_order: 'asc' } }
+                    product_images: { take: 1, orderBy: { sort_order: 'asc' } },
+                    product_variants: { where: { is_active: true }, select: { id: true } }
                 }
             }
         },
@@ -59,7 +61,8 @@ export default async function SharedWishlistPage({ params }: Props) {
             name: p.product_translations[0]?.name || p.slug,
             price: Number(p.price).toFixed(2),
             image: p.product_images[0]?.url || null,
-            is_active: p.is_active
+            is_active: p.is_active,
+            ...getQuickAddInfo(p.product_variants)
         };
     });
 
@@ -111,7 +114,7 @@ export default async function SharedWishlistPage({ params }: Props) {
                                     <span className="card-price">{product.price} €</span>
                                 </div>
                                 {product.is_active && (
-                                    <AddToCartClientButton product={{ id: product.id, name: product.name, price: product.price, image: product.image || undefined }} />
+                                    <AddToCartClientButton product={{ id: product.id, slug: product.slug, name: product.name, price: product.price, image: product.image || undefined, variantId: product.variantId, requiresOptions: product.requiresOptions }} />
                                 )}
                             </div>
                         </Link>
